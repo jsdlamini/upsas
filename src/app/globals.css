@@ -1,0 +1,449 @@
+/*
+ * UPSAS visual system.
+ *
+ * The subject is dense assessment data read under time pressure, so the
+ * typography of numbers carries the design: tabular figures, a real scale,
+ * hairline structure. Colour is reserved for status and never used to
+ * decorate. No external fonts — the stack must run with no outbound internet.
+ */
+
+:root{
+  /* structure */
+  --ink:        #0F1B2D;
+  --ink-soft:   #3A4657;
+  --muted:      #67748A;
+  --canvas:     #F4F6F9;
+  --surface:    #FFFFFF;
+  --rule:       #DFE5EC;
+  --rule-soft:  #ECF0F4;
+  --rail:       #0F1B2D;
+  --rail-line:  #26354B;
+
+  /* meaning */
+  --accent:     #2E5AC8;
+  --accent-dim: #E9EFFA;
+  --moss:       #2E7D5B;
+  --moss-dim:   #E7F3ED;
+  --ochre:      #B7791F;
+  --ochre-dim:  #FBF3E3;
+  --rust:       #B23B35;
+  --rust-dim:   #FCEBEA;
+  --caution:    #B7791F;
+  --seal:       #0F1B2D;
+
+  /* polish */
+  --radius:     8px;
+  --radius-sm:  6px;
+  --shadow-sm:  0 1px 2px rgba(15, 27, 45, .05), 0 1px 3px rgba(15, 27, 45, .04);
+  --shadow:     0 1px 3px rgba(15, 27, 45, .07), 0 4px 16px rgba(15, 27, 45, .06);
+
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --serif: ui-serif, Georgia, "Times New Roman", serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+
+  --rail-w: 248px;
+}
+
+*{ box-sizing:border-box }
+html,body{ height:100% }
+body{
+  margin:0; background:var(--canvas); color:var(--ink);
+  font:14px/1.55 var(--sans);
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+a{ color:var(--accent); text-underline-offset:2px }
+a:hover{ text-decoration:underline }
+
+/* Every figure in this system is tabular. Columns of marks that do not line up
+   are harder to scan, and scanning is the whole job here. */
+.num, .mono, td.total, input[type="number"]{ font-variant-numeric:tabular-nums }
+.mono{ font-family:var(--mono); font-size:.86em; letter-spacing:-.01em }
+.muted{ color:var(--muted) }
+
+/* ─────────────────────────────────────────────────────────── shell */
+
+.shell{ display:flex; min-height:100vh }
+
+.rail{
+  width:var(--rail-w); flex:0 0 var(--rail-w);
+  background:var(--rail); color:#C6D0DB;
+  display:flex; flex-direction:column; position:sticky; top:0; height:100vh;
+}
+.rail .brand{ padding:22px 20px 18px; border-bottom:1px solid var(--rail-line) }
+.rail .brand .mark{
+  font:600 15px/1.2 var(--serif); color:#fff; letter-spacing:.01em; display:block;
+}
+.rail .brand .sub{ font-size:11.5px; color:#7E8D9E; margin-top:5px; display:block; line-height:1.45 }
+
+.rail nav{ padding:14px 12px; flex:1 }
+.rail nav a{
+  display:block; padding:8px 12px; margin-bottom:2px;
+  color:#C6D0DB; text-decoration:none; font-size:13.5px; font-weight:500;
+  border-left:2px solid transparent; border-radius:0 2px 2px 0;
+}
+.rail nav a:hover{ background:#18273A; color:#fff; text-decoration:none }
+.rail nav a.on{ background:#18273A; color:#fff; border-left-color:#6E93D6 }
+
+.rail .foot{ padding:14px 20px 18px; border-top:1px solid var(--rail-line); font-size:12px }
+.rail .foot .who{ color:#fff; font-weight:600; font-size:13px }
+.rail .foot .roles{ color:#7E8D9E; margin-top:2px; line-height:1.4 }
+.rail .foot form{ margin-top:9px }
+.rail .foot button.link{
+  background:none; border:0; padding:0; cursor:pointer;
+  color:#8FAEDD; font:inherit; font-size:12px;
+}
+.rail .foot button.link:hover{ text-decoration:underline }
+
+.content{ flex:1; min-width:0; display:flex; flex-direction:column }
+main{ padding:26px 32px 72px; max-width:1560px; width:100% }
+
+/* ──────────────────────────────────────────────────── page furniture */
+
+h1.page{
+  font:600 25px/1.2 var(--serif); letter-spacing:-.01em; margin:0 0 6px; color:var(--ink);
+}
+p.lede{ color:var(--muted); margin:0 0 22px; font-size:13.5px; max-width:78ch }
+h2{
+  font:600 15px/1.3 var(--serif); margin:28px 0 10px; color:var(--ink);
+  padding-bottom:7px; border-bottom:1px solid var(--rule);
+}
+h2:first-of-type{ margin-top:22px }
+
+.box{
+  background:var(--surface); border:1px solid var(--rule);
+  border-radius:var(--radius); padding:16px 18px; margin-bottom:16px;
+}
+.box strong{ font-weight:600 }
+.box p{ margin:7px 0 0 }
+
+/* ─────────────────────────────────────────────────────────── tables */
+
+table.list, table.grid{
+  width:100%; border-collapse:separate; border-spacing:0;
+  background:var(--surface); border:1px solid var(--rule); border-radius:var(--radius);
+  overflow:hidden; font-size:13px;
+}
+table.list thead th, table.grid thead th{
+  background:#F4F6F9; color:var(--ink-soft);
+  font-size:11.5px; font-weight:600; letter-spacing:.015em;
+  text-align:left; padding:9px 12px; vertical-align:bottom;
+  border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:2;
+}
+thead th .max{ display:block; font-weight:400; color:var(--muted); font-size:11px; margin-top:2px }
+table.list td, table.grid td{
+  padding:10px 12px; border-bottom:1px solid var(--rule-soft); vertical-align:top;
+}
+table.list tbody tr:last-child td, table.grid tbody tr:last-child td{ border-bottom:0 }
+table.list tbody tr:hover td{ background:#F8FAFC }
+td.num, th.num{ text-align:right }
+table.grid td.num, table.grid th.num{ text-align:center }
+td.total{
+  text-align:center; font-weight:600; background:#F1F4F8;
+  border-left:1px solid var(--rule); font-size:14px;
+}
+
+/* session banding on the grading sheet */
+tr.band td{
+  background:var(--accent-dim); color:#23406F; font-size:12.5px;
+  padding:7px 12px; border-bottom:1px solid var(--rule);
+}
+tr.band.solo td{ background:#F4F6F9; color:var(--ink-soft) }
+tr.band td strong{ font-weight:600 }
+td.sess{
+  background:#F4F6F9; text-align:center; color:var(--accent);
+  font:600 15px/1 var(--serif); border-right:1px solid var(--rule);
+  vertical-align:middle;
+}
+td.sess div{ font:400 10px/1.4 var(--sans); color:var(--muted); margin-top:3px }
+
+/* ───────────────────────────────────────────────────── form controls */
+
+input[type="text"], input[type="password"], input[type="number"], input[type="date"],
+input[type="email"], select, textarea, input:not([type]){
+  font:13.5px var(--sans); color:var(--ink); background:var(--surface);
+  border:1px solid #C6D0DA; border-radius:var(--radius-sm); padding:8px 10px;
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+input:focus, select:focus, textarea:focus{
+  outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-dim);
+}
+input::placeholder, textarea::placeholder{ color:#9AA6B2 }
+
+input.mark{
+  width:52px; text-align:center; font:14px var(--mono);
+  padding:6px 4px; border-color:#CFD8E1;
+}
+input.mark:focus{ background:#F4F8FF }
+input.mark:disabled{ background:#F4F6F9; color:var(--muted) }
+/* Spinners steal width in a nine-column grid and nobody clicks them. */
+input.mark::-webkit-outer-spin-button, input.mark::-webkit-inner-spin-button{
+  -webkit-appearance:none; margin:0;
+}
+input.mark{ -moz-appearance:textfield; appearance:textfield }
+
+.btn{
+  display:inline-block; background:var(--accent); color:#fff;
+  border:1px solid var(--accent); border-radius:var(--radius-sm);
+  padding:9px 18px; font:600 13.5px/1.3 var(--sans); cursor:pointer;
+  transition:background .15s ease, border-color .15s ease, box-shadow .15s ease, transform .1s ease;
+}
+.btn:hover{ background:#2450B0; border-color:#2450B0 }
+.btn:active{ transform:translateY(1px) }
+.btn.ghost{ background:var(--surface); color:var(--accent) }
+.btn.ghost:hover{ background:var(--accent-dim); box-shadow:none }
+.btn:disabled{ background:#E4E8ED; border-color:#D4DAE1; color:#9AA6B2; cursor:not-allowed; box-shadow:none }
+
+/* ──────────────────────────────────────────────────── status colour */
+
+.chip{
+  display:inline-block; padding:2px 9px; margin:0 4px 3px 0;
+  border:1px solid var(--rule); background:#F6F8FA; color:var(--ink-soft);
+  border-radius:999px; font-size:11px; font-weight:500; line-height:1.6;
+}
+.chip.ok{ border-color:#BFD9CA; background:var(--moss-dim); color:var(--moss) }
+.chip.warn{ border-color:#E4CFA3; background:var(--ochre-dim); color:var(--ochre) }
+.chip.bad{ border-color:#E6BDBA; background:var(--rust-dim); color:var(--rust) }
+
+.flag{ display:block; font-size:12px; line-height:1.5; margin-top:3px; padding-left:12px; position:relative }
+.flag::before{ content:""; position:absolute; left:0; top:7px; width:5px; height:5px; border-radius:50% }
+.flag.ok{ color:var(--moss) }      .flag.ok::before{ background:var(--moss) }
+.flag.amber{ color:var(--ochre) }  .flag.amber::before{ background:var(--ochre) }
+.flag.red{ color:var(--rust) }     .flag.red::before{ background:var(--rust) }
+
+.notice{
+  border:1px solid #BFD9CA; border-left:3px solid var(--moss);
+  background:var(--moss-dim); color:var(--moss);
+  padding:11px 15px; margin-bottom:16px; border-radius:var(--radius); font-size:13px;
+}
+.notice.bad{ border-color:#E6BDBA; border-left-color:var(--rust); background:var(--rust-dim); color:var(--rust) }
+
+/* ─────────────────────────────────────────────── the number itself */
+
+/* Boldness spent in one place: the mark is what everyone opens the page for. */
+.verdict{ display:flex; align-items:baseline; gap:14px; flex-wrap:wrap }
+.verdict .figure{
+  font:600 54px/1 var(--serif); letter-spacing:-.02em; color:var(--accent);
+  font-variant-numeric:tabular-nums;
+}
+.verdict .unit{ font:400 20px/1 var(--serif); color:var(--muted) }
+.verdict .grade{
+  font:600 26px/1 var(--serif); color:var(--ink);
+  border:1px solid var(--rule); border-radius:2px; padding:6px 14px;
+}
+
+/* ──────────────────────────────────────────────────────── sign-in */
+
+.auth{ display:flex; align-items:flex-start; justify-content:center; padding:64px 20px }
+.auth .panel{ width:100%; max-width:760px }
+.auth .crest{ text-align:center; margin-bottom:26px }
+.auth .crest .inst{ font:600 20px/1.25 var(--serif); margin:0 }
+.auth .crest .unit{ color:var(--muted); font-size:13px; margin:6px 0 0 }
+.auth label{ display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:5px }
+.auth input{ width:100% }
+
+/* Grading sheet density: rows are scanned, not read, so they stay on one line. */
+table.grid td{ padding:8px 10px; vertical-align:middle }
+table.grid td.num{ padding:5px 4px }
+table.grid tbody tr:hover td{ background:#F8FAFC }
+table.grid tbody tr:hover td.total{ background:#EBEFF5 }
+
+/* ─────────────────────────────────────────────────────── modern polish */
+
+h1.page{ font-size:26px }
+p.lede{ font-size:14px }
+a{ transition:color .12s ease }
+.rail nav a{
+  transition:background .12s ease, color .12s ease, border-color .12s ease;
+  border-radius:var(--radius-sm); margin:0 0 2px;
+}
+.rail nav a svg{ display:inline-block; vertical-align:-2px; margin-right:9px; opacity:.85 }
+
+/* ─────────────────────────────────────────────────────── login & register */
+
+.steps{ display:flex; flex-wrap:wrap; gap:8px; margin:0 0 18px }
+.steps span{ font-size:12.5px; color:var(--ink-soft); background:var(--surface);
+  border:1px solid var(--rule); border-radius:var(--radius-sm); padding:7px 12px }
+.steps b{ color:var(--accent); margin-right:5px; font-variant-numeric:tabular-nums }
+
+.register-entry{ margin:22px 0 }
+.register-options{ display:grid; grid-template-columns:1fr 1fr; gap:12px }
+.register-card{ display:block; text-decoration:none; color:var(--ink); background:var(--surface);
+  border:1px solid var(--rule); border-radius:var(--radius); padding:16px 18px;
+  transition:border-color .15s ease, box-shadow .15s ease, transform .1s ease }
+.register-card:hover{ text-decoration:none; border-color:var(--accent) }
+.register-card strong{ display:block; font-size:15px; margin-bottom:4px; color:var(--accent) }
+.register-card span{ font-size:13px; color:var(--muted) }
+.demo-box{ border-left-color:var(--muted) }
+
+.tabs-switch{ display:inline-flex; gap:2px; background:var(--rule-soft); border-radius:var(--radius-sm);
+  padding:3px; margin-bottom:16px }
+.tabs-switch a{ padding:7px 18px; border-radius:5px; font-size:13.5px; font-weight:600;
+  color:var(--muted); text-decoration:none }
+.tabs-switch a.on{ background:var(--surface); color:var(--accent) }
+.tabs-switch a:hover{ text-decoration:none; color:var(--ink) }
+
+.form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px 18px }
+.form-grid p{ margin:0 }
+.form-grid label{ display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:5px }
+.form-grid input, .form-grid select, .form-grid textarea{ width:100% }
+
+.field-label{ display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:6px }
+.role-checks{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px }
+.role-check{ display:flex; align-items:center; gap:6px; font-size:13px; font-weight:500;
+  color:var(--ink); background:var(--canvas); border:1px solid var(--rule);
+  border-radius:var(--radius-sm); padding:8px 12px; cursor:pointer }
+.role-check input{ accent-color:var(--accent); width:16px; height:16px }
+
+/* ─────────────────────────────────────────────────────── student dashboard */
+
+.marks-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px }
+.mark-cell{ background:var(--canvas); border:1px solid var(--rule);
+  border-radius:var(--radius-sm); padding:14px 16px }
+.mark-cell.final{ background:var(--accent-dim); border-color:var(--accent) }
+.mark-label{ display:block; font-size:11.5px; font-weight:600; color:var(--muted);
+  text-transform:uppercase; letter-spacing:.03em; margin-bottom:6px }
+.mark-value{ display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;
+  font:600 30px/1 var(--serif); color:var(--ink); font-variant-numeric:tabular-nums }
+.mark-cell.final .mark-value{ color:var(--accent) }
+.grade-pill{ font:600 15px/1 var(--sans); color:var(--accent); border:1px solid var(--accent);
+  border-radius:999px; padding:4px 12px }
+
+.progress{ display:flex; flex-direction:column; gap:10px }
+.progress-row{ display:flex; align-items:center; gap:12px }
+.progress-label{ width:58px; font-size:12px; font-weight:600; color:var(--ink-soft) }
+.progress-track{ flex:1; height:8px; background:var(--rule-soft); border-radius:999px; overflow:hidden }
+.progress-fill{ height:100%; background:var(--moss); border-radius:999px; transition:width .3s ease }
+.progress-count{ font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap }
+
+/* ─────────────────────────────────────────────────────── booking */
+
+.journey{ display:flex; flex-wrap:wrap; gap:8px; margin:0 0 18px }
+.journey span{ font-size:12px; color:var(--muted); background:var(--surface);
+  border:1px solid var(--rule); border-radius:999px; padding:5px 12px }
+.journey span.done{ color:var(--accent); border-color:var(--accent); background:var(--accent-dim); font-weight:600 }
+
+.slot-days{ display:flex; flex-direction:column; gap:14px }
+.slot-day-head{ font:600 13.5px/1 var(--serif); color:var(--ink); margin:0 0 6px 2px }
+
+/* ─────────────────────────────────────────────────────── responsive */
+
+@media (max-width: 900px) {
+  .shell{ flex-direction:column }
+  .rail{ width:100%; flex:none; height:auto; position:sticky }
+  .rail nav{ display:flex; flex-wrap:wrap; gap:2px; padding:8px 12px }
+  .rail nav a{ border-left:0; border-bottom:2px solid transparent; margin:0 }
+  .rail nav a.on{ border-left:0; border-bottom-color:#6E93D6 }
+  .rail .brand{ padding:14px 16px 10px }
+  .rail .foot{ display:none }
+  main{ padding:18px 16px 48px }
+  .auth{ padding:32px 16px }
+}
+@media (max-width: 720px) {
+  .marks-grid{ grid-template-columns:1fr 1fr }
+  .register-options{ grid-template-columns:1fr }
+  .form-grid{ grid-template-columns:1fr }
+  table.list, table.grid{ font-size:12px }
+}
+
+/* ─────────────────────────────────────────────────────── split auth screen */
+
+.auth-split{ display:grid; grid-template-columns:minmax(360px, 460px) 1fr; min-height:100vh }
+.auth-brand{
+  background:
+    radial-gradient(1200px 500px at -10% -10%, rgba(110,147,214,.22), transparent 60%),
+    linear-gradient(180deg, #0B1420 0%, #12263D 100%);
+  color:#C6D0DB; padding:48px 44px; display:flex;
+}
+.auth-brand-inner{ display:flex; flex-direction:column; max-width:380px; width:100% }
+.auth-brand .inst{ font:600 15px var(--sans); color:#fff; letter-spacing:.02em; margin:0 }
+.auth-brand .unit{ color:#7E8D9E; font-size:13px; margin:5px 0 0 }
+.auth-brand h2{ font:600 32px/1.15 var(--serif); color:#fff; margin:44px 0 14px; border:0; padding:0 }
+.auth-brand .tagline{ color:#9FB0C3; font-size:14.5px; line-height:1.65; margin:0 }
+.brand-points{ list-style:none; padding:0; margin:30px 0 0 }
+.brand-points li{ position:relative; padding:9px 0 9px 26px; color:#B9C6D6; font-size:13.5px;
+  border-bottom:1px solid rgba(255,255,255,.07) }
+.brand-points li::before{ content:""; position:absolute; left:2px; top:16px; width:8px; height:8px;
+  border-radius:50%; background:#6E93D6 }
+.brand-foot{ margin-top:auto; font-size:12px; color:#7E8D9E; padding-top:24px }
+
+.auth-main{ display:flex; align-items:center; justify-content:center; padding:48px 44px }
+.auth-main-inner{ width:100%; max-width:560px }
+.auth-main .crest{ display:none; text-align:left; margin-bottom:22px }
+.auth-main label{ display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:5px }
+.auth-main input{ width:100% }
+
+.brand-logo{
+  display:inline-flex; align-items:center; justify-content:center; width:46px; height:46px;
+  border-radius:12px; background:var(--accent); color:#fff; font:700 15px var(--sans);
+  letter-spacing:.04em; margin-bottom:20px
+}
+
+@media (max-width: 900px){
+  .auth-split{ grid-template-columns:1fr }
+  .auth-brand{ display:none }
+  .auth-main{ padding:36px 20px }
+  .auth-main .crest{ display:block }
+}
+
+/* ─────────────────────────────────────────────────────── rail + brand */
+
+.rail .brand .mark{ display:flex; align-items:center; gap:10px }
+.rail .brand .logo{
+  width:30px; height:30px; border-radius:8px; background:var(--accent); color:#fff;
+  display:inline-flex; align-items:center; justify-content:center;
+  font:700 12px var(--sans); letter-spacing:.03em
+}
+.rail nav a.on{ background:linear-gradient(90deg, rgba(110,147,214,.18), transparent); font-weight:600 }
+
+.rail .foot{ display:flex; align-items:center; gap:10px }
+.avatar{
+  width:34px; height:34px; border-radius:50%; background:#2E5AC8; color:#fff;
+  display:inline-flex; align-items:center; justify-content:center;
+  font:600 13px var(--sans); flex:0 0 auto
+}
+.rail .foot .who-line{ min-width:0 }
+.rail .foot form{ margin-top:4px }
+
+/* ─────────────────────────────────────────────────────── table & section polish */
+
+table.list tbody tr:nth-child(even) td, table.grid tbody tr:nth-child(even) td{ background:#FAFBFD }
+table.list tbody tr:nth-child(even):hover td{ background:#F1F5FA }
+table.list tbody tr, table.grid tbody tr{ transition:background .1s ease }
+h2{ font-size:14px; letter-spacing:.02em; text-transform:uppercase; color:var(--ink-soft); border-bottom:1px solid var(--rule) }
+
+.page-context{ display:flex; align-items:center; gap:10px; margin:0 0 18px }
+.page-context .cycle-chip{
+  font-size:11.5px; font-weight:600; color:var(--ink-soft); background:var(--surface);
+  border:1px solid var(--rule); border-radius:999px; padding:3px 11px; letter-spacing:.02em
+}
+.page-context .rule-spacer{ flex:1; height:1px; background:var(--rule-soft) }
+
+/* button variants */
+.btn.danger{ background:var(--rust); border-color:var(--rust) }
+.btn.danger:hover{ background:#9A2C28; border-color:#9A2C28 }
+.btn.sm{ padding:6px 13px; font-size:12px }
+
+/* a soft stat cell used in headers */
+.stat-pill{ display:inline-flex; align-items:baseline; gap:6px; font-size:12.5px; color:var(--ink-soft) }
+.stat-pill b{ font-size:16px; color:var(--ink); font-variant-numeric:tabular-nums }
+
+/* ─────────────────────────────────────────────────────── toast */
+
+.toast{
+  position:fixed; bottom:22px; left:50%; transform:translateX(-50%);
+  background:var(--ink); color:#fff; border:1px solid var(--rail-line);
+  border-radius:999px; padding:10px 16px 10px 20px;
+  font-size:13.5px; font-weight:500; z-index:1000;
+  display:flex; align-items:center; gap:12px;
+  animation:toast-in .18s ease;
+  max-width:min(90vw, 520px);
+}
+.toast-close{
+  background:none; border:0; color:#9fb0c3; font-size:16px; line-height:1;
+  cursor:pointer; padding:0 2px;
+}
+.toast-close:hover{ color:#fff }
+@keyframes toast-in{
+  from{ opacity:0; transform:translate(-50%, 8px) }
+  to{ opacity:1; transform:translate(-50%, 0) }
+}

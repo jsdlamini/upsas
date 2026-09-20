@@ -1,0 +1,1202 @@
+import { hashPassword, checkPassword } from '../auth/password';
+import type { RoleGrant } from '../auth/roles';
+import type { AssessorEntry, ConsultationRecord } from '../assessment/types';
+import { loadPersistedState, savePersistedState } from '../persistence';
+import { notifyUser } from '../notifications';
+
+/**
+ * In-memory development store.
+ *
+ * Stands in for PostgreSQL so the application can be driven end to end before
+ * persistence is wired up. It is process-local and resets on restart — every
+ * write goes through a function here, so swapping in Prisma is a change to this
+ * module and nothing above it.
+ */
+
+export const CYCLE = '2025/2026';
+export const DEMO_PASSWORD = 'upsas-demo-passphrase';
+
+export interface Person {
+  id: string;
+  username: string;
+  fullName: string;
+  surname: string;
+  grants: RoleGrant[];
+  totpConfirmed: boolean;
+  /** Set on student accounts, linking the login to the student record. */
+  studentId?: string;
+  /** Account lifecycle state; defaults to ACTIVE. */
+  status?: 'PENDING_APPROVAL' | 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED';
+  email?: string;
+  /** Roles a staff applicant asked for; empty until a coordinator approves. */
+  requestedRoles?: Array<RoleGrant['role']>;
+  /** Offline TOTP secret (base32) for privileged roles; absent = not enrolled. */
+  totpSecret?: string;
+}
+
+export interface Student {
+  id: string;
+  studentNumber: string;
+  surname: string;
+  otherNames: string;
+  programme: string;
+  courseCode: string;
+  projectId: string;
+}
+
+export interface Project {
+  id: string;
+  title: string;
+  supervisorId: string;
+  memberIds: string[];
+  state: string;
+  ethicsStatus: 'NOT_REQUIRED' | 'SUBMITTED' | 'APPROVED';
+  contributionFiled: Record<string, boolean>;
+  /** Set when the project was created from an allocated topic. */
+  topicId?: string;
+}
+
+export interface Topic {
+  id: string;
+  supervisorId: string;
+  title: string;
+  description: string;
+  prerequisites: string;
+  tags: string[];
+  capacity: number;
+  groupSuitable: boolean;
+  published: boolean;
+  studentProposed: boolean;
+  proposedBy: string | null;
+  /** Set when a supervisor accepts a student-proposed topic. */
+  acceptedAt: string | null;
+}
+
+export interface Preference {
+  studentId: string;
+  topicId: string;
+  rank: number;
+}
+
+export interface Slot {
+  id: string;
+  supervisorId: string;
+  startsAt: string;
+  minutes: number;
+  mode: 'IN_PERSON' | 'ONLINE';
+  venue: string;
+  bookedByStudentId: string | null;
+  agenda: string | null;
+  /** Booking lifecycle: unset = open, REQUESTED = awaiting supervisor, CONFIRMED = approved. */
+  status?: 'REQUESTED' | 'CONFIRMED' | undefined;
+  /** Meeting link when the session is virtual. */
+  meetingLink?: string | null;
+}
+
+export interface SessionSlot {
+  serial: number;
+  component: 'p1' | 'p2';
+  studentIds: string[];
+  /** True when the slot is one joint project rather than two individuals. */
+  joint: boolean;
+  scheduledFor: string;
+  venue: string;
+}
+
+export interface Sheet {
+  assessorId: string;
+  studentId: string;
+  component: 'p1' | 'p2';
+  rubricVersionId: string;
+  rubricMax: number;
+  marks: Record<string, number | null>;
+  submitted: boolean;
+  submittedAt: string | null;
+}
+
+export interface Consultation {
+  id: string;
+  studentId: string;
+  periodId: 'SEM1' | 'SEM2';
+  heldAt: string;
+  status: ConsultationRecord['status'];
+  supervisorAttested: boolean;
+  studentAttested: boolean;
+  rawTotal: number | null;
+  rubricMax: number;
+  agenda: string;
+}
+
+export interface DocMark {
+  studentId: string;
+  rawTotal: number;
+  rubricMax: number;
+  markedBy: string;
+  moderatedBy: string | null;
+  agreedRawTotal: number | null;
+}
+
+/** A student's request to meet their supervisor when no slot is open. */
+export interface MeetingRequest {
+  id: string;
+  studentId: string;
+  supervisorId: string;
+  agenda: string;
+  preferredTimes: string;
+  status: 'PENDING' | 'APPROVED' | 'DECLINED';
+  requestedAt: string;
+  decidedAt: string | null;
+}
+
+/** An e-signature on a topic & supervision agreement. */
+export interface AgreementSignature {
+  id: string;
+  projectId: string;
+  signerId: string;
+  name: string;
+  role: 'Student' | 'Supervisor' | 'Coordinator';
+  signedAt: string;
+}
+
+/** A versioned project deliverable (proposal, chapters, slides, …). */
+export interface DeliverableRecord {
+  id: string;
+  projectId: string;
+  kind: string;
+  title: string;
+  version: number;
+  mediaType: string;
+  byteSize: number;
+  sha256: string;
+  scanStatus: 'PENDING' | 'OK' | 'INFECTED' | 'SKIPPED';
+  uploadedById: string;
+  uploadedAt: string;
+}
+
+const grant = (role: RoleGrant['role'], cycleId: string | null = CYCLE): RoleGrant => ({
+  role, cycleId, grantedAt: '2026-02-01T00:00:00Z', revokedAt: null,
+});
+
+const globalForPeople = globalThis as unknown as { __upsasPeople?: Person[]; __upsasStaff?: Person[] };
+
+export const PEOPLE: Person[] = (globalForPeople.__upsasPeople ??= [
+  { id: 'u-mahlalela', username: 'tmahlalela', fullName: 'Dr T. Mahlalela', surname: 'Mahlalela',
+    grants: [grant('SUPERVISOR'), grant('ASSESSOR'), grant('MODERATOR')], totpConfirmed: false },
+  { id: 'u-nkosi', username: 'bnkosi', fullName: 'Mr B. Nkosi', surname: 'Nkosi',
+    grants: [grant('SUPERVISOR'), grant('ASSESSOR')], totpConfirmed: false },
+  { id: 'u-sdlamini', username: 'sdlamini', fullName: 'Dr S. Dlamini', surname: 'Dlamini',
+    grants: [grant('ASSESSOR'), grant('MODERATOR')], totpConfirmed: false },
+  { id: 'u-shongwe', username: 'pshongwe', fullName: 'Ms P. Shongwe', surname: 'Shongwe',
+    grants: [grant('ASSESSOR')], totpConfirmed: false },
+  { id: 'u-coord', username: 'coordinator', fullName: 'J. Dlamini', surname: 'Dlamini',
+    grants: [grant('COORDINATOR'), grant('ASSESSOR')], totpConfirmed: true,
+    // Demo TOTP secret (base32). Add it to an authenticator app to generate
+    // the six-digit code the coordinator is challenged for.
+    totpSecret: 'IOTL7XO7EZ2BFO5ZD5V7X427T7I4LIJH' },
+]);
+
+/** Staff accounts requested through the registration screen, awaiting a coordinator. */
+export const REGISTERED_STAFF: Person[] = (globalForPeople.__upsasStaff ??= []);
+
+/** Students sign in too — dual attestation is meaningless if only staff have accounts. */
+export function studentAccounts(): Person[] {
+  return STUDENTS.map((s) => ({
+    id: `u-${s.id}`, username: s.studentNumber, fullName: `${s.surname}, ${s.otherNames}`,
+    surname: s.surname, totpConfirmed: false, studentId: s.id,
+    grants: [grant('STUDENT')],
+  }));
+}
+
+const globalForStudents = globalThis as unknown as { __upsasStudents?: Student[] };
+
+export const STUDENTS: Student[] = (globalForStudents.__upsasStudents ??= [
+  { id: 's1', studentNumber: '209900101', surname: 'Dlamini', otherNames: 'Sipho A.', programme: 'BSc IT', courseCode: 'CSC499', projectId: 'p-speech' },
+  { id: 's2', studentNumber: '209900102', surname: 'Mabuza', otherNames: 'Nomsa T.', programme: 'BSc IT', courseCode: 'CSC499', projectId: 'p-speech' },
+  { id: 's3', studentNumber: '209900103', surname: 'Ginindza', otherNames: 'Musa K.', programme: 'BSc CS Education', courseCode: 'CSC402', projectId: 'p-timetable' },
+  { id: 's4', studentNumber: '209900104', surname: 'Simelane', otherNames: 'Lindiwe P.', programme: 'BSc CS Education', courseCode: 'CSC402', projectId: 'p-maize' },
+  { id: 's5', studentNumber: '209900105', surname: 'Vilakati', otherNames: 'Bongani M.', programme: 'BSc IT', courseCode: 'CSC499', projectId: 'p-clinic' },
+  { id: 's6', studentNumber: '209900106', surname: 'Magagula', otherNames: 'Thandi N.', programme: 'BSc CS Education', courseCode: 'CSC402', projectId: 'p-dropout' },
+  { id: 's7', studentNumber: '209900107', surname: 'Hlophe', otherNames: 'Sanele B.', programme: 'BSc', courseCode: 'CSC499', projectId: 'p-grid' },
+  { id: 's8', studentNumber: '209900108', surname: 'Zwane', otherNames: 'Nokwanda R.', programme: 'BSc', courseCode: 'CSC499', projectId: 'p-grid' },
+  // Not yet allocated: registered, choosing a topic. Without one of these the
+  // ranking and allocation flow is unreachable in the demo.
+  { id: 's9', studentNumber: '209900109', surname: 'Nhlabatsi', otherNames: 'Ayanda M.', programme: 'BSc IT', courseCode: 'CSC499', projectId: 'unallocated' },
+]);
+
+/** Students with no project yet — they rank topics rather than being assessed. */
+export const unallocatedStudents = () => STUDENTS.filter((s) => !findProject(s.projectId));
+export const allocatedStudents = () => STUDENTS.filter((s) => findProject(s.projectId));
+
+const globalForProjects = globalThis as unknown as { __upsasProjects?: Project[] };
+
+export const PROJECTS: Project[] = (globalForProjects.__upsasProjects ??= [
+  { id: 'p-speech', title: 'SiSwati speech corpus and keyword spotting for radio archives', supervisorId: 'u-mahlalela', memberIds: ['s1', 's2'], state: 'P2_NOMINATED', ethicsStatus: 'APPROVED', contributionFiled: { s1: true, s2: false } },
+  { id: 'p-timetable', title: 'Automated timetabling for large service courses', supervisorId: 'u-nkosi', memberIds: ['s3'], state: 'IMPLEMENTATION', ethicsStatus: 'NOT_REQUIRED', contributionFiled: { s3: true } },
+  { id: 'p-maize', title: 'A deep-learning approach to maize leaf disease detection', supervisorId: 'u-mahlalela', memberIds: ['s4'], state: 'SUPERVISOR_MARKED', ethicsStatus: 'APPROVED', contributionFiled: { s4: true } },
+  { id: 'p-clinic', title: 'Offline-first mobile records system for rural clinics', supervisorId: 'u-mahlalela', memberIds: ['s5'], state: 'IMPLEMENTATION', ethicsStatus: 'APPROVED', contributionFiled: { s5: true } },
+  { id: 'p-dropout', title: 'Predictors of dropout in first-year programming', supervisorId: 'u-mahlalela', memberIds: ['s6'], state: 'ETHICS_SUBMITTED', ethicsStatus: 'SUBMITTED', contributionFiled: { s6: true } },
+  { id: 'p-grid', title: 'Load forecasting for the Eswatini national grid', supervisorId: 'u-mahlalela', memberIds: ['s7', 's8'], state: 'IMPLEMENTATION', ethicsStatus: 'NOT_REQUIRED', contributionFiled: { s7: true, s8: true } },
+]);
+
+export const P1_CRITERIA = [
+  { id: 'c1', label: 'Background of study', max: 5 },
+  { id: 'c2', label: 'Problem statement', max: 5 },
+  { id: 'c3', label: 'Aim and objectives', max: 5 },
+  { id: 'c4', label: 'Literature review', max: 5 },
+  { id: 'c5', label: 'Identified gaps', max: 5 },
+  { id: 'c6', label: 'Methodology', max: 5 },
+  { id: 'c7', label: 'Implementation', max: 5 },
+  { id: 'c8', label: 'In-text citation', max: 2 },
+  { id: 'c9', label: 'References', max: 3 },
+];
+
+export const P2_CRITERIA = [
+  { id: 'c1', label: 'Introduction', max: 5 },
+  { id: 'c2', label: 'Problem statement', max: 5 },
+  { id: 'c3', label: 'Aim and objectives', max: 5 },
+  { id: 'c4', label: 'Methodology', max: 15 },
+  { id: 'c5', label: 'Implementation', max: 25 },
+  { id: 'c6', label: 'Results interpretation', max: 10 },
+  { id: 'c7', label: 'Conclusion', max: 5 },
+  { id: 'c8', label: 'Presentation skills', max: 5 },
+  { id: 'c9', label: 'References', max: 5 },
+];
+
+export const RUBRICS = {
+  p1: { versionId: 'rv-p1-1', max: 40, criteria: P1_CRITERIA, title: 'Presentation 1 — Chapters 1 & 2' },
+  p2: { versionId: 'rv-p2-1', max: 80, criteria: P2_CRITERIA, title: 'Presentation 2 — Chapters 3–5' },
+} as const;
+
+export const SESSIONS: SessionSlot[] = [
+  { serial: 1, component: 'p2', studentIds: ['s1', 's2'], joint: true, scheduledFor: '2026-09-14T09:00:00Z', venue: 'CS-112' },
+  { serial: 2, component: 'p2', studentIds: ['s3', 's4'], joint: false, scheduledFor: '2026-09-14T09:40:00Z', venue: 'CS-112' },
+  { serial: 3, component: 'p2', studentIds: ['s5', 's6'], joint: false, scheduledFor: '2026-09-14T10:20:00Z', venue: 'CS-112' },
+  { serial: 4, component: 'p2', studentIds: ['s7', 's8'], joint: true, scheduledFor: '2026-09-14T11:00:00Z', venue: 'CS-112' },
+];
+
+/* ------------------------------------------------------------ mutable state */
+
+/**
+ * Pinned to globalThis for the same reason as the session table: Next's dev
+ * server re-evaluates server modules on hot reload, and un-pinned module state
+ * would reset — a mark saved on one page would vanish on the next.
+ */
+export interface Publication {
+  studentId: string;
+  finalMark: number | null;
+  grade: string | null;
+  publishedBy: string;
+  publishedAt: string;
+  supersedes: string | null;
+  reason: string | null;
+}
+
+export interface ModerationRow {
+  studentId: string;
+  component: 'p1' | 'p2';
+  moderatorId: string;
+  rationale: string;
+  agreedPercentage: number;
+  moderatedAt: string;
+}
+
+interface Tables {
+  consultations: Consultation[]; sheets: Sheet[]; docMarks: DocMark[];
+  publications: Publication[]; moderations: ModerationRow[];
+  topics: Topic[]; preferences: Preference[]; slots: Slot[];
+  meetingRequests: MeetingRequest[]; signatures: AgreementSignature[];
+  deliverables: DeliverableRecord[];
+  passwords: Record<string, string>;
+  seeded: boolean;
+}
+const globalForData = globalThis as unknown as { __upsasData?: Tables };
+const tables: Tables = (globalForData.__upsasData ??= {
+  consultations: [], sheets: [], docMarks: [], publications: [], moderations: [],
+  topics: [], preferences: [], slots: [], meetingRequests: [], signatures: [], deliverables: [], passwords: {}, seeded: false,
+});
+const consultations = tables.consultations;
+const sheets = tables.sheets;
+const docMarks = tables.docMarks;
+const publications = tables.publications;
+const moderations = tables.moderations;
+const topics = tables.topics;
+const preferences = tables.preferences;
+const slots = tables.slots;
+const meetingRequests = tables.meetingRequests;
+const signatures = tables.signatures;
+const deliverables = tables.deliverables;
+
+function seedConsultations(): void {
+  const plan: Record<string, [number[], number[]]> = {
+    s1: [[72, 68, 80, 75, 85], [70, 74, 66]],
+    s2: [[70, 66, 72, 71], [68, 70, 72, 69]],
+    s3: [[80, 78, 84, 82], [79, 81, 85, 80]],
+    s4: [[66, 70, 68, 72], [70, 74, 66, 71]],
+    s5: [[62, 58, 64], [60, 63]],
+    s6: [[74, 70, 76, 72], [71, 73, 69]],
+    s7: [[68, 72, 70, 74, 76], [72, 70, 74, 71]],
+    s8: [[70, 68, 72], [66, 70, 68, 71]],
+  };
+  const agendas = ['Topic scoping and objectives', 'Chapter 1 draft', 'Literature review draft',
+                   'Methodology and instruments', 'Implementation walkthrough',
+                   'Results interpretation', 'Chapter 5 and formatting'];
+  for (const [studentId, [s1, s2]] of Object.entries(plan)) {
+    let day = 3;
+    const add = (periodId: 'SEM1' | 'SEM2', score: number, k: number) => {
+      day += 7;
+      const dd = String(((day - 1) % 28) + 1).padStart(2, '0');
+      consultations.push({
+        id: `${studentId}-${periodId}-${k}`, studentId, periodId,
+        heldAt: `2026-${periodId === 'SEM1' ? '03' : '08'}-${dd}T10:00:00Z`,
+        status: 'COMPLETED', supervisorAttested: true, studentAttested: true,
+        rawTotal: score, rubricMax: 100, agenda: agendas[k % agendas.length]!,
+      });
+    };
+    s1!.forEach((v, k) => add('SEM1', v, k));
+    s2!.forEach((v, k) => add('SEM2', v, k + 4));
+  }
+  consultations.push({
+    id: 's5-noshow', studentId: 's5', periodId: 'SEM2', heldAt: '2026-08-26T10:00:00Z',
+    status: 'NO_SHOW_STUDENT', supervisorAttested: true, studentAttested: false,
+    rawTotal: null, rubricMax: 100, agenda: 'Implementation walkthrough',
+  });
+}
+
+function seedSheets(): void {
+  // P1 is complete for everyone; P2 is partially graded, which is the state the
+  // grading screen is most useful in.
+  const p1Totals: Record<string, number> = { s1: 29, s2: 27, s3: 33, s4: 28, s5: 24, s6: 30, s7: 26, s8: 28 };
+  const p2Totals: Record<string, number> = { s1: 64, s2: 57, s3: 69, s4: 58, s5: 47, s6: 61, s7: 55, s8: 63 };
+  const assessors = ['u-mahlalela', 'u-nkosi', 'u-sdlamini', 'u-shongwe'];
+
+  for (const st of STUDENTS) {
+    assessors.forEach((a, i) => {
+      sheets.push(makeSheet(a, st.id, 'p1', (p1Totals[st.id] ?? 28) + (i % 3) - 1, true));
+    });
+    assessors.forEach((a, i) => {
+      // Mahlalela has not submitted P2 yet — that is the sheet the demo grades.
+      const submitted = a !== 'u-mahlalela';
+      const total = (p2Totals[st.id] ?? 60) + (i % 3) - 1;
+      if (submitted) sheets.push(makeSheet(a, st.id, 'p2', total, true));
+    });
+  }
+  // One assessor graded Magagula against the wrong session. The spread exceeds the
+  // 15-point threshold, so her Presentation 2 is blocked pending moderation — the
+  // moderation queue needs something real in it.
+  const stray = sheets.find((s) => s.studentId === 's6' && s.component === 'p2' && s.assessorId === 'u-shongwe');
+  if (stray) {
+    for (const c of RUBRICS.p2.criteria) stray.marks[c.id] = Math.floor(c.max * 0.25);
+  }
+
+  // A partially entered row and two untouched rows for Mahlalela.
+  sheets.push(makeSheet('u-mahlalela', 's1', 'p2', 64, false));
+  sheets.push(makeSheet('u-mahlalela', 's2', 'p2', 57, false));
+  sheets.push(makeSheet('u-mahlalela', 's3', 'p2', 69, false));
+}
+
+function makeSheet(assessorId: string, studentId: string, component: 'p1' | 'p2', total: number, submitted: boolean): Sheet {
+  const rubric = RUBRICS[component];
+  // Spread the total across criteria in proportion to their maxima, then push
+  // the rounding remainder onto the largest criteria. A greedy fill would leave
+  // the last criteria at zero, which looks like a marking error rather than seed data.
+  const marks: Record<string, number | null> = {};
+  const share = total / rubric.max;
+  let assigned = 0;
+  for (const c of rubric.criteria) {
+    const v = Math.min(c.max, Math.round(c.max * share));
+    marks[c.id] = v;
+    assigned += v;
+  }
+  let remainder = total - assigned;
+  const byMax = [...rubric.criteria].sort((a, b) => b.max - a.max);
+  for (const c of byMax) {
+    if (remainder === 0) break;
+    const current = marks[c.id] as number;
+    const step = remainder > 0 ? Math.min(remainder, c.max - current) : Math.max(remainder, -current);
+    marks[c.id] = current + step;
+    remainder -= step;
+  }
+  return {
+    assessorId, studentId, component, rubricVersionId: rubric.versionId,
+    rubricMax: rubric.max, marks, submitted,
+    submittedAt: submitted ? '2026-09-10T12:00:00Z' : null,
+  };
+}
+
+function seedTopics(): void {
+  const seed: Array<[string, string, string, string, string[], number, boolean]> = [
+    ['u-mahlalela', 'Low-resource speech recognition for siSwati',
+     'Build and evaluate an ASR pipeline for siSwati using transfer learning from a multilingual base model. Suits a student comfortable with Python and willing to do transcription work.',
+     'Python, basic machine learning', ['NLP', 'speech'], 2, true],
+    ['u-mahlalela', 'Yield prediction for smallholder maize from satellite imagery',
+     'Combine open satellite imagery with district yield records to forecast maize output. Involves geospatial data handling and regression modelling.',
+     'Python, statistics', ['ML', 'agriculture'], 2, true],
+    ['u-mahlalela', 'Offline-first data capture for rural health facilities',
+     'Design and build a mobile client that works without connectivity and reconciles on reconnect. Strong systems project rather than a modelling one.',
+     'Mobile development, databases', ['systems', 'mobile'], 1, false],
+    ['u-nkosi', 'Automated timetabling under room and staff constraints',
+     'Model the departmental timetable as a constraint-satisfaction problem and compare solver approaches against the hand-built schedule.',
+     'Algorithms, discrete mathematics', ['optimisation'], 2, true],
+    ['u-nkosi', 'Detecting academic plagiarism in code submissions',
+     'Compare structural and token-based similarity measures on real student submissions, with attention to false positives on templated assignments.',
+     'Algorithms, Python', ['security', 'education'], 1, true],
+    ['u-sdlamini', 'Predictors of dropout in first-year programming',
+     'A quantitative study relating assessment patterns, attendance and prior background to withdrawal. Requires ethical clearance.',
+     'Statistics, survey design', ['education', 'statistics'], 2, true],
+    ['u-sdlamini', 'Usability of government digital services in Eswatini',
+     'Heuristic evaluation plus task-based user testing of selected public service portals.',
+     'HCI, qualitative methods', ['HCI'], 2, true],
+    ['u-shongwe', 'Network intrusion detection on constrained hardware',
+     'Evaluate lightweight models for intrusion detection that can run on a Raspberry Pi class device.',
+     'Networking, machine learning', ['security', 'ML'], 1, true],
+  ];
+  seed.forEach(([supervisorId, title, description, prerequisites, tags, capacity, groupSuitable], i) => {
+    topics.push({
+      id: `t-${i + 1}`, supervisorId, title, description, prerequisites, tags,
+      capacity, groupSuitable, published: true, studentProposed: false,
+      proposedBy: null, acceptedAt: null,
+    });
+  });
+}
+
+function seedSlots(): void {
+  // Two weeks of Tuesday and Thursday slots for each supervisor.
+  const base = new Date('2026-09-15T08:00:00Z');
+  let n = 0;
+  for (const sup of ['u-mahlalela', 'u-nkosi', 'u-sdlamini']) {
+    for (let day = 0; day < 10; day += 1) {
+      const d = new Date(base.getTime() + day * 86400000);
+      if (d.getUTCDay() !== 2 && d.getUTCDay() !== 4) continue;
+      for (const hour of [8, 9, 11, 14]) {
+        n += 1;
+        const starts = new Date(d);
+        starts.setUTCHours(hour, 0, 0, 0);
+        slots.push({
+          id: `slot-${n}`, supervisorId: sup, startsAt: starts.toISOString(),
+          minutes: 30, mode: hour === 14 ? 'ONLINE' : 'IN_PERSON',
+          venue: hour === 14 ? 'Online' : 'CS-204',
+          bookedByStudentId: null, agenda: null,
+        });
+      }
+    }
+  }
+  // One already booked, so the screen is not empty of examples.
+  const taken = slots.find((s) => s.supervisorId === 'u-mahlalela');
+  if (taken) { taken.bookedByStudentId = 's1'; taken.agenda = 'Chapter 4 results'; }
+}
+
+function seedDocMarks(): void {
+  const marks: Record<string, [number, number | null]> = {
+    s1: [65, 65], s2: [61, 61], s3: [74, 74], s4: [65, 65],
+    s5: [52, 52], s7: [60, 60], s8: [64, 64],
+    // s6 is deliberately unmarked, so one student stays blocked.
+  };
+  for (const [studentId, [raw, agreed]] of Object.entries(marks)) {
+    docMarks.push({ studentId, rawTotal: raw, rubricMax: 100, markedBy: 'u-mahlalela',
+                    moderatedBy: 'u-sdlamini', agreedRawTotal: agreed });
+  }
+}
+
+if (!tables.seeded) {
+  tables.seeded = true;
+  seedConsultations();
+  seedSheets();
+  seedDocMarks();
+  seedTopics();
+  seedSlots();
+}
+
+// The working tables are hydrated from Postgres (if a snapshot exists) by
+// ensureHydrated(), which the root layout awaits before rendering any page.
+// The in-memory seed above is the fallback when no snapshot exists yet.
+
+/* --------------------------------------------------------------- accessors */
+
+export const allPeople = (): Person[] => [...PEOPLE, ...studentAccounts(), ...REGISTERED_STAFF];
+export const findPerson = (id: string) => allPeople().find((p) => p.id === id) ?? null;
+export const findPersonByUsername = (u: string) => allPeople().find((p) => p.username === u) ?? null;
+export const findStudent = (id: string) => STUDENTS.find((s) => s.id === id) ?? null;
+export const findStudentByNumber = (n: string) => STUDENTS.find((s) => s.studentNumber === n) ?? null;
+export const findProject = (id: string) => PROJECTS.find((p) => p.id === id) ?? null;
+export const projectOf = (studentId: string) => {
+  const st = findStudent(studentId);
+  return st ? findProject(st.projectId) : null;
+};
+export const superviseesOf = (supervisorId: string): Student[] =>
+  STUDENTS.filter((s) => findProject(s.projectId)?.supervisorId === supervisorId);
+
+export const consultationsOf = (studentId: string): Consultation[] =>
+  consultations.filter((c) => c.studentId === studentId);
+
+export const sheetsFor = (studentId: string, component: 'p1' | 'p2'): Sheet[] =>
+  sheets.filter((s) => s.studentId === studentId && s.component === component);
+
+export const sheetOf = (assessorId: string, studentId: string, component: 'p1' | 'p2'): Sheet | null =>
+  sheets.find((s) => s.assessorId === assessorId && s.studentId === studentId && s.component === component) ?? null;
+
+export const docMarkOf = (studentId: string) => docMarks.find((d) => d.studentId === studentId) ?? null;
+
+export const sessionsFor = (component: 'p1' | 'p2') =>
+  SESSIONS.filter((s) => s.component === component);
+
+/* ---------------------------------------------------------------- mutations */
+
+export function setMark(
+  assessorId: string, studentId: string, component: 'p1' | 'p2',
+  criterionId: string, value: number | null,
+): { ok: true } | { ok: false; error: string } {
+  const rubric = RUBRICS[component];
+  const criterion = rubric.criteria.find((c) => c.id === criterionId);
+  if (!criterion) return { ok: false, error: 'Unknown criterion.' };
+  if (value !== null && (!Number.isInteger(value) || value < 0 || value > criterion.max)) {
+    return { ok: false, error: `${criterion.label} must be a whole number between 0 and ${criterion.max}.` };
+  }
+
+  let sheet = sheetOf(assessorId, studentId, component);
+  if (!sheet) {
+    sheet = { assessorId, studentId, component, rubricVersionId: rubric.versionId,
+              rubricMax: rubric.max, marks: {}, submitted: false, submittedAt: null };
+    sheets.push(sheet);
+  }
+  if (sheet.submitted) return { ok: false, error: 'This sheet is submitted. A coordinator must reopen it.' };
+  sheet.marks[criterionId] = value;
+  schedulePersist();
+  return { ok: true };
+}
+
+export function gradeConsultation(
+  id: string, rawTotal: number | null, byUserId: string,
+): { ok: true } | { ok: false; error: string } {
+  const c = consultations.find((x) => x.id === id);
+  if (!c) return { ok: false, error: 'No such consultation.' };
+  if (c.status !== 'COMPLETED') return { ok: false, error: 'Only a completed session can be graded.' };
+  if (rawTotal !== null && (!Number.isInteger(rawTotal) || rawTotal < 0 || rawTotal > c.rubricMax)) {
+    return { ok: false, error: `Mark must be a whole number between 0 and ${c.rubricMax}.` };
+  }
+  c.rawTotal = rawTotal;
+  void byUserId;
+  schedulePersist();
+  return { ok: true };
+}
+
+export function attestConsultation(id: string, role: 'SUPERVISOR' | 'STUDENT'): void {
+  const c = consultations.find((x) => x.id === id);
+  if (!c) return;
+  if (role === 'SUPERVISOR') c.supervisorAttested = true; else c.studentAttested = true;
+  schedulePersist();
+}
+
+export function addConsultation(studentId: string, periodId: 'SEM1' | 'SEM2', agenda: string): Consultation {
+  const c: Consultation = {
+    id: `${studentId}-${periodId}-${Date.now()}`, studentId, periodId,
+    heldAt: new Date().toISOString(), status: 'COMPLETED',
+    supervisorAttested: false, studentAttested: false, rawTotal: null, rubricMax: 100, agenda,
+  };
+  consultations.push(c);
+  return c;
+}
+
+export function submitSheet(assessorId: string, component: 'p1' | 'p2', at: string): number {
+  let count = 0;
+  for (const s of sheets) {
+    if (s.assessorId === assessorId && s.component === component && !s.submitted) {
+      s.submitted = true;
+      s.submittedAt = at;
+      count += 1;
+    }
+  }
+  schedulePersist();
+  return count;
+}
+
+/* ------------------------------------------------------------------ topics */
+
+export const allTopics = () => topics.filter((t) => t.published || t.studentProposed);
+export const topicsBySupervisor = (supervisorId: string) => topics.filter((t) => t.supervisorId === supervisorId);
+export const findTopic = (id: string) => topics.find((t) => t.id === id) ?? null;
+export const preferencesOf = (studentId: string) =>
+  preferences.filter((p) => p.studentId === studentId).sort((a, b) => a.rank - b.rank);
+export const preferencesForTopic = (topicId: string) => preferences.filter((p) => p.topicId === topicId);
+
+/** Supervision capacity counts students across all of a supervisor's topics. */
+export const loadOf = (supervisorId: string) =>
+  PROJECTS.filter((p) => p.supervisorId === supervisorId)
+    .reduce((a, p) => a + p.memberIds.length, 0);
+
+export const CAPACITY = 8;
+
+export function addTopic(
+  supervisorId: string, title: string, description: string,
+  prerequisites: string, capacity: number, groupSuitable: boolean,
+): { ok: true; id: string } | { ok: false; error: string } {
+  if (title.trim().length < 10) return { ok: false, error: 'Give the topic a real title — at least ten characters.' };
+  if (description.trim().length < 30) {
+    return { ok: false, error: 'Describe the work in at least a couple of sentences; students choose on this text.' };
+  }
+  if (!Number.isInteger(capacity) || capacity < 1 || capacity > 6) {
+    return { ok: false, error: 'Capacity must be between 1 and 6 students.' };
+  }
+  const id = `t-${topics.length + 1}-${Date.now()}`;
+  topics.push({
+    id, supervisorId, title: title.trim(), description: description.trim(),
+    prerequisites: prerequisites.trim(), tags: [], capacity, groupSuitable,
+    published: true, studentProposed: false, proposedBy: null, acceptedAt: null,
+  });
+  schedulePersist();
+  return { ok: true, id };
+}
+
+export function bulkAddTopics(supervisorId: string, text: string): { added: number; skipped: number } {
+  let added = 0, skipped = 0;
+  for (const line of text.split('\n')) {
+    const parts = line.split('|').map((x) => x.trim());
+    if (parts.length < 2 || !parts[0] || !parts[1]) { if (line.trim()) skipped += 1; continue; }
+    const cap = Number(parts[2] ?? '1');
+    const r = addTopic(supervisorId, parts[0], parts[1], parts[3] ?? '',
+                       Number.isInteger(cap) && cap > 0 ? cap : 1, true);
+    if (r.ok) added += 1; else skipped += 1;
+  }
+  return { added, skipped };
+}
+
+export function proposeTopic(
+  studentId: string, supervisorId: string, title: string, description: string,
+): { ok: true } | { ok: false; error: string } {
+  if (title.trim().length < 10 || description.trim().length < 30) {
+    return { ok: false, error: 'A proposal needs a real title and a description of at least a couple of sentences.' };
+  }
+  topics.push({
+    id: `t-prop-${Date.now()}`, supervisorId, title: title.trim(), description: description.trim(),
+    prerequisites: '', tags: [], capacity: 1, groupSuitable: true,
+    published: false, studentProposed: true, proposedBy: studentId, acceptedAt: null,
+  });
+  schedulePersist();
+  return { ok: true };
+}
+
+export function acceptProposal(topicId: string, supervisorId: string): { ok: true } | { ok: false; error: string } {
+  const t = findTopic(topicId);
+  if (!t || !t.studentProposed) return { ok: false, error: 'No such proposal.' };
+  if (t.supervisorId !== supervisorId) return { ok: false, error: 'That proposal was not sent to you.' };
+  if (loadOf(supervisorId) >= CAPACITY) return { ok: false, error: 'You are at capacity.' };
+  t.acceptedAt = new Date().toISOString();
+  t.published = true;
+  schedulePersist();
+  return { ok: true };
+}
+
+export function setPreferences(studentId: string, topicIds: string[]): { ok: true } | { ok: false; error: string } {
+  const chosen = topicIds.filter(Boolean);
+  if (new Set(chosen).size !== chosen.length) return { ok: false, error: 'Choose three different topics.' };
+  if (chosen.length === 0) return { ok: false, error: 'Pick at least one topic.' };
+  for (let i = preferences.length - 1; i >= 0; i -= 1) {
+    if (preferences[i]!.studentId === studentId) preferences.splice(i, 1);
+  }
+  chosen.forEach((topicId, i) => preferences.push({ studentId, topicId, rank: i + 1 }));
+  schedulePersist();
+  return { ok: true };
+}
+
+/**
+ * Deterministic preference-matching allocation. Each unallocated student is
+ * placed onto their highest-ranked topic whose supervisor still has capacity
+ * and whose topic capacity is not yet full. Students who cannot be placed are
+ * returned as unmatched for manual placement by the coordinator.
+ */
+export function runAllocation(): {
+  assigned: Array<{ studentId: string; studentNumber: string; topicId: string; title: string; supervisorId: string }>;
+  unmatched: Array<{ studentId: string; studentNumber: string }>;
+} {
+  const assigned: Array<{ studentId: string; studentNumber: string; topicId: string; title: string; supervisorId: string }> = [];
+  const unmatched: Array<{ studentId: string; studentNumber: string }> = [];
+
+  const takenOnTopic = (topicId: string) =>
+    PROJECTS.filter((p) => p.topicId === topicId).reduce((a, p) => a + p.memberIds.length, 0);
+
+  // Deterministic order: student number ascending.
+  const queue = unallocatedStudents().slice().sort((a, b) => a.studentNumber.localeCompare(b.studentNumber));
+
+  for (const student of queue) {
+    const prefs = preferencesOf(student.id);
+    let placed = false;
+    for (const pref of prefs) {
+      const topic = findTopic(pref.topicId);
+      if (!topic || !topic.published) continue;
+      if (loadOf(topic.supervisorId) >= CAPACITY) continue;
+      if (takenOnTopic(topic.id) >= topic.capacity) continue;
+
+      const projectId = `p-alloc-${student.id}-${Date.now().toString(36)}`;
+      PROJECTS.push({
+        id: projectId,
+        title: topic.title,
+        supervisorId: topic.supervisorId,
+        memberIds: [student.id],
+        state: 'TOPIC_SELECTED',
+        ethicsStatus: 'NOT_REQUIRED',
+        contributionFiled: { [student.id]: false },
+        topicId: topic.id,
+      });
+      student.projectId = projectId;
+      assigned.push({
+        studentId: student.id,
+        studentNumber: student.studentNumber,
+        topicId: topic.id,
+        title: topic.title,
+        supervisorId: topic.supervisorId,
+      });
+      placed = true;
+      break;
+    }
+    if (!placed) {
+      unmatched.push({ studentId: student.id, studentNumber: student.studentNumber });
+    }
+  }
+
+  schedulePersist();
+  return { assigned, unmatched };
+}
+
+/* --------------------------------------------------------------- booking */
+
+export const slotsOf = (supervisorId: string) =>
+  slots.filter((s) => s.supervisorId === supervisorId).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+export const openSlotsFor = (supervisorId: string, from: string) =>
+  slotsOf(supervisorId).filter((s) => s.bookedByStudentId === null && s.startsAt > from);
+export const bookingsOf = (studentId: string) =>
+  slots.filter((s) => s.bookedByStudentId === studentId).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+export const findSlot = (id: string) => slots.find((s) => s.id === id) ?? null;
+
+export const MIN_NOTICE_HOURS = 24;
+
+export function bookSlot(
+  slotId: string, studentId: string, agenda: string, now: Date,
+  mode: 'IN_PERSON' | 'ONLINE' = 'IN_PERSON', meetingLink = '',
+): { ok: true } | { ok: false; error: string } {
+  const slot = findSlot(slotId);
+  if (!slot) return { ok: false, error: 'No such slot.' };
+  if (slot.bookedByStudentId !== null) {
+    return { ok: false, error: 'Someone booked that slot first. Pick another.' };
+  }
+  const hours = (new Date(slot.startsAt).getTime() - now.getTime()) / 3_600_000;
+  if (hours < MIN_NOTICE_HOURS) {
+    return { ok: false, error: `Slots need ${MIN_NOTICE_HOURS} hours' notice. Ask your supervisor directly for anything sooner.` };
+  }
+  const project = projectOf(studentId);
+  if (project && project.supervisorId !== slot.supervisorId) {
+    return { ok: false, error: 'You can only book with your own supervisor.' };
+  }
+  if (bookingsOf(studentId).some((s) => s.startsAt.slice(0, 10) === slot.startsAt.slice(0, 10))) {
+    return { ok: false, error: 'You already have a session booked that day.' };
+  }
+  slot.bookedByStudentId = studentId;
+  slot.agenda = agenda.trim() || 'Consultation';
+  slot.mode = mode;
+  slot.meetingLink = meetingLink.trim() || null;
+  slot.status = 'REQUESTED';
+  schedulePersist();
+  // Booking requested — notify the student (best-effort).
+  const bookedPerson = findPerson(`u-${studentId}`);
+  const bookedBody = `Your consultation request for ${slot.startsAt} was sent — awaiting supervisor confirmation.`;
+  void notifyUser(
+    `u-${studentId}`,
+    'booking_confirmed',
+    'Consultation requested',
+    bookedBody,
+    bookedPerson?.email ? { to: bookedPerson.email, subject: 'Consultation requested', body: bookedBody } : undefined,
+  );
+  return { ok: true };
+}
+
+/** Supervisor confirms a pending booking. */
+export function confirmBooking(slotId: string, supervisorId: string): { ok: true } | { ok: false; error: string } {
+  const slot = findSlot(slotId);
+  if (!slot) return { ok: false, error: 'No such slot.' };
+  if (slot.supervisorId !== supervisorId) return { ok: false, error: 'Not your slot.' };
+  if (!slot.bookedByStudentId) return { ok: false, error: 'No booking on this slot.' };
+  slot.status = 'CONFIRMED';
+  schedulePersist();
+  const person = findPerson(`u-${slot.bookedByStudentId}`);
+  const body = `Your consultation for ${slot.startsAt} was confirmed.${slot.meetingLink ? ` Meeting link: ${slot.meetingLink}` : ''}`;
+  void notifyUser(`u-${slot.bookedByStudentId}`, 'booking_confirmed', 'Consultation confirmed', body,
+    person?.email ? { to: person.email, subject: 'Consultation confirmed', body } : undefined);
+  return { ok: true };
+}
+
+/** Supervisor declines a pending booking, returning the slot to open. */
+export function declineBooking(slotId: string, supervisorId: string): { ok: true } | { ok: false; error: string } {
+  const slot = findSlot(slotId);
+  if (!slot) return { ok: false, error: 'No such slot.' };
+  if (slot.supervisorId !== supervisorId) return { ok: false, error: 'Not your slot.' };
+  if (!slot.bookedByStudentId) return { ok: false, error: 'No booking on this slot.' };
+  slot.bookedByStudentId = null;
+  slot.agenda = null;
+  slot.status = undefined;
+  slot.meetingLink = null;
+  schedulePersist();
+  return { ok: true };
+}
+
+export function cancelBooking(slotId: string, studentId: string, now: Date): { ok: true } | { ok: false; error: string } {
+  const slot = findSlot(slotId);
+  if (!slot || slot.bookedByStudentId !== studentId) return { ok: false, error: 'That booking is not yours.' };
+  const hours = (new Date(slot.startsAt).getTime() - now.getTime()) / 3_600_000;
+  if (hours < MIN_NOTICE_HOURS) {
+    return { ok: false, error: `Cancelling inside ${MIN_NOTICE_HOURS} hours is recorded as a missed session. Speak to your supervisor.` };
+  }
+  slot.bookedByStudentId = null;
+  slot.agenda = null;
+  schedulePersist();
+  return { ok: true };
+}
+
+export function addSlots(
+  supervisorId: string, date: string, hours: string[], mode: 'IN_PERSON' | 'ONLINE', venue: string,
+): number {
+  let added = 0;
+  for (const h of hours) {
+    const startsAt = new Date(`${date}T${h}:00:00Z`).toISOString();
+    if (slots.some((s) => s.supervisorId === supervisorId && s.startsAt === startsAt)) continue;
+    slots.push({
+      id: `slot-${Date.now()}-${added}`, supervisorId, startsAt, minutes: 30,
+      mode, venue, bookedByStudentId: null, agenda: null,
+    });
+    added += 1;
+  }
+  schedulePersist();
+  return added;
+}
+
+export const publicationOf = (studentId: string) =>
+  [...publications].reverse().find((p) => p.studentId === studentId) ?? null;
+
+export const moderationOf = (studentId: string, component: 'p1' | 'p2') =>
+  moderations.find((m) => m.studentId === studentId && m.component === component) ?? null;
+
+export function recordModeration(
+  studentId: string, component: 'p1' | 'p2', moderatorId: string,
+  agreedPercentage: number, rationale: string,
+): { ok: true } | { ok: false; error: string } {
+  if (!(agreedPercentage >= 0 && agreedPercentage <= 100)) {
+    return { ok: false, error: 'Agreed percentage must be between 0 and 100.' };
+  }
+  if (rationale.trim().length < 10) {
+    return { ok: false, error: 'A moderation must record why, in at least a sentence.' };
+  }
+  const existing = moderations.findIndex((m) => m.studentId === studentId && m.component === component);
+  const row: ModerationRow = {
+    studentId, component, moderatorId, rationale: rationale.trim(),
+    agreedPercentage, moderatedAt: new Date().toISOString(),
+  };
+  if (existing >= 0) moderations[existing] = row; else moderations.push(row);
+  schedulePersist();
+  return { ok: true };
+}
+
+/** Publication is append-only: a correction supersedes, it never overwrites. */
+export function publish(
+  studentId: string, finalMark: number | null, grade: string | null,
+  publishedBy: string, reason: string | null,
+): Publication {
+  const previous = publicationOf(studentId);
+  const row: Publication = {
+    studentId, finalMark, grade, publishedBy, publishedAt: new Date().toISOString(),
+    supersedes: previous ? previous.publishedAt : null, reason,
+  };
+  publications.push(row);
+  schedulePersist();
+  // Grade released — notify the student (best-effort).
+  const releasedPerson = findPerson(`u-${studentId}`);
+  const releasedBody = `Your final mark has been released: ${finalMark ?? '—'}${grade ? ` (${grade})` : ''}.`;
+  void notifyUser(
+    `u-${studentId}`,
+    'grade_released',
+    'Result released',
+    releasedBody,
+    releasedPerson?.email ? { to: releasedPerson.email, subject: 'Result released', body: releasedBody } : undefined,
+  );
+  return row;
+}
+
+/* ------------------------------------------- adapters into the pure engine */
+
+export function toConsultationRecords(studentId: string): ConsultationRecord[] {
+  return consultationsOf(studentId).map((c) => ({
+    id: c.id, periodId: c.periodId, status: c.status,
+    supervisorAttested: c.supervisorAttested, studentAttested: c.studentAttested,
+    score: c.rawTotal === null ? null : (c.rawTotal / c.rubricMax) * 100,
+  }));
+}
+
+export function toAssessorEntries(studentId: string, component: 'p1' | 'p2'): AssessorEntry[] {
+  return sheetsFor(studentId, component).map((s) => ({
+    assessorId: s.assessorId, rubricVersionId: s.rubricVersionId, rubricMax: s.rubricMax,
+    criterionScores: s.marks, submitted: s.submitted,
+    isSupervisor: projectOf(studentId)?.supervisorId === s.assessorId,
+  }));
+}
+
+export function rawTotalOf(sheet: Sheet | null): number | null {
+  if (!sheet) return null;
+  const values = Object.values(sheet.marks).filter((v): v is number => v !== null && v !== undefined);
+  return values.length === 0 ? null : values.reduce((a, b) => a + b, 0);
+}
+
+/* ------------------------------------------------------------ registration */
+
+/** Nine digits, matching the observed student-number form (2022xxxxx). */
+export const STUDENT_NUMBER_PATTERN = /^\d{9}$/;
+export const PROGRAMMES = ['BSc', 'BSc Information Technology', 'BSc Computer Science Education', 'BSc Library and Information Science'] as const;
+export const COURSES = ['CSC 400', 'CSC 402', 'CSC 499'] as const;
+
+/** The password hash for a username — a registered account's own, or the demo
+ *  hash for seeded accounts. */
+export function passwordHashFor(username: string): Promise<string> {
+  const stored = tables.passwords[username];
+  return stored ? Promise.resolve(stored) : demoPasswordHash();
+}
+
+export async function registerStudent(input: {
+  studentNumber: string; surname: string; otherNames: string; programme: string;
+  courseCode: string; email: string; password: string;
+}): Promise<{ ok: true; username: string } | { ok: false; error: string }> {
+  const number = input.studentNumber.trim();
+  if (!STUDENT_NUMBER_PATTERN.test(number)) {
+    return { ok: false, error: 'Student number must be nine digits, e.g. 202500123.' };
+  }
+  if (findStudentByNumber(number) || findPersonByUsername(number)) {
+    return { ok: false, error: 'A student with that number already has an account.' };
+  }
+  if (!input.surname.trim() || !input.otherNames.trim()) {
+    return { ok: false, error: 'Enter your surname and given names.' };
+  }
+  const passwordCheck = checkPassword(input.password, [input.surname, input.otherNames, number]);
+  if (!passwordCheck.ok) return { ok: false, error: passwordCheck.problems.join(' ') };
+  if (input.email.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(input.email.trim())) {
+    return { ok: false, error: 'That email address does not look right.' };
+  }
+
+  STUDENTS.push({
+    id: `s-${number}`, studentNumber: number, surname: input.surname.trim(), otherNames: input.otherNames.trim(),
+    programme: input.programme || PROGRAMMES[0], courseCode: input.courseCode || COURSES[0],
+    projectId: 'unallocated',
+  });
+  tables.passwords[number] = await hashPassword(input.password);
+  schedulePersist();
+  return { ok: true, username: number };
+}
+
+export function requestStaffAccount(input: {
+  username: string; fullName: string; email: string;
+  requestedRoles: Array<RoleGrant['role']>; justification: string;
+}): { ok: true } | { ok: false; error: string } {
+  const username = input.username.trim().toLowerCase();
+  if (!/^[a-z0-9._-]{3,32}$/.test(username)) {
+    return { ok: false, error: 'Username must be 3–32 letters, digits, dots, dashes or underscores.' };
+  }
+  if (findPersonByUsername(username)) return { ok: false, error: 'That username is taken.' };
+  if (!input.fullName.trim()) return { ok: false, error: 'Enter your full name.' };
+  if (input.requestedRoles.length === 0) return { ok: false, error: 'Pick at least one role.' };
+  if (input.justification.trim().length < 10) {
+    return { ok: false, error: 'Explain why you need access in at least a sentence.' };
+  }
+  REGISTERED_STAFF.push({
+    id: `staff-${username}`, username, fullName: input.fullName.trim(), surname: input.fullName.trim(),
+    grants: [], totpConfirmed: false, status: 'PENDING_APPROVAL',
+    email: input.email.trim(), requestedRoles: input.requestedRoles,
+  });
+  schedulePersist();
+  return { ok: true };
+}
+
+export const pendingStaffRequests = () => REGISTERED_STAFF.filter((p) => p.status === 'PENDING_APPROVAL');
+
+export function approveStaffAccount(id: string): { ok: true } | { ok: false; error: string } {
+  const p = REGISTERED_STAFF.find((x) => x.id === id);
+  if (!p) return { ok: false, error: 'No such request.' };
+  p.status = 'ACTIVE';
+  p.grants = (p.requestedRoles ?? []).map((role) => grant(role));
+  schedulePersist();
+  return { ok: true };
+}
+
+export function declineStaffAccount(id: string): { ok: true } | { ok: false; error: string } {
+  const p = REGISTERED_STAFF.find((x) => x.id === id);
+  if (!p) return { ok: false, error: 'No such request.' };
+  p.status = 'DEACTIVATED';
+  schedulePersist();
+  return { ok: true };
+}
+
+/* --------------------------------------------------- meeting requests */
+
+export function requestMeeting(input: {
+  studentId: string; supervisorId: string; agenda: string; preferredTimes: string;
+}): { ok: true } | { ok: false; error: string } {
+  if (input.agenda.trim().length < 5) return { ok: false, error: 'Say what you want to cover.' };
+  if (input.preferredTimes.trim().length < 3) return { ok: false, error: 'Suggest at least one time.' };
+  meetingRequests.push({
+    id: `mr-${Date.now()}`, studentId: input.studentId, supervisorId: input.supervisorId,
+    agenda: input.agenda.trim(), preferredTimes: input.preferredTimes.trim(),
+    status: 'PENDING', requestedAt: new Date().toISOString(), decidedAt: null,
+  });
+  schedulePersist();
+  return { ok: true };
+}
+
+export const meetingRequestsFor = (supervisorId: string) =>
+  meetingRequests.filter((m) => m.supervisorId === supervisorId);
+export const myMeetingRequests = (studentId: string) =>
+  meetingRequests.filter((m) => m.studentId === studentId);
+
+export function decideMeetingRequest(id: string, decision: 'APPROVED' | 'DECLINED'): { ok: true } | { ok: false; error: string } {
+  const m = meetingRequests.find((x) => x.id === id);
+  if (!m) return { ok: false, error: 'No such request.' };
+  m.status = decision;
+  m.decidedAt = new Date().toISOString();
+  schedulePersist();
+  return { ok: true };
+}
+
+/* ------------------------------------------------------ agreement signing */
+
+export const signaturesFor = (projectId: string): AgreementSignature[] =>
+  signatures.filter((s) => s.projectId === projectId);
+
+export function signAgreement(
+  projectId: string, signerId: string, name: string,
+  role: AgreementSignature['role'],
+): { ok: true } | { ok: false; error: string } {
+  const project = findProject(projectId);
+  if (!project) return { ok: false, error: 'No such project.' };
+  const existing = signatures.find((s) => s.projectId === projectId && s.signerId === signerId);
+  if (existing) return { ok: false, error: 'You have already signed this agreement.' };
+  signatures.push({
+    id: `sig-${projectId}-${signerId}-${Date.now().toString(36)}`,
+    projectId, signerId, name: name.trim(), role,
+    signedAt: new Date().toISOString(),
+  });
+  schedulePersist();
+  return { ok: true };
+}
+
+/* ------------------------------------------------------- deliverables */
+
+export const deliverablesFor = (projectId: string): DeliverableRecord[] =>
+  deliverables
+    .filter((d) => d.projectId === projectId)
+    .sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
+
+export function uploadDeliverable(input: {
+  projectId: string;
+  kind: string;
+  title: string;
+  mediaType: string;
+  byteSize: number;
+  sha256: string;
+  scanStatus: DeliverableRecord['scanStatus'];
+  uploadedById: string;
+}): { ok: true; id: string; version: number } | { ok: false; error: string } {
+  const project = findProject(input.projectId);
+  if (!project) return { ok: false, error: 'No such project.' };
+  const existing = deliverables.filter((d) => d.projectId === input.projectId && d.title === input.title.trim());
+  const version = existing.length + 1;
+  const id = `del-${input.projectId}-${Date.now().toString(36)}`;
+  deliverables.push({
+    id,
+    projectId: input.projectId,
+    kind: input.kind,
+    title: input.title.trim(),
+    version,
+    mediaType: input.mediaType,
+    byteSize: input.byteSize,
+    sha256: input.sha256,
+    scanStatus: input.scanStatus,
+    uploadedById: input.uploadedById,
+    uploadedAt: new Date().toISOString(),
+  });
+  schedulePersist();
+  return { ok: true, id, version };
+}
+
+/* ------------------------------------------------------- demo credentials */
+
+export const publicationHistory = (studentId: string) =>
+  publications.filter((p) => p.studentId === studentId);
+
+let hashed: Promise<string> | null = null;
+export function demoPasswordHash(): Promise<string> {
+  hashed ??= hashPassword(DEMO_PASSWORD);
+  return hashed;
+}
+
+/* --------------------------------------------------------- persistence */
+
+function collectState() {
+  return {
+    consultations: tables.consultations,
+    sheets: tables.sheets,
+    docMarks: tables.docMarks,
+    publications: tables.publications,
+    moderations: tables.moderations,
+    topics: tables.topics,
+    preferences: tables.preferences,
+    slots: tables.slots,
+    meetingRequests: tables.meetingRequests,
+    signatures: tables.signatures,
+    deliverables: tables.deliverables,
+    passwords: tables.passwords,
+    students: STUDENTS,
+    registeredStaff: REGISTERED_STAFF,
+    projects: PROJECTS,
+  };
+}
+
+function replaceArray<T>(target: T[], values: unknown): void {
+  if (!Array.isArray(values)) return;
+  target.splice(0, target.length, ...(values as T[]));
+}
+
+let hydratePromise: Promise<void> | null = null;
+
+/** Idempotent hydration: loads the persisted snapshot once and replaces the
+ *  in-memory working tables. The root layout awaits this before rendering. */
+export function ensureHydrated(): Promise<void> {
+  hydratePromise ??= hydrateFromPersistence();
+  return hydratePromise;
+}
+
+async function hydrateFromPersistence(): Promise<void> {
+  const state = await loadPersistedState();
+  if (!state) return;
+  try {
+    replaceArray(tables.consultations, state.consultations);
+    replaceArray(tables.sheets, state.sheets);
+    replaceArray(tables.docMarks, state.docMarks);
+    replaceArray(tables.publications, state.publications);
+    replaceArray(tables.moderations, state.moderations);
+    replaceArray(tables.topics, state.topics);
+    replaceArray(tables.preferences, state.preferences);
+    replaceArray(tables.slots, state.slots);
+    replaceArray(tables.meetingRequests, state.meetingRequests);
+    replaceArray(tables.signatures, state.signatures);
+    replaceArray(tables.deliverables, state.deliverables);
+    replaceArray(STUDENTS, state.students);
+    replaceArray(REGISTERED_STAFF, state.registeredStaff);
+    replaceArray(PROJECTS, state.projects);
+    if (state.passwords && typeof state.passwords === "object") {
+      for (const k of Object.keys(tables.passwords)) delete tables.passwords[k];
+      Object.assign(tables.passwords, state.passwords);
+    }
+  } catch {
+    // Malformed snapshot — keep the in-memory seed.
+  }
+}
+
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+export function schedulePersist(): void {
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    void savePersistedState(collectState());
+  }, 1500);
+}

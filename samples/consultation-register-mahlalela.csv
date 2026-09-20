@@ -1,0 +1,62 @@
+Student ID,Student,Supervisor,Period,Held at,Mode,Status,Agenda,Deliverable reviewed,Supervisor attested,Student attested,Raw mark,Rubric max,Normalised %,Counted toward minimum,Action items
+"209900101","Dlamini, Sipho A.",Dr T. Mahlalela,SEM1,2026-03-03T10:00:00Z,ONLINE,COMPLETED,Methodology and instrument design,dlamini-ch4-v1.docx,2026-03-03T10:45:00Z,2026-03-03T10:47:00Z,75,100,75.0,Yes,1
+"209900101","Dlamini, Sipho A.",Dr T. Mahlalela,SEM1,2026-03-10T10:00:00Z,ONLINE,COMPLETED,Topic scoping and objectives,dlamini-ch1-v1.docx,2026-03-10T10:45:00Z,2026-03-10T10:47:00Z,72,100,72.0,Yes,1
+"209900101","Dlamini, Sipho A.",Dr T. Mahlalela,SEM1,2026-03-10T10:00:00Z,IN_PERSON,COMPLETED,Implementation walkthrough,dlamini-ch5-v2.docx,2026-03-10T10:45:00Z,2026-03-10T10:47:00Z,85,100,85.0,Yes,2
+"209900101","Dlamini, Sipho A.",Dr T. Mahlalela,SEM1,2026-03-17T10:00:00Z,IN_PERSON,COMPLETED,Chapter 1 draft,dlamini-ch2-v2.docx,2026-03-17T10:45:00Z,2026-03-17T10:47:00Z,68,100,68.0,Yes,2
+"209900101","Dlamini, Sipho A.",Dr T. Mahlalela,SEM1,2026-03-24T10:00:00Z,IN_PERSON,COMPLETED,Literature review draft,dlamini-ch3-v3.docx,2026-03-24T10:45:00Z,2026-03-24T10:47:00Z,80,100,80.0,Yes,3
+"209900101","Dlamini, Sipho A.",Dr T. Mahlalela,SEM2,2026-08-03T10:00:00Z,ONLINE,COMPLETED,Chapter 5 and formatting,dlamini-ch2-v1.docx,2026-08-03T10:45:00Z,2026-08-03T10:47:00Z,66,100,66.0,Yes,1
+"209900101","Dlamini, Sipho A.",Dr T. Mahlalela,SEM2,2026-08-17T10:00:00Z,IN_PERSON,COMPLETED,Implementation walkthrough,dlamini-ch5-v2.docx,2026-08-17T10:45:00Z,2026-08-17T10:47:00Z,70,100,70.0,Yes,2
+"209900101","Dlamini, Sipho A.",Dr T. Mahlalela,SEM2,2026-08-24T10:00:00Z,IN_PERSON,COMPLETED,Results interpretation,dlamini-ch1-v3.docx,2026-08-24T10:45:00Z,2026-08-24T10:47:00Z,74,100,74.0,Yes,3
+"209900102","Mabuza, Nomsa T.",Dr T. Mahlalela,SEM1,2026-03-03T10:00:00Z,ONLINE,COMPLETED,Methodology and instrument design,mabuza-ch4-v1.docx,2026-03-03T10:45:00Z,2026-03-03T10:47:00Z,71,100,71.0,Yes,1
+"209900102","Mabuza, Nomsa T.",Dr T. Mahlalela,SEM1,2026-03-10T10:00:00Z,ONLINE,COMPLETED,Topic scoping and objectives,mabuza-ch1-v1.docx,2026-03-10T10:45:00Z,2026-03-10T10:47:00Z,70,100,70.0,Yes,1
+"209900102","Mabuza, Nomsa T.",Dr T. Mahlalela,SEM1,2026-03-17T10:00:00Z,IN_PERSON,COMPLETED,Chapter 1 draft,mabuza-ch2-v2.docx,2026-03-17T10:45:00Z,2026-03-17T10:47:00Z,66,100,66.0,Yes,2
+"209900102","Mabuza, Nomsa T.",Dr T. Mahlalela,SEM1,2026-03-24T10:00:00Z,IN_PERSON,COMPLETED,Literature review draft,mabuza-ch3-v3.docx,2026-03-24T10:45:00Z,2026-03-24T10:47:00Z,72,100,72.0,Yes,3
+"209900102","Mabuza, Nomsa T.",Dr T. Mahlalela,SEM2,2026-08-03T10:00:00Z,IN_PERSON,COMPLETED,Topic scoping and objectives,mabuza-ch3-v2.docx,2026-08-03T10:45:00Z,2026-08-03T10:47:00Z,69,100,69.0,Yes,2
+"209900102","Mabuza, Nomsa T.",Dr T. Mahlalela,SEM2,2026-08-10T10:00:00Z,IN_PERSON,COMPLETED,Implementation walkthrough,mabuza-ch5-v2.docx,2026-08-10T10:45:00Z,2026-08-10T10:47:00Z,68,100,68.0,Yes,2
+"209900102","Mabuza, Nomsa T.",Dr T. Mahlalela,SEM2,2026-08-17T10:00:00Z,IN_PERSON,COMPLETED,Results interpretation,mabuza-ch1-v3.docx,2026-08-17T10:45:00Z,2026-08-17T10:47:00Z,70,100,70.0,Yes,3
+"209900102","Mabuza, Nomsa T.",Dr T. Mahlalela,SEM2,2026-08-24T10:00:00Z,ONLINE,COMPLETED,Chapter 5 and formatting,mabuza-ch2-v1.docx,2026-08-24T10:45:00Z,2026-08-24T10:47:00Z,72,100,72.0,Yes,1
+"209900103","Ginindza, Musa K.",Dr T. Mahlalela,SEM1,2026-03-03T10:00:00Z,ONLINE,COMPLETED,Methodology and instrument design,ginindza-ch4-v1.docx,2026-03-03T10:45:00Z,2026-03-03T10:47:00Z,82,100,82.0,Yes,1
+"209900103","Ginindza, Musa K.",Dr T. Mahlalela,SEM1,2026-03-10T10:00:00Z,ONLINE,COMPLETED,Topic scoping and objectives,ginindza-ch1-v1.docx,2026-03-10T10:45:00Z,2026-03-10T10:47:00Z,80,100,80.0,Yes,1
+"209900103","Ginindza, Musa K.",Dr T. Mahlalela,SEM1,2026-03-17T10:00:00Z,IN_PERSON,COMPLETED,Chapter 1 draft,ginindza-ch2-v2.docx,2026-03-17T10:45:00Z,2026-03-17T10:47:00Z,78,100,78.0,Yes,2
+"209900103","Ginindza, Musa K.",Dr T. Mahlalela,SEM1,2026-03-24T10:00:00Z,IN_PERSON,COMPLETED,Literature review draft,ginindza-ch3-v3.docx,2026-03-24T10:45:00Z,2026-03-24T10:47:00Z,84,100,84.0,Yes,3
+"209900103","Ginindza, Musa K.",Dr T. Mahlalela,SEM2,2026-08-03T10:00:00Z,IN_PERSON,COMPLETED,Topic scoping and objectives,ginindza-ch3-v2.docx,2026-08-03T10:45:00Z,2026-08-03T10:47:00Z,80,100,80.0,Yes,2
+"209900103","Ginindza, Musa K.",Dr T. Mahlalela,SEM2,2026-08-10T10:00:00Z,IN_PERSON,COMPLETED,Implementation walkthrough,ginindza-ch5-v2.docx,2026-08-10T10:45:00Z,2026-08-10T10:47:00Z,79,100,79.0,Yes,2
+"209900103","Ginindza, Musa K.",Dr T. Mahlalela,SEM2,2026-08-17T10:00:00Z,IN_PERSON,COMPLETED,Results interpretation,ginindza-ch1-v3.docx,2026-08-17T10:45:00Z,2026-08-17T10:47:00Z,81,100,81.0,Yes,3
+"209900103","Ginindza, Musa K.",Dr T. Mahlalela,SEM2,2026-08-24T10:00:00Z,ONLINE,COMPLETED,Chapter 5 and formatting,ginindza-ch2-v1.docx,2026-08-24T10:45:00Z,2026-08-24T10:47:00Z,85,100,85.0,Yes,1
+"209900104","Simelane, Lindiwe P.",Dr T. Mahlalela,SEM1,2026-03-03T10:00:00Z,ONLINE,COMPLETED,Methodology and instrument design,simelane-ch4-v1.docx,2026-03-03T10:45:00Z,2026-03-03T10:47:00Z,72,100,72.0,Yes,1
+"209900104","Simelane, Lindiwe P.",Dr T. Mahlalela,SEM1,2026-03-10T10:00:00Z,ONLINE,COMPLETED,Topic scoping and objectives,simelane-ch1-v1.docx,2026-03-10T10:45:00Z,2026-03-10T10:47:00Z,66,100,66.0,Yes,1
+"209900104","Simelane, Lindiwe P.",Dr T. Mahlalela,SEM1,2026-03-17T10:00:00Z,IN_PERSON,COMPLETED,Chapter 1 draft,simelane-ch2-v2.docx,2026-03-17T10:45:00Z,2026-03-17T10:47:00Z,70,100,70.0,Yes,2
+"209900104","Simelane, Lindiwe P.",Dr T. Mahlalela,SEM1,2026-03-24T10:00:00Z,IN_PERSON,COMPLETED,Literature review draft,simelane-ch3-v3.docx,2026-03-24T10:45:00Z,2026-03-24T10:47:00Z,68,100,68.0,Yes,3
+"209900104","Simelane, Lindiwe P.",Dr T. Mahlalela,SEM2,2026-08-03T10:00:00Z,IN_PERSON,COMPLETED,Topic scoping and objectives,simelane-ch3-v2.docx,2026-08-03T10:45:00Z,2026-08-03T10:47:00Z,71,100,71.0,Yes,2
+"209900104","Simelane, Lindiwe P.",Dr T. Mahlalela,SEM2,2026-08-10T10:00:00Z,IN_PERSON,COMPLETED,Implementation walkthrough,simelane-ch5-v2.docx,2026-08-10T10:45:00Z,2026-08-10T10:47:00Z,70,100,70.0,Yes,2
+"209900104","Simelane, Lindiwe P.",Dr T. Mahlalela,SEM2,2026-08-17T10:00:00Z,IN_PERSON,COMPLETED,Results interpretation,simelane-ch1-v3.docx,2026-08-17T10:45:00Z,2026-08-17T10:47:00Z,74,100,74.0,Yes,3
+"209900104","Simelane, Lindiwe P.",Dr T. Mahlalela,SEM2,2026-08-24T10:00:00Z,ONLINE,COMPLETED,Chapter 5 and formatting,simelane-ch2-v1.docx,2026-08-24T10:45:00Z,2026-08-24T10:47:00Z,66,100,66.0,Yes,1
+"209900105","Vilakati, Bongani M.",Dr T. Mahlalela,SEM1,2026-03-10T10:00:00Z,ONLINE,COMPLETED,Topic scoping and objectives,vilakati-ch1-v1.docx,2026-03-10T10:45:00Z,2026-03-10T10:47:00Z,62,100,62.0,Yes,1
+"209900105","Vilakati, Bongani M.",Dr T. Mahlalela,SEM1,2026-03-17T10:00:00Z,IN_PERSON,COMPLETED,Chapter 1 draft,vilakati-ch2-v2.docx,2026-03-17T10:45:00Z,2026-03-17T10:47:00Z,58,100,58.0,Yes,2
+"209900105","Vilakati, Bongani M.",Dr T. Mahlalela,SEM1,2026-03-24T10:00:00Z,IN_PERSON,COMPLETED,Literature review draft,vilakati-ch3-v3.docx,2026-03-24T10:45:00Z,2026-03-24T10:47:00Z,64,100,64.0,Yes,3
+"209900105","Vilakati, Bongani M.",Dr T. Mahlalela,SEM2,2026-08-03T10:00:00Z,IN_PERSON,COMPLETED,Implementation walkthrough,vilakati-ch5-v2.docx,2026-08-03T10:45:00Z,2026-08-03T10:47:00Z,60,100,60.0,Yes,2
+"209900105","Vilakati, Bongani M.",Dr T. Mahlalela,SEM2,2026-08-10T10:00:00Z,IN_PERSON,COMPLETED,Results interpretation,vilakati-ch1-v3.docx,2026-08-10T10:45:00Z,2026-08-10T10:47:00Z,63,100,63.0,Yes,3
+"209900105","Vilakati, Bongani M.",Dr T. Mahlalela,SEM2,2026-08-26T10:00:00Z,IN_PERSON,NO_SHOW_STUDENT,Implementation walkthrough,,2026-08-26T10:20:00Z,,,,,No,0
+"209900106","Magagula, Thandi N.",Dr T. Mahlalela,SEM1,2026-03-03T10:00:00Z,ONLINE,COMPLETED,Methodology and instrument design,magagula-ch4-v1.docx,2026-03-03T10:45:00Z,2026-03-03T10:47:00Z,72,100,72.0,Yes,1
+"209900106","Magagula, Thandi N.",Dr T. Mahlalela,SEM1,2026-03-10T10:00:00Z,ONLINE,COMPLETED,Topic scoping and objectives,magagula-ch1-v1.docx,2026-03-10T10:45:00Z,2026-03-10T10:47:00Z,74,100,74.0,Yes,1
+"209900106","Magagula, Thandi N.",Dr T. Mahlalela,SEM1,2026-03-17T10:00:00Z,IN_PERSON,COMPLETED,Chapter 1 draft,magagula-ch2-v2.docx,2026-03-17T10:45:00Z,2026-03-17T10:47:00Z,70,100,70.0,Yes,2
+"209900106","Magagula, Thandi N.",Dr T. Mahlalela,SEM1,2026-03-24T10:00:00Z,IN_PERSON,COMPLETED,Literature review draft,magagula-ch3-v3.docx,2026-03-24T10:45:00Z,2026-03-24T10:47:00Z,76,100,76.0,Yes,3
+"209900106","Magagula, Thandi N.",Dr T. Mahlalela,SEM2,2026-08-10T10:00:00Z,IN_PERSON,COMPLETED,Implementation walkthrough,magagula-ch5-v2.docx,2026-08-10T10:45:00Z,2026-08-10T10:47:00Z,71,100,71.0,Yes,2
+"209900106","Magagula, Thandi N.",Dr T. Mahlalela,SEM2,2026-08-17T10:00:00Z,IN_PERSON,COMPLETED,Results interpretation,magagula-ch1-v3.docx,2026-08-17T10:45:00Z,2026-08-17T10:47:00Z,73,100,73.0,Yes,3
+"209900106","Magagula, Thandi N.",Dr T. Mahlalela,SEM2,2026-08-24T10:00:00Z,ONLINE,COMPLETED,Chapter 5 and formatting,magagula-ch2-v1.docx,2026-08-24T10:45:00Z,2026-08-24T10:47:00Z,69,100,69.0,Yes,1
+"209900107","Hlophe, Sanele B.",Dr T. Mahlalela,SEM1,2026-03-03T10:00:00Z,ONLINE,COMPLETED,Methodology and instrument design,hlophe-ch4-v1.docx,2026-03-03T10:45:00Z,2026-03-03T10:47:00Z,74,100,74.0,Yes,1
+"209900107","Hlophe, Sanele B.",Dr T. Mahlalela,SEM1,2026-03-10T10:00:00Z,ONLINE,COMPLETED,Topic scoping and objectives,hlophe-ch1-v1.docx,2026-03-10T10:45:00Z,2026-03-10T10:47:00Z,68,100,68.0,Yes,1
+"209900107","Hlophe, Sanele B.",Dr T. Mahlalela,SEM1,2026-03-10T10:00:00Z,IN_PERSON,COMPLETED,Implementation walkthrough,hlophe-ch5-v2.docx,2026-03-10T10:45:00Z,2026-03-10T10:47:00Z,76,100,76.0,Yes,2
+"209900107","Hlophe, Sanele B.",Dr T. Mahlalela,SEM1,2026-03-17T10:00:00Z,IN_PERSON,COMPLETED,Chapter 1 draft,hlophe-ch2-v2.docx,2026-03-17T10:45:00Z,2026-03-17T10:47:00Z,72,100,72.0,Yes,2
+"209900107","Hlophe, Sanele B.",Dr T. Mahlalela,SEM1,2026-03-24T10:00:00Z,IN_PERSON,COMPLETED,Literature review draft,hlophe-ch3-v3.docx,2026-03-24T10:45:00Z,2026-03-24T10:47:00Z,70,100,70.0,Yes,3
+"209900107","Hlophe, Sanele B.",Dr T. Mahlalela,SEM2,2026-08-03T10:00:00Z,ONLINE,COMPLETED,Chapter 5 and formatting,hlophe-ch2-v1.docx,2026-08-03T10:45:00Z,2026-08-03T10:47:00Z,74,100,74.0,Yes,1
+"209900107","Hlophe, Sanele B.",Dr T. Mahlalela,SEM2,2026-08-10T10:00:00Z,IN_PERSON,COMPLETED,Topic scoping and objectives,hlophe-ch3-v2.docx,2026-08-10T10:45:00Z,2026-08-10T10:47:00Z,71,100,71.0,Yes,2
+"209900107","Hlophe, Sanele B.",Dr T. Mahlalela,SEM2,2026-08-17T10:00:00Z,IN_PERSON,COMPLETED,Implementation walkthrough,hlophe-ch5-v2.docx,2026-08-17T10:45:00Z,2026-08-17T10:47:00Z,72,100,72.0,Yes,2
+"209900107","Hlophe, Sanele B.",Dr T. Mahlalela,SEM2,2026-08-24T10:00:00Z,IN_PERSON,COMPLETED,Results interpretation,hlophe-ch1-v3.docx,2026-08-24T10:45:00Z,2026-08-24T10:47:00Z,70,100,70.0,Yes,3
+"209900108","Zwane, Nokwanda R.",Dr T. Mahlalela,SEM1,2026-03-10T10:00:00Z,ONLINE,COMPLETED,Topic scoping and objectives,zwane-ch1-v1.docx,2026-03-10T10:45:00Z,2026-03-10T10:47:00Z,70,100,70.0,Yes,1
+"209900108","Zwane, Nokwanda R.",Dr T. Mahlalela,SEM1,2026-03-17T10:00:00Z,IN_PERSON,COMPLETED,Chapter 1 draft,zwane-ch2-v2.docx,2026-03-17T10:45:00Z,2026-03-17T10:47:00Z,68,100,68.0,Yes,2
+"209900108","Zwane, Nokwanda R.",Dr T. Mahlalela,SEM1,2026-03-24T10:00:00Z,IN_PERSON,COMPLETED,Literature review draft,zwane-ch3-v3.docx,2026-03-24T10:45:00Z,2026-03-24T10:47:00Z,72,100,72.0,Yes,3
+"209900108","Zwane, Nokwanda R.",Dr T. Mahlalela,SEM2,2026-08-03T10:00:00Z,IN_PERSON,COMPLETED,Implementation walkthrough,zwane-ch5-v2.docx,2026-08-03T10:45:00Z,2026-08-03T10:47:00Z,66,100,66.0,Yes,2
+"209900108","Zwane, Nokwanda R.",Dr T. Mahlalela,SEM2,2026-08-10T10:00:00Z,IN_PERSON,COMPLETED,Results interpretation,zwane-ch1-v3.docx,2026-08-10T10:45:00Z,2026-08-10T10:47:00Z,70,100,70.0,Yes,3
+"209900108","Zwane, Nokwanda R.",Dr T. Mahlalela,SEM2,2026-08-17T10:00:00Z,ONLINE,COMPLETED,Chapter 5 and formatting,zwane-ch2-v1.docx,2026-08-17T10:45:00Z,2026-08-17T10:47:00Z,68,100,68.0,Yes,1
+"209900108","Zwane, Nokwanda R.",Dr T. Mahlalela,SEM2,2026-08-24T10:00:00Z,IN_PERSON,COMPLETED,Topic scoping and objectives,zwane-ch3-v2.docx,2026-08-24T10:45:00Z,2026-08-24T10:47:00Z,71,100,71.0,Yes,2
