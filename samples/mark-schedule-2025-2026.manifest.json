@@ -1,0 +1,28 @@
+{
+  "reportKey": "mark-schedule",
+  "generatedBy": "J. Dlamini (coordinator)",
+  "generatedAt": "2026-09-14T10:05:00.000Z",
+  "cycleId": "2025/2026",
+  "scopeDescription": "CSC402 and CSC499, Department of Computer Science, 2025/2026",
+  "rowCount": 8,
+  "configIds": [
+    "cfg-profile-a-v1"
+  ],
+  "snapshotIds": [
+    "snap-209900101",
+    "snap-209900102",
+    "snap-209900103",
+    "snap-209900104",
+    "snap-209900105",
+    "snap-209900106",
+    "snap-209900107",
+    "snap-209900108"
+  ],
+  "includesUnpublished": true,
+  "format": "CSV",
+  "filename": "mark-schedule-2025-2026.csv",
+  "sha256": "dab32c20b0c29ccb639968b13880081b8d963cf40b6b81d2f663b6b8fd66d575",
+  "byteLength": 1833,
+  "watermark": "PROVISIONAL — CONTAINS UNPUBLISHED MARKS",
+  "notice": "Contains personal data. Handle under the Data Protection Act 41 of 2022; this extraction is recorded in the audit log."
+}

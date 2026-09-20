@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Reports and exports</title>
+<style>
+  :root{
+    --ink:#16202A; --paper:#F6F7F4; --sheet:#FFFFFF;
+    --rule:#CFD5CC; --rule-strong:#8E9A8C;
+    --seal:#1B3A6B; --pen:#B3231F; --saved:#3F6B4A; --caution:#A8791C;
+    --muted:#5E6A64;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+       font-family:"DejaVu Sans Condensed","DejaVu Sans",sans-serif;font-size:13px}
+  .page{padding:26px 30px 40px}
+  .masthead{text-align:center;border-bottom:2px solid var(--ink);padding-bottom:12px}
+  .masthead .inst{font-family:"Bitstream Charter",serif;font-size:19px;margin:0 0 2px}
+  .masthead .unit{font-family:"Bitstream Charter",serif;font-size:13.5px;color:var(--muted);margin:0}
+
+  .bar{width:100%;margin:16px 0 12px;border-collapse:collapse}
+  .bar td{vertical-align:bottom;padding:0}
+  .bar .right{text-align:right}
+  .who{font-size:16px;font-weight:700}
+  .meta{color:var(--muted);font-size:12.5px;margin-top:3px}
+
+  h2{font-family:"Bitstream Charter",serif;font-size:15px;margin:20px 0 8px;
+     border-bottom:1px solid var(--rule-strong);padding-bottom:5px}
+  h2 .sub{font-weight:400;font-size:12.5px;color:var(--muted);font-family:"DejaVu Sans Condensed",sans-serif}
+
+  table.cat{width:100%;border-collapse:collapse;background:var(--sheet)}
+  table.cat th,table.cat td{border:1px solid var(--rule);padding:8px 10px;vertical-align:top}
+  table.cat thead th{background:#EDEFEA;font-size:11.5px;text-align:left;
+                     border-bottom:2px solid var(--rule-strong)}
+  .rname{font-weight:700;font-size:13px}
+  .rpurpose{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.45;max-width:46em}
+  .fmt{display:inline-block;border:1px solid var(--rule-strong);background:#F4F6F2;
+       padding:1px 6px;font-size:11px;margin-right:3px;font-family:"DejaVu Sans Mono",monospace}
+  .fmt.pdfa{border-color:var(--seal);color:var(--seal)}
+  .scope{font-size:11.5px;color:var(--muted)}
+  .seal{font-size:11.5px;color:var(--seal);font-weight:700}
+  .run{font-size:12px;color:var(--seal);font-weight:700;white-space:nowrap}
+  tr.locked td{background:#FDF8F3}
+  .lockline{font-size:11.5px;color:var(--caution);display:block;margin-top:3px}
+
+  table.log{width:100%;border-collapse:collapse;background:var(--sheet)}
+  table.log th,table.log td{border:1px solid var(--rule);padding:7px 10px;font-size:12px}
+  table.log thead th{background:#EDEFEA;font-size:11.5px;text-align:left;
+                     border-bottom:2px solid var(--rule-strong)}
+  .hash{font-family:"DejaVu Sans Mono",monospace;font-size:10.5px;color:var(--muted)}
+  .who-small{font-weight:700}
+  .note{margin-top:10px;background:var(--sheet);border:1px solid var(--rule);
+        border-left:3px solid var(--seal);padding:10px 13px;font-size:12px;
+        color:var(--muted);line-height:1.6}
+  .note b{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="masthead">
+    <p class="inst">University of Eswatini, Kwaluseni</p>
+    <p class="unit">Department of Computer Science &nbsp;|&nbsp; Reports and exports &nbsp;|&nbsp; 2025/2026</p>
+  </div>
+
+  <table class="bar">
+    <tr>
+      <td>
+        <div class="who">Reports you can run</div>
+        <div class="meta">Signed in as J. Dlamini — project coordinator. The list shows only what your roles permit.</div>
+      </td>
+      <td class="right meta">45 students &nbsp;·&nbsp; 38 marks computed &nbsp;·&nbsp; 0 published</td>
+    </tr>
+  </table>
+
+  <h2>Assessment <span class="sub">— every figure comes from a published snapshot, never recomputed at export</span></h2>
+  <table class="cat">
+    <thead>
+      <tr>
+        <th style="width:46%">Report</th>
+        <th style="width:15%">Formats</th>
+        <th style="width:21%">Covers</th>
+        <th style="width:18%"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <div class="rname">Cohort mark schedule</div>
+          <div class="rpurpose">The departmental submission sheet: consultation, both presentations, CA, documentation, final mark and grade for every student.</div>
+        </td>
+        <td><span class="fmt">CSV</span><span class="fmt">XLSX</span><span class="fmt pdfa">PDF/A</span></td>
+        <td class="scope">Whole cycle</td>
+        <td class="run">Run report</td>
+      </tr>
+      <tr class="locked">
+        <td>
+          <div class="rname">Student mark sheet</div>
+          <div class="rpurpose">One student’s full working, panel composition and provenance. The document that answers an appeal.</div>
+          <span class="lockline">7 marks are still unpublished. This report cannot carry them, so those students are excluded until release.</span>
+        </td>
+        <td><span class="fmt pdfa">PDF/A</span></td>
+        <td class="scope">One student</td>
+        <td class="run">Run for 38</td>
+      </tr>
+      <tr>
+        <td>
+          <div class="rname">Assessor presentation form</div>
+          <div class="rpurpose">One assessor’s submitted sheet in the departmental paper layout, with their name and attestation, for physical filing.</div>
+        </td>
+        <td><span class="fmt pdfa">PDF/A</span></td>
+        <td class="scope">Per assessor, per session</td>
+        <td class="run">Run report</td>
+      </tr>
+      <tr>
+        <td>
+          <div class="rname">Moderation report</div>
+          <div class="rpurpose">Every discrepancy above the 15-point threshold, who resolved it, the agreed mark and the recorded rationale.</div>
+        </td>
+        <td><span class="fmt">CSV</span><span class="fmt pdfa">PDF/A</span></td>
+        <td class="scope">Whole cycle — 4 open</td>
+        <td class="run">Run report</td>
+      </tr>
+      <tr>
+        <td>
+          <div class="rname">Mark distribution and outliers</div>
+          <div class="rpurpose">Grade histogram, mean and spread by programme and by supervisor, with outliers flagged for quality assurance.</div>
+        </td>
+        <td><span class="fmt">CSV</span><span class="fmt">XLSX</span><span class="fmt pdfa">PDF/A</span></td>
+        <td class="scope">Whole cycle — no personal data</td>
+        <td class="run">Run report</td>
+      </tr>
+      <tr>
+        <td>
+          <div class="rname">Readiness to publish</div>
+          <div class="rpurpose">What is still blocking release: unmarked documentation, pending moderation, insufficient assessors, unfiled contribution statements.</div>
+        </td>
+        <td><span class="fmt">CSV</span><span class="fmt pdfa">PDF/A</span></td>
+        <td class="scope">Whole cycle — 7 blocked</td>
+        <td class="run">Run report</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Supervision and evidence</h2>
+  <table class="cat">
+    <thead>
+      <tr>
+        <th style="width:46%">Report</th>
+        <th style="width:15%">Formats</th>
+        <th style="width:21%">Covers</th>
+        <th style="width:18%"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <div class="rname">Consultation register</div>
+          <div class="rpurpose">Every session with both attestations, including no-shows and sessions that did not count. Replaces the signed paper register.</div>
+        </td>
+        <td><span class="fmt">CSV</span><span class="fmt pdfa">PDF/A</span></td>
+        <td class="scope">Per student or per supervisor</td>
+        <td class="run">Run report</td>
+      </tr>
+      <tr>
+        <td>
+          <div class="rname">Presentation nomination list</div>
+          <div class="rpurpose">The students each supervisor has cleared to present — the list the guidelines require them to submit to the coordinators.</div>
+        </td>
+        <td><span class="fmt">CSV</span><span class="fmt pdfa">PDF/A</span></td>
+        <td class="scope">Per supervisor — 6 of 9 returned</td>
+        <td class="run">Run report</td>
+      </tr>
+      <tr>
+        <td>
+          <div class="rname">Supervision load</div>
+          <div class="rpurpose">Students per supervisor against capacity, counted across all their topics. Places count students, so a pair takes two.</div>
+        </td>
+        <td><span class="fmt">CSV</span><span class="fmt">XLSX</span></td>
+        <td class="scope">Whole cycle</td>
+        <td class="run">Run report</td>
+      </tr>
+      <tr>
+        <td>
+          <div class="rname">Cohort progress</div>
+          <div class="rpurpose">Where every project sits in the lifecycle, with stalled projects and overdue ethics highlighted.</div>
+        </td>
+        <td><span class="fmt">CSV</span><span class="fmt">XLSX</span></td>
+        <td class="scope">Whole cycle</td>
+        <td class="run">Run report</td>
+      </tr>
+      <tr>
+        <td>
+          <div class="rname">External examiner pack</div>
+          <div class="rpurpose">A sample across grade bands with rubrics, scripts, moderation evidence and the mark schedule, bundled as one deposit.</div>
+        </td>
+        <td><span class="fmt pdfa">PDF/A</span><span class="fmt">JSON</span></td>
+        <td class="scope">Assigned cohort</td>
+        <td class="run">Run report</td>
+      </tr>
+      <tr>
+        <td>
+          <div class="rname">Audit extract</div>
+          <div class="rpurpose">The full hash-chained history behind one mark, with the chain verification result attached.</div>
+          <span class="lockline" style="color:var(--saved)">Chain verified to entry 48,219 — intact.</span>
+        </td>
+        <td><span class="fmt">JSON</span><span class="fmt pdfa">PDF/A</span></td>
+        <td class="scope">Per student</td>
+        <td class="run">Run report</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Data protection <span class="sub">— Data Protection Act 41 of 2022</span></h2>
+  <table class="cat">
+    <thead>
+      <tr>
+        <th style="width:46%">Report</th>
+        <th style="width:15%">Formats</th>
+        <th style="width:21%">Covers</th>
+        <th style="width:18%"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <div class="rname">Subject access export</div>
+          <div class="rpurpose">Everything held about one person, assembled for a data-subject request. Students can run this for themselves.</div>
+        </td>
+        <td><span class="fmt">JSON</span><span class="fmt pdfa">PDF/A</span></td>
+        <td class="scope">One person</td>
+        <td class="run">Run report</td>
+      </tr>
+      <tr>
+        <td>
+          <div class="rname">Retention and disposal schedule</div>
+          <div class="rpurpose">What is held, under which lawful basis, and what falls due for disposal in this cycle.</div>
+        </td>
+        <td><span class="fmt">CSV</span><span class="fmt pdfa">PDF/A</span></td>
+        <td class="scope">Whole cycle — 112 items due 2027</td>
+        <td class="run">Run report</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Recent extractions</h2>
+  <table class="log">
+    <thead>
+      <tr>
+        <th style="width:17%">When</th>
+        <th style="width:19%">Who</th>
+        <th style="width:22%">Report</th>
+        <th style="width:12%">Rows</th>
+        <th style="width:30%">Content hash</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>14 Sep 2026 10:05</td><td class="who-small">J. Dlamini (coordinator)</td>
+        <td>Cohort mark schedule · CSV</td><td>45</td>
+        <td class="hash">9f2a41c7e6b0d8…3ca1</td>
+      </tr>
+      <tr>
+        <td>12 Sep 2026 15:22</td><td class="who-small">Dr T. Mahlalela (supervisor)</td>
+        <td>Consultation register · PDF/A</td><td>7 students</td>
+        <td class="hash">4be07d19aa5c22…8f60</td>
+      </tr>
+      <tr>
+        <td>09 Sep 2026 08:41</td><td class="who-small">Prof. A. Nkosi (external examiner)</td>
+        <td>External examiner pack · PDF/A</td><td>12 sampled</td>
+        <td class="hash">c1d5883fe240b7…07ae</td>
+      </tr>
+      <tr>
+        <td>05 Sep 2026 11:10</td><td class="who-small">209900104 (student)</td>
+        <td>Subject access export · JSON</td><td>1 person</td>
+        <td class="hash">77e3b0c44298fc…b924</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <b>Every extraction is logged.</b> Exports move personal data out of the system, so
+    who ran what, when, and over which students is recorded in the audit chain
+    alongside the content hash. The hash lets a filed copy be checked against the
+    one that was issued.<br>
+    <b>Nothing here recomputes a mark.</b> Reports read published snapshots, so a
+    schedule and the mark a student sees cannot disagree. Where a mark is not yet
+    published, reports that may not carry provisional figures exclude the student
+    rather than printing a number that might change.
+  </div>
+
+</div>
+</body>
+</html>

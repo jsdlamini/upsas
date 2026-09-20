@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>My supervisees</title>
+<style>
+  :root{
+    --ink:#16202A; --paper:#F6F7F4; --sheet:#FFFFFF;
+    --rule:#CFD5CC; --rule-strong:#8E9A8C;
+    --seal:#1B3A6B; --pen:#B3231F; --saved:#3F6B4A; --caution:#A8791C;
+    --muted:#5E6A64;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+       font-family:"DejaVu Sans Condensed","DejaVu Sans",sans-serif;font-size:13px}
+  .page{padding:26px 30px 40px}
+  .masthead{text-align:center;border-bottom:2px solid var(--ink);padding-bottom:12px}
+  .masthead .inst{font-family:"Bitstream Charter",serif;font-size:19px;margin:0 0 2px}
+  .masthead .unit{font-family:"Bitstream Charter",serif;font-size:13.5px;color:var(--muted);margin:0}
+
+  .bar{width:100%;margin:16px 0 14px;border-collapse:collapse}
+  .bar td{vertical-align:bottom;padding:0}
+  .bar .right{text-align:right}
+  .who{font-size:16px;font-weight:700}
+  .meta{color:var(--muted);font-size:12.5px;margin-top:3px}
+
+  .queues{width:100%;border-collapse:separate;border-spacing:10px 0;margin:0 -10px 18px}
+  .queues td{background:var(--sheet);border:1px solid var(--rule);
+             border-left:3px solid var(--seal);padding:11px 13px;vertical-align:top;width:25%}
+  .queues td.urgent{border-left-color:var(--pen)}
+  .queues .count{font-family:"Bitstream Charter",serif;font-size:28px;line-height:1;font-weight:700}
+  .queues .what{font-size:12.5px;margin-top:5px;line-height:1.45}
+  .queues .when{font-size:11.5px;color:var(--muted);margin-top:5px}
+
+  h2{font-family:"Bitstream Charter",serif;font-size:15px;margin:0 0 8px;
+     border-bottom:1px solid var(--rule-strong);padding-bottom:5px}
+
+  table.list{width:100%;border-collapse:collapse;background:var(--sheet)}
+  table.list th,table.list td{border:1px solid var(--rule);padding:8px 10px;vertical-align:top}
+  table.list thead th{background:#EDEFEA;font-size:11.5px;text-align:left;
+                      border-bottom:2px solid var(--rule-strong)}
+  .student{font-weight:700;font-size:13px}
+  .sid{font-family:"DejaVu Sans Mono",monospace;font-size:11px;color:var(--muted)}
+  .title{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.4;max-width:34em}
+  .state{font-size:11.5px;display:inline-block;padding:2px 8px;border:1px solid var(--rule-strong);
+         background:#F4F6F2}
+
+  /* Consultation progress as a count of filled marks against the requirement —
+     the same shape the paper register had, one tick per session. */
+  .ticks{white-space:nowrap;font-family:"DejaVu Sans Mono",monospace;font-size:15px;letter-spacing:2px}
+  .ticks .done{color:var(--saved)}
+  .ticks .todo{color:#C3CAC4}
+  .ticks .extra{color:var(--seal)}
+  .ratio{font-size:11.5px;color:var(--muted);margin-top:2px}
+
+  .flag{display:block;font-size:11.5px;margin-top:3px;padding-left:11px;text-indent:-11px}
+  .flag.red{color:var(--pen)}
+  .flag.amber{color:var(--caution)}
+  .flag.ok{color:var(--saved)}
+  tr.risk td{background:#FDF8F3}
+  .act{font-size:12px;color:var(--seal);font-weight:700;white-space:nowrap}
+  .capacity{margin-top:14px;font-size:12px;color:var(--muted);background:var(--sheet);
+            border:1px solid var(--rule);padding:9px 12px}
+  .capacity b{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="masthead">
+    <p class="inst">University of Eswatini, Kwaluseni</p>
+    <p class="unit">Department of Computer Science &nbsp;|&nbsp; Research project supervision &nbsp;|&nbsp; 2025/2026</p>
+  </div>
+
+  <table class="bar">
+    <tr>
+      <td>
+        <div class="who">Dr T. Mahlalela</div>
+        <div class="meta">7 supervisees in 5 projects, two of them pairs &nbsp;·&nbsp; Semester 2, week 6</div>
+      </td>
+      <td class="right meta">Monday 14 September 2026</td>
+    </tr>
+  </table>
+
+  <table class="queues">
+    <tr>
+      <td class="urgent">
+        <div class="count">3</div>
+        <div class="what">Consultations to grade</div>
+        <div class="when">Oldest held 8 days ago. Grading closes after 7 days.</div>
+      </td>
+      <td>
+        <div class="count">5</div>
+        <div class="what">Students to nominate for Presentation 2</div>
+        <div class="when">Coordinator needs the list by Friday.</div>
+      </td>
+      <td>
+        <div class="count">2</div>
+        <div class="what">Documentation drafts to mark</div>
+        <div class="when">Both submitted last week.</div>
+      </td>
+      <td>
+        <div class="count">4</div>
+        <div class="what">Consultations booked this week</div>
+        <div class="when">Next: Tuesday 10:00 with Vilakati B.</div>
+      </td>
+    </tr>
+  </table>
+
+  <h2>Supervisees</h2>
+  <table class="list">
+    <thead>
+      <tr>
+        <th style="width:30%">Student and project</th>
+        <th style="width:13%">Stage</th>
+        <th style="width:16%">Consultations, semester 2</th>
+        <th style="width:27%">Needs attention</th>
+        <th style="width:14%">Next step</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <div class="student">Simelane, Lindiwe P.</div>
+          <div class="sid">209900104 · BSc IT</div>
+          <div class="title">Deep-learning maize leaf disease detection for smallholder farms</div>
+        </td>
+        <td><span class="state">Documentation marked</span></td>
+        <td>
+          <div class="ticks"><span class="done">■ ■ ■ ■</span></div>
+          <div class="ratio">4 of 4 held and graded</div>
+        </td>
+        <td><span class="flag ok">On track. Moderation returned agreement at 65.</span></td>
+        <td class="act">Nothing due</td>
+      </tr>
+
+      <tr class="risk">
+        <td>
+          <div class="student">Vilakati, Bongani M.</div>
+          <div class="sid">209900105 · BSc IT</div>
+          <div class="title">Offline-first mobile records system for rural clinics</div>
+        </td>
+        <td><span class="state">Implementation</span></td>
+        <td>
+          <div class="ticks"><span class="done">■ ■</span> <span class="todo">□ □</span></div>
+          <div class="ratio">2 of 4 — below the minimum</div>
+        </td>
+        <td>
+          <span class="flag red">Two short of the minimum with 5 weeks left. At 2 of 4 the consultation score is halved.</span>
+          <span class="flag amber">No contact for 23 days.</span>
+        </td>
+        <td class="act">Book a session</td>
+      </tr>
+
+      <tr>
+        <td>
+          <div class="student">Dlamini, Sipho A. &nbsp;·&nbsp; Mabuza, Nomsa T.</div>
+          <div class="sid">209900101, 209900102 · BSc IT · group of 2</div>
+          <div class="title">SiSwati speech corpus and keyword spotting for radio archives</div>
+        </td>
+        <td><span class="state">Presentation 2 nominated</span></td>
+        <td>
+          <div class="ticks"><span class="done">■ ■ ■ ■</span> <span class="extra">■ ■</span></div>
+          <div class="ratio">6 of 4 — engagement bonus earned</div>
+        </td>
+        <td>
+          <span class="flag amber">Mabuza has not filed her contribution statement. Required before submission.</span>
+        </td>
+        <td class="act">Remind Mabuza</td>
+      </tr>
+
+      <tr class="risk">
+        <td>
+          <div class="student">Magagula, Thandi N.</div>
+          <div class="sid">209900106 · BSc CS Education</div>
+          <div class="title">Predictors of dropout in first-year programming</div>
+        </td>
+        <td><span class="state">Ethics submitted</span></td>
+        <td>
+          <div class="ticks"><span class="done">■ ■ ■</span> <span class="todo">□</span></div>
+          <div class="ratio">3 of 4 held and graded</div>
+        </td>
+        <td>
+          <span class="flag red">Ethics approval outstanding for 31 days. Implementation is blocked until it clears.</span>
+          <span class="flag amber">Two action items overdue from 2 September.</span>
+        </td>
+        <td class="act">Chase ethics</td>
+      </tr>
+
+      <tr>
+        <td>
+          <div class="student">Hlophe, Sanele B. &nbsp;·&nbsp; Zwane, Nokwanda R.</div>
+          <div class="sid">209900107, 209900108 · BSc · group of 2</div>
+          <div class="title">Load forecasting for the Eswatini national grid</div>
+        </td>
+        <td><span class="state">Implementation</span></td>
+        <td>
+          <div class="ticks"><span class="done">&#9632; &#9632; &#9632; &#9632;</span> <span class="extra">&#9632;</span></div>
+          <div class="ratio">Hlophe 5 of 4</div>
+          <div class="ticks" style="margin-top:5px"><span class="done">&#9632; &#9632; &#9632;</span> <span class="todo">&#9633;</span></div>
+          <div class="ratio">Zwane 3 of 4 — below the minimum</div>
+        </td>
+        <td>
+          <span class="flag amber">Consultations are individual even on a joint project. Zwane is one short and will be scaled to 0.75 of her average.</span>
+          <span class="flag amber">Hlophe's session of 6 September is ungraded. It stops counting after tomorrow.</span>
+        </td>
+        <td class="act">Grade session</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="capacity">
+    <b>Supervision load:</b> 7 of your 8 places are taken. Places count students, not projects, so the two pairs take four of them — counted across all your published topics rather than per topic. One place remains open for the 2025/2026 allocation round.
+  </div>
+
+</div>
+</body>
+</html>

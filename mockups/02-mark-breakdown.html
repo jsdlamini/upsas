@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mark breakdown</title>
+<style>
+  :root{
+    --ink:#16202A; --paper:#F6F7F4; --sheet:#FFFFFF;
+    --rule:#CFD5CC; --rule-strong:#8E9A8C;
+    --seal:#1B3A6B; --pen:#B3231F; --saved:#3F6B4A; --caution:#A8791C;
+    --muted:#5E6A64;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+       font-family:"DejaVu Sans Condensed","DejaVu Sans",sans-serif;font-size:13px}
+  .page{padding:26px 30px 40px}
+  .masthead{text-align:center;border-bottom:2px solid var(--ink);padding-bottom:12px}
+  .masthead .inst{font-family:"Bitstream Charter",serif;font-size:19px;margin:0 0 2px}
+  .masthead .unit{font-family:"Bitstream Charter",serif;font-size:13.5px;color:var(--muted);margin:0}
+
+  .bar{width:100%;margin:16px 0 0;border-collapse:collapse}
+  .bar td{vertical-align:top;padding:0}
+  .bar .right{text-align:right}
+  .who{font-size:16px;font-weight:700}
+  .meta{color:var(--muted);font-size:12.5px;margin-top:3px;line-height:1.5}
+  .chip{display:inline-block;padding:3px 9px;border:1px solid var(--rule-strong);
+        background:var(--sheet);font-size:12px;margin-left:6px}
+  .chip.profile{border-color:var(--seal);color:var(--seal);font-weight:700}
+
+  /* The number is the hero: it is what everyone opens this page for. */
+  /* Joint projects: shared artefact, individual marks. */
+  .team{width:100%;border-collapse:collapse;margin-top:14px;background:var(--sheet);
+        border:1px solid var(--rule);border-left:3px solid var(--seal)}
+  .team td{padding:10px 13px;vertical-align:top;font-size:12px;line-height:1.6;color:var(--muted)}
+  .team td.hd{width:118px;font-family:"Bitstream Charter",serif;font-size:13.5px;
+              color:var(--ink);font-weight:700;border-right:1px solid var(--rule)}
+  .team b{color:var(--ink)}
+  .verdict{background:var(--sheet);border:1px solid var(--rule-strong);
+           border-top:4px solid var(--seal);margin-top:16px;width:100%;border-collapse:collapse}
+  .verdict td{padding:16px 18px;vertical-align:middle}
+  .verdict .mark{font-family:"Bitstream Charter",serif;font-size:52px;line-height:1;
+                 color:var(--seal);font-weight:700}
+  .verdict .markunit{font-size:22px;color:var(--muted)}
+  .verdict .grade{font-family:"Bitstream Charter",serif;font-size:30px;margin-left:18px}
+  .verdict .lede{font-size:13px;color:var(--muted);line-height:1.6;max-width:52em}
+  .verdict .status{border-left:1px solid var(--rule);text-align:right;width:250px}
+  .pill{display:inline-block;padding:5px 12px;font-size:12.5px;font-weight:700;
+        border:1px solid var(--saved);color:var(--saved);background:#F2F7F2}
+
+  h2{font-family:"Bitstream Charter",serif;font-size:15px;margin:24px 0 8px;
+     border-bottom:1px solid var(--rule-strong);padding-bottom:5px}
+
+  table.calc{width:100%;border-collapse:collapse;background:var(--sheet)}
+  table.calc th,table.calc td{border:1px solid var(--rule);padding:7px 10px}
+  table.calc thead th{background:#EDEFEA;font-size:11.5px;text-align:left;
+                      border-bottom:2px solid var(--rule-strong)}
+  table.calc td.num{text-align:right;font-variant-numeric:tabular-nums}
+  table.calc td.working{color:var(--muted);font-size:12px;font-family:"DejaVu Sans Mono",monospace}
+  table.calc tr.sub td{background:#F4F6F2;font-weight:700}
+  table.calc tr.grand td{background:#E4E8E1;font-weight:700;font-size:14.5px;
+                         border-top:2px solid var(--rule-strong)}
+  .comp{font-weight:700}
+  .sublabel{display:block;color:var(--muted);font-weight:400;font-size:11.5px;margin-top:2px}
+
+  .two{width:100%;border-collapse:collapse;margin-top:6px}
+  .two > tbody > tr > td{vertical-align:top;padding:0}
+  .two .left{padding-right:14px}
+  .panelbox{background:var(--sheet);border:1px solid var(--rule);width:100%;border-collapse:collapse}
+  .panelbox th,.panelbox td{border:1px solid var(--rule);padding:6px 9px;font-size:12px}
+  .panelbox thead th{background:#EDEFEA;text-align:left;font-size:11.5px}
+  .panelbox td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .provenance{background:var(--sheet);border:1px solid var(--rule);padding:12px 14px;
+              font-size:12px;line-height:1.7;color:var(--muted)}
+  .provenance b{color:var(--ink);font-weight:700}
+  .provenance code{font-family:"DejaVu Sans Mono",monospace;font-size:11px}
+  .hashline{font-family:"DejaVu Sans Mono",monospace;font-size:10.5px;word-break:break-all;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="masthead">
+    <p class="inst">University of Eswatini, Kwaluseni</p>
+    <p class="unit">Department of Computer Science &nbsp;|&nbsp; CSC499 Research Project &nbsp;|&nbsp; 2025/2026</p>
+  </div>
+
+  <table class="bar">
+    <tr>
+      <td>
+        <div class="who">Dlamini, Sipho A. — 209900101</div>
+        <div class="meta">BSc Information Technology &nbsp;·&nbsp; Supervisor: Dr T. Mahlalela<br>
+          SiSwati speech corpus and keyword spotting for radio archives</div>
+      </td>
+      <td class="right">
+        <span class="chip profile">Profile A — consultation-weighted</span>
+        <span class="chip">Config v1, locked 2 Feb 2026</span>
+      </td>
+    </tr>
+  </table>
+
+  <table class="team">
+    <tr>
+      <td class="hd">Joint project<br>2 members</td>
+      <td>
+        Presented with <b>Mabuza, Nomsa T. (209900102)</b> in session 1.
+        The proposal, artefact and final documentation belong to the project and are shared.
+        Consultations, contribution statements and every mark below belong to this student alone.<br>
+        <b>Contribution statement</b> filed 28 August 2026 — corpus collection, SiSwati
+        transcription protocol and the keyword-spotting evaluation.
+        <b>Mabuza's marks differ</b>: her Presentation 2 panel mean was 71.3% against
+        Sipho's 77.5%, and the documentation mark was apportioned 65 / 61 on the
+        supervisor's recorded justification.
+      </td>
+    </tr>
+  </table>
+
+  <table class="verdict">
+    <tr>
+      <td>
+        <span class="mark">67.6</span><span class="markunit">%</span><span class="grade">C</span>
+        <div class="lede" style="margin-top:10px">
+          Computed from 8 graded consultations, two panel-assessed presentations and a
+          moderated documentation mark. Nothing here was entered by hand, and nothing
+          here is shared with the co-member.
+        </div>
+      </td>
+      <td class="status">
+        <span class="pill">Ready to publish</span>
+        <div class="meta" style="margin-top:8px">No blocking flags.<br>Awaiting coordinator release.</div>
+      </td>
+    </tr>
+  </table>
+
+  <h2>How the mark was reached</h2>
+  <table class="calc">
+    <thead>
+      <tr>
+        <th style="width:30%">Component</th>
+        <th style="width:34%">Working</th>
+        <th style="width:12%;text-align:right">Achieved</th>
+        <th style="width:12%;text-align:right">Weight</th>
+        <th style="width:12%;text-align:right">Points</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="comp">Consultations</span>
+            <span class="sublabel">Semester 1 — 5 held, 4 required</span></td>
+        <td class="working">mean 76.0 × 1.00 + bonus 2.0</td>
+        <td class="num">78.0%</td>
+        <td class="num">—</td>
+        <td class="num">—</td>
+      </tr>
+      <tr>
+        <td><span class="sublabel" style="margin:0">Semester 2 — 3 held, 4 required</span></td>
+        <td class="working">mean 70.0 × 0.75 + bonus 0</td>
+        <td class="num">52.5%</td>
+        <td class="num">—</td>
+        <td class="num">—</td>
+      </tr>
+      <tr class="sub">
+        <td>Consultation component</td>
+        <td class="working">mean of the two semesters</td>
+        <td class="num">65.25%</td>
+        <td class="num">20.0</td>
+        <td class="num">13.05</td>
+      </tr>
+      <tr>
+        <td><span class="comp">Presentation 1</span>
+            <span class="sublabel">Chapters 1–2 · panel of 6</span></td>
+        <td class="working">raw 29 of 40 → 72.5%</td>
+        <td class="num">72.5%</td>
+        <td class="num">10.0</td>
+        <td class="num">7.25</td>
+      </tr>
+      <tr>
+        <td><span class="comp">Presentation 2</span>
+            <span class="sublabel">Chapters 3–5 · panel of 7</span></td>
+        <td class="working">raw 62 of 80 → 77.5%</td>
+        <td class="num">77.5%</td>
+        <td class="num">10.0</td>
+        <td class="num">7.75</td>
+      </tr>
+      <tr class="sub">
+        <td>Continuous assessment</td>
+        <td class="working">28.05 of 40 points</td>
+        <td class="num">70.1%</td>
+        <td class="num">40.0</td>
+        <td class="num">28.05</td>
+      </tr>
+      <tr>
+        <td><span class="comp">Final documentation</span>
+            <span class="sublabel">Marked by supervisor, moderated by Dr S. Dlamini</span></td>
+        <td class="working">agreed 65 of 100</td>
+        <td class="num">65.0%</td>
+        <td class="num">60.0</td>
+        <td class="num">39.00</td>
+      </tr>
+      <tr class="grand">
+        <td>Final mark</td>
+        <td class="working">28.05 + 39.00, rounded half-up to 1 dp</td>
+        <td class="num">—</td>
+        <td class="num">100.0</td>
+        <td class="num">67.6</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <table class="two">
+    <tr>
+      <td class="left" style="width:52%">
+        <h2>Presentation 2 — how the panel landed</h2>
+        <table class="panelbox">
+          <thead>
+            <tr><th>Assessor</th><th style="text-align:right">Raw of 80</th>
+                <th style="text-align:right">Normalised</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Dr T. Mahlalela (supervisor)</td><td class="num">64</td><td class="num">80.0%</td><td>Counted</td></tr>
+            <tr><td>Mr B. Nkosi</td><td class="num">60</td><td class="num">75.0%</td><td>Counted</td></tr>
+            <tr><td>Dr S. Dlamini</td><td class="num">62</td><td class="num">77.5%</td><td>Counted</td></tr>
+            <tr><td>Ms P. Shongwe</td><td class="num">61</td><td class="num">76.3%</td><td>Counted</td></tr>
+            <tr><td>Dr M. Fakudze</td><td class="num">63</td><td class="num">78.8%</td><td>Counted</td></tr>
+            <tr><td>Mr L. Gama</td><td class="num">62</td><td class="num">77.5%</td><td>Counted</td></tr>
+            <tr><td>Dr N. Motsa</td><td class="num">—</td><td class="num">—</td>
+                <td style="color:#A8791C">Blank — excluded</td></tr>
+            <tr style="background:#F4F6F2;font-weight:700">
+                <td>Panel mean of 6 contributing</td><td class="num">—</td><td class="num">77.5%</td><td>Spread 5.0</td></tr>
+          </tbody>
+        </table>
+        <div class="meta" style="margin-top:7px">
+          Spread of 5.0 is inside the 15-point moderation threshold, so no moderation was needed.
+          Dr Motsa's blank sheet was left out of the mean rather than scored zero.
+        </div>
+      </td>
+      <td style="width:48%">
+        <h2>Provenance</h2>
+        <div class="provenance">
+          This snapshot is immutable. A correction would create a new snapshot that
+          supersedes it; both stay retrievable.<br><br>
+          <b>Configuration</b> <code>cfg-profile-a-v1</code>, active from 2 February 2026<br>
+          <b>Rubric versions</b> <code>P1 v1 (40)</code>, <code>P2 v1 (80)</code>,
+          <code>DOC v1 (100, provisional)</code><br>
+          <b>Policies</b> consultation <code>MEAN_WITH_COMPLIANCE_FACTOR</code>,
+          panel <code>MEAN</code>, rounding <code>HALF_UP@1dp</code><br>
+          <b>Computed</b> 14 September 2026 09:52 by J. Dlamini (coordinator)<br>
+          <b>Audit entry</b> #48,219 in the hash chain<br>
+          <span class="hashline">e3b0c44298fc1c149afbf4c8996fb924<br>27ae41e4649b934ca495991b7852b855</span>
+          <br>
+          <b>Publication</b> is a separate act by a coordinator who did not award any
+          component of this mark.
+        </div>
+      </td>
+    </tr>
+  </table>
+
+</div>
+</body>
+</html>

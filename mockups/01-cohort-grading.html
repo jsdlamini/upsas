@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Grade session list — Presentation 2</title>
+<style>
+  :root{
+    --ink:#16202A; --paper:#F6F7F4; --sheet:#FFFFFF;
+    --rule:#CFD5CC; --rule-strong:#8E9A8C;
+    --seal:#1B3A6B; --pen:#B3231F; --saved:#3F6B4A; --caution:#A8791C;
+    --muted:#5E6A64;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"DejaVu Sans Condensed","DejaVu Sans",sans-serif;
+    font-size:13px; -webkit-font-smoothing:antialiased;
+  }
+  .page{padding:26px 30px 40px}
+
+  /* Masthead follows the paper form: centred, serif, institution first. */
+  .masthead{text-align:center; border-bottom:2px solid var(--ink); padding-bottom:12px}
+  .masthead .inst{
+    font-family:"Bitstream Charter","DejaVu Serif",serif;
+    font-size:19px; letter-spacing:.02em; margin:0 0 2px;
+  }
+  .masthead .unit{
+    font-family:"Bitstream Charter","DejaVu Serif",serif;
+    font-size:13.5px; color:var(--muted); margin:0;
+  }
+  .masthead .form-title{
+    font-family:"Bitstream Charter","DejaVu Serif",serif;
+    font-size:15px; margin:9px 0 0; font-weight:700;
+  }
+
+  .bar{width:100%; margin:16px 0 4px; border-collapse:collapse}
+  .bar td{vertical-align:bottom; padding:0}
+  .bar .right{text-align:right}
+  .who{font-size:14.5px; font-weight:700}
+  .meta{color:var(--muted); font-size:12.5px; margin-top:3px}
+  .chip{
+    display:inline-block; padding:3px 9px; border:1px solid var(--rule-strong);
+    background:var(--sheet); font-size:12px; margin-left:6px;
+  }
+  .chip.live{border-color:var(--saved); color:var(--saved)}
+  .chip.warn{border-color:var(--caution); color:var(--caution)}
+
+  table.grid{width:100%; border-collapse:collapse; background:var(--sheet); margin-top:12px}
+  table.grid th, table.grid td{border:1px solid var(--rule); padding:0}
+  table.grid thead th{
+    background:#EDEFEA; border-bottom:2px solid var(--rule-strong);
+    padding:7px 5px; font-size:11.5px; font-weight:700; line-height:1.25;
+    vertical-align:bottom;
+  }
+  thead th .max{display:block; font-weight:400; color:var(--muted); font-size:11px}
+  th.sess{width:30px}
+  th.idcol{width:74px; text-align:left; padding-left:8px}
+  th.namecol{text-align:left; padding-left:8px; width:210px}
+  th.progcol{width:62px}
+  th.mark{width:52px}
+  th.total{width:56px; background:#E4E8E1}
+  th.pct{width:62px}
+
+  td.sess{
+    text-align:center; font-family:"Bitstream Charter",serif; font-size:16px;
+    background:#F1F3EE; color:var(--seal); border-right:2px solid var(--rule-strong);
+  }
+  td.sid{padding:6px 8px; font-family:"DejaVu Sans Mono",monospace; font-size:11.5px}
+  td.name{padding:6px 8px; font-size:12.5px}
+  td.name .sur{font-weight:700}
+  td.prog{text-align:center; font-size:11.5px; color:var(--muted)}
+  td.mark{text-align:center; font-size:14px; padding:5px 0; font-variant-numeric:tabular-nums}
+  td.total{
+    text-align:center; font-weight:700; font-size:14.5px; background:#E9EDE6;
+    border-left:2px solid var(--rule-strong);
+  }
+  td.pct{text-align:center; color:var(--muted); font-size:12px}
+  tr.alt td.name, tr.alt td.sid, tr.alt td.prog{background:#FBFCFA}
+
+  /* The cell the assessor is typing in. Keyboard entry is the primary path. */
+  td.mark.active{outline:2px solid var(--seal); outline-offset:-2px; background:#EAF0FA}
+  td.mark.empty{color:#B8C0BA}
+
+  tr.absent td{background:#F7F5F1; color:#8B9089}
+  tr.absent td.note{
+    text-align:left; padding:6px 10px; font-style:italic; font-size:12px; color:var(--caution);
+  }
+  tr.sessionrule td{border-top:2px solid var(--rule-strong)}
+
+  /* A session slot and a project team are different things. The paper form's
+     S/No column conflated them; here the band says which one you are grading. */
+  tr.band td.bandcell{
+    background:#EFF2F7; border-bottom:1px solid var(--rule);
+    padding:5px 10px; font-size:12px; color:var(--seal);
+  }
+  tr.band td.bandcell .kind{font-weight:700}
+  tr.band td.bandcell .proj{color:var(--muted); font-style:italic}
+  tr.band.solo td.bandcell{background:#F4F6F2; color:var(--muted)}
+  tr.band.solo td.bandcell .kind{color:var(--ink)}
+  td.sess .pairmark{display:block; font-size:10px; letter-spacing:0;
+                    font-family:"DejaVu Sans Condensed",sans-serif; color:var(--muted)}
+
+  .row-state{width:96px; font-size:11px; text-align:left; padding:6px 8px; color:var(--saved)}
+  .row-state.pending{color:var(--caution)}
+  .row-state.offline{color:var(--pen)}
+
+  .foot{margin-top:18px; border-collapse:collapse; width:100%}
+  .foot td{vertical-align:top; padding:0}
+  .attest{
+    background:var(--sheet); border:1px solid var(--rule-strong);
+    border-left:4px solid var(--seal); padding:12px 14px; width:56%;
+  }
+  .attest h3{
+    font-family:"Bitstream Charter",serif; font-size:14px; margin:0 0 5px;
+  }
+  .attest p{margin:0; font-size:12px; line-height:1.5; color:var(--muted)}
+  .btn{
+    display:inline-block; margin-top:10px; background:var(--seal); color:#fff;
+    padding:8px 16px; font-size:13px; font-weight:700; border:1px solid var(--seal);
+  }
+  .btn.ghost{background:transparent; color:var(--seal); margin-left:8px}
+  .sidenote{
+    padding-left:22px; font-size:12px; color:var(--muted); line-height:1.55;
+  }
+  .sidenote strong{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="masthead">
+    <p class="inst">University of Eswatini, Kwaluseni</p>
+    <p class="unit">Faculty of Science and Engineering &nbsp;|&nbsp; Department of Computer Science</p>
+    <p class="form-title">Project assessment — Presentation 2, Chapters 3–5 &nbsp;(2025/2026)</p>
+  </div>
+
+  <table class="bar">
+    <tr>
+      <td>
+        <div class="who">Dr T. Mahlalela — assessor sheet</div>
+        <div class="meta">Sessions 1–4 &nbsp;·&nbsp; Room CS-112 &nbsp;·&nbsp; 14 September 2026, 09:00</div>
+      </td>
+      <td class="right">
+        <span class="chip live">All changes saved 09:47</span>
+        <span class="chip">8 of 45 graded</span>
+        <span class="chip warn">Panel results hidden until close</span>
+      </td>
+    </tr>
+  </table>
+
+  <table class="grid">
+    <thead>
+      <tr>
+        <th class="sess">S/No</th>
+        <th class="idcol">Student ID</th>
+        <th class="namecol">Surname and name</th>
+        <th class="progcol">Prog.</th>
+        <th class="mark">Introduction<span class="max">5</span></th>
+        <th class="mark">Problem statement<span class="max">5</span></th>
+        <th class="mark">Aim and objectives<span class="max">5</span></th>
+        <th class="mark">Methodology<span class="max">15</span></th>
+        <th class="mark">Implementation<span class="max">25</span></th>
+        <th class="mark">Results interpretation<span class="max">10</span></th>
+        <th class="mark">Conclusion<span class="max">5</span></th>
+        <th class="mark">Presentation skills<span class="max">5</span></th>
+        <th class="mark">References<span class="max">5</span></th>
+        <th class="total">Total<span class="max">80</span></th>
+        <th class="pct">Normalised</th>
+        <th style="width:96px">Row</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="band">
+        <td class="sess" rowspan="3">1<span class="pairmark">pair</span></td>
+        <td class="bandcell" colspan="15">
+          <span class="kind">Joint project, 2 members — grade each member separately.</span>
+          <span class="proj">SiSwati speech corpus and keyword spotting for radio archives</span>
+        </td>
+      </tr>
+      <tr>
+        <td class="sid">209900101</td>
+        <td class="name"><span class="sur">Dlamini</span> Sipho A.</td>
+        <td class="prog">BSc IT</td>
+        <td class="mark">4</td><td class="mark">4</td><td class="mark">5</td>
+        <td class="mark">12</td><td class="mark">19</td><td class="mark">8</td>
+        <td class="mark">4</td><td class="mark">4</td><td class="mark">4</td>
+        <td class="total">64</td>
+        <td class="pct">80.0%</td>
+        <td class="row-state">Saved 09:41</td>
+      </tr>
+      <tr class="alt">
+        <td class="sid">209900102</td>
+        <td class="name"><span class="sur">Mabuza</span> Nomsa T.</td>
+        <td class="prog">BSc IT</td>
+        <td class="mark">4</td><td class="mark">3</td><td class="mark">4</td>
+        <td class="mark">11</td><td class="mark">17</td><td class="mark">7</td>
+        <td class="mark">4</td><td class="mark">4</td><td class="mark">3</td>
+        <td class="total">57</td>
+        <td class="pct">71.3%</td>
+        <td class="row-state">Saved 09:43</td>
+      </tr>
+
+      <tr class="band solo sessionrule">
+        <td class="sess" rowspan="3">2</td>
+        <td class="bandcell" colspan="15">
+          <span class="kind">Two individual projects sharing this slot.</span>
+          Ginindza — Automated timetabling for large service courses. Simelane — Deep-learning maize leaf disease detection.
+        </td>
+      </tr>
+      <tr>
+        <td class="sid">209900103</td>
+        <td class="name"><span class="sur">Ginindza</span> Musa K.</td>
+        <td class="prog">CS Edu</td>
+        <td class="mark">5</td><td class="mark">4</td><td class="mark">4</td>
+        <td class="mark">13</td><td class="mark">21</td><td class="mark">9</td>
+        <td class="mark">5</td><td class="mark">4</td><td class="mark">4</td>
+        <td class="total">69</td>
+        <td class="pct">86.3%</td>
+        <td class="row-state">Saved 09:46</td>
+      </tr>
+      <tr class="alt">
+        <td class="sid">209900104</td>
+        <td class="name"><span class="sur">Simelane</span> Lindiwe P.</td>
+        <td class="prog">CS Edu</td>
+        <td class="mark">4</td><td class="mark">4</td><td class="mark">4</td>
+        <td class="mark">12</td><td class="mark active">18</td><td class="mark empty">—</td>
+        <td class="mark empty">—</td><td class="mark empty">—</td><td class="mark empty">—</td>
+        <td class="total">42</td>
+        <td class="pct">—</td>
+        <td class="row-state pending">In progress</td>
+      </tr>
+
+      <tr class="band solo sessionrule">
+        <td class="sess" rowspan="3">3</td>
+        <td class="bandcell" colspan="15">
+          <span class="kind">Two individual projects sharing this slot.</span>
+          Vilakati — Offline-first mobile records for rural clinics. Magagula — Predictors of dropout in first-year programming.
+        </td>
+      </tr>
+      <tr>
+        <td class="sid">209900105</td>
+        <td class="name"><span class="sur">Vilakati</span> Bongani M.</td>
+        <td class="prog">BSc IT</td>
+        <td class="mark empty">—</td><td class="mark empty">—</td><td class="mark empty">—</td>
+        <td class="mark empty">—</td><td class="mark empty">—</td><td class="mark empty">—</td>
+        <td class="mark empty">—</td><td class="mark empty">—</td><td class="mark empty">—</td>
+        <td class="total">—</td>
+        <td class="pct">—</td>
+        <td class="row-state pending">Not started</td>
+      </tr>
+      <tr class="absent alt">
+        <td class="sid">209900106</td>
+        <td class="name"><span class="sur">Magagula</span> Thandi N.</td>
+        <td class="prog">BSc IT</td>
+        <td class="note" colspan="11">Left blank — recorded as not assessed by you. Excluded from the panel mean, not scored zero.</td>
+        <td class="row-state">Blank</td>
+      </tr>
+
+      <tr class="band sessionrule">
+        <td class="sess" rowspan="3">4<span class="pairmark">pair</span></td>
+        <td class="bandcell" colspan="15">
+          <span class="kind">Joint project, 2 members — grade each member separately.</span>
+          <span class="proj">Load forecasting for the Eswatini national grid</span>
+        </td>
+      </tr>
+      <tr>
+        <td class="sid">209900107</td>
+        <td class="name"><span class="sur">Hlophe</span> Sanele B.</td>
+        <td class="prog">BSc</td>
+        <td class="mark">3</td><td class="mark">3</td><td class="mark">3</td>
+        <td class="mark">9</td><td class="mark">14</td><td class="mark">6</td>
+        <td class="mark">3</td><td class="mark">3</td><td class="mark">3</td>
+        <td class="total">47</td>
+        <td class="pct">58.8%</td>
+        <td class="row-state offline">Queued offline</td>
+      </tr>
+      <tr class="alt">
+        <td class="sid">209900108</td>
+        <td class="name"><span class="sur">Zwane</span> Nokwanda R.</td>
+        <td class="prog">BSc</td>
+        <td class="mark">4</td><td class="mark">4</td><td class="mark">4</td>
+        <td class="mark">12</td><td class="mark">20</td><td class="mark">8</td>
+        <td class="mark">4</td><td class="mark">5</td><td class="mark">4</td>
+        <td class="total">65</td>
+        <td class="pct">81.3%</td>
+        <td class="row-state offline">Queued offline</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <table class="foot">
+    <tr>
+      <td class="attest">
+        <h3>Submit this sheet</h3>
+        <p>Submitting is the signature. It locks your marks for all 45 students
+           and records your name, the time and your attestation. After that only
+           the project coordinator can reopen the sheet, and the reason is logged.</p>
+        <span class="btn">Submit sheet</span>
+        <span class="btn ghost">Save and close</span>
+      </td>
+      <td class="sidenote">
+        <strong>Two rows still need attention.</strong><br>
+        Simelane L. is part-graded and Vilakati B. has not been started.
+        Submitting now records both as not assessed by you.<br><br>
+        <strong>Working offline.</strong> Two rows are held on this device and will
+        send when the connection returns. Nothing entered here is lost if you close
+        the tab.<br><br>
+        <strong>Pairs are graded one member at a time.</strong> Sessions 1 and 4 are
+        joint projects presented together, but each member carries their own mark
+        and their own row. Where the two members performed differently, score them
+        differently — you are not required to give a pair the same total.<br><br>
+        <strong>You are seeing only your own marks.</strong> Other assessors' scores
+        and the panel mean stay hidden until the coordinator closes this presentation.
+      </td>
+    </tr>
+  </table>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,9 @@
+Student ID,Surname,Names,Programme,Course,Supervisor,Project title,Group size,Consultation %,Presentation 1 %,Presentation 2 %,CA %,Documentation %,Final %,Grade,Status,Flags,Profile,Snapshot computed
+"209900101",Dlamini,Sipho A.,BSc IT,CSC499,Dr T. Mahlalela,SiSwati speech corpus and keyword spotting for radio archives,2,65.3,72.5,77.5,70.1,65.0,67.1,C,Published,CONSULTATION_MINIMUM_UNMET,A,2026-09-14T09:52:00.000Z
+"209900102",Mabuza,Nomsa T.,BSc IT,CSC499,Dr T. Mahlalela,SiSwati speech corpus and keyword spotting for radio archives,2,69.8,67.5,71.3,69.6,61.0,64.4,C,Published,,A,2026-09-14T09:52:00.000Z
+"209900103",Ginindza,Musa K.,BSc CS Education,CSC402,Dr T. Mahlalela,Automated timetabling for large service courses,1,81.1,82.5,86.3,82.8,74.0,77.5,B,Published,,A,2026-09-14T09:52:00.000Z
+"209900104",Simelane,Lindiwe P.,BSc CS Education,CSC402,Dr T. Mahlalela,A deep-learning approach to maize leaf disease detection,1,69.6,70.0,72.5,70.4,65.0,67.2,C,Published,,A,2026-09-14T09:52:00.000Z
+"209900105",Vilakati,Bongani M.,BSc IT,CSC499,Dr T. Mahlalela,Offline-first mobile records system for rural clinics,1,38.4,60.0,58.8,48.9,52.0,50.8,D,Published,CONSULTATION_MINIMUM_UNMET,A,2026-09-14T09:52:00.000Z
+"209900106",Magagula,Thandi N.,BSc CS Education,CSC402,Dr T. Mahlalela,Predictors of dropout in first-year programming,1,63.1,75.0,76.3,69.4,,,,Blocked,CONSULTATION_MINIMUM_UNMET; DOCUMENTATION_MISSING,A,2026-09-14T09:52:00.000Z
+"209900107",Hlophe,Sanele B.,BSc,CSC499,Dr T. Mahlalela,Load forecasting for the Eswatini national grid,2,72.9,65.0,68.8,69.9,60.0,64.0,C,Published,,A,2026-09-14T09:52:00.000Z
+"209900108",Zwane,Nokwanda R.,BSc,CSC499,Dr T. Mahlalela,Load forecasting for the Eswatini national grid,2,60.6,70.0,78.8,67.5,64.0,65.4,C,Published,CONSULTATION_MINIMUM_UNMET,A,2026-09-14T09:52:00.000Z

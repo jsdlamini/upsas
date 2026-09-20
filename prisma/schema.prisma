@@ -1,0 +1,680 @@
+// UPSAS — Research Project Supervision & Assessment System
+// Department of Computer Science, University of Eswatini
+//
+// Design rules encoded here:
+//  - Every rubric score persists its raw total AND the rubric maximum in force.
+//  - Nothing that affects a mark is ever updated in place; corrections supersede.
+//  - The audit log is append-only and hash-chained.
+//  - All identity data is local: no federated identity tables, by design.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────── institution
+
+model Institution {
+  id            String  @id @default(uuid())
+  name          String
+  faculty       String
+  department    String
+  timezone      String  @default("Africa/Mbabane")
+  studentIdRegex String @default("^[0-9]{9}$")
+  staffEmailDomain String @default("uniswa.sz")
+  setupComplete Boolean @default(false)
+  cycles        AcademicCycle[]
+  programmes    Programme[]
+}
+
+model AcademicCycle {
+  id            String   @id @default(uuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  label         String   // "2025/2026"
+  startsOn      DateTime
+  endsOn        DateTime
+  periods       AssessmentPeriod[]
+  configs       AssessmentConfig[]
+  projects      Project[]
+  sessions      PresentationSession[]
+  isCurrent     Boolean  @default(false)
+
+  @@unique([institutionId, label])
+}
+
+model AssessmentPeriod {
+  id       String  @id @default(uuid())
+  cycleId  String
+  cycle    AcademicCycle @relation(fields: [cycleId], references: [id])
+  code     String  // "SEM1"
+  label    String
+  startsOn DateTime
+  endsOn   DateTime
+
+  @@unique([cycleId, code])
+}
+
+model Programme {
+  id            String  @id @default(uuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  code          String  // "BSC_IT"
+  name          String  // "BSc Information Technology"
+  students      StudentProfile[]
+
+  @@unique([institutionId, code])
+}
+
+model Course {
+  id       String @id @default(uuid())
+  code     String @unique // CSC400 / CSC402 / CSC499
+  title    String
+  projects Project[]
+}
+
+// ───────────────────────────────────────────────────────── identity (local)
+
+enum AccountStatus {
+  PENDING_APPROVAL
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+model User {
+  id             String        @id @default(uuid())
+  username       String        @unique
+  email          String        @unique
+  fullName       String
+  surname        String
+  status         AccountStatus @default(PENDING_APPROVAL)
+  approvedById   String?
+  approvedAt     DateTime?
+  createdAt      DateTime      @default(now())
+  lastLoginAt    DateTime?
+  failedAttempts Int           @default(0)
+  lockedUntil    DateTime?
+
+  credential     PasswordCredential?
+  totp           TotpCredential?
+  sessions       AuthSession[]
+  roles          RoleAssignment[]
+  studentProfile StudentProfile?
+  staffProfile   StaffProfile?
+}
+
+/// argon2id only. No federated identity, no external verification — by policy.
+model PasswordCredential {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hash          String
+  algorithm     String   @default("argon2id")
+  updatedAt     DateTime @updatedAt
+  /// Set only on evidence of compromise — NIST SP 800-63B-4 forbids routine expiry.
+  mustChange    Boolean  @default(false)
+  compromisedAt DateTime?
+}
+
+/// Offline TOTP (RFC 6238). No SMS, no push, no external verification service.
+model TotpCredential {
+  id             String    @id @default(uuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  secretEnc      String
+  confirmedAt    DateTime?
+  recoveryHashes String[]
+}
+
+model AuthSession {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  issuedAt  DateTime @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+  ip        String?
+  userAgent String?
+}
+
+enum RoleCode {
+  STUDENT
+  SUPERVISOR
+  ASSESSOR
+  MODERATOR
+  COORDINATOR
+  EXTERNAL_EXAMINER
+  ADMINISTRATOR
+}
+
+/// Roles are scoped to a cycle — a lecturer may be Supervisor, Assessor and
+/// Moderator at once. Separation of duty is enforced per action, not per role.
+model RoleAssignment {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      RoleCode
+  cycleId   String?
+  grantedBy String
+  grantedAt DateTime @default(now())
+  revokedAt DateTime?
+
+  @@unique([userId, role, cycleId])
+}
+
+model StudentProfile {
+  id            String  @id @default(uuid())
+  userId        String  @unique
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studentNumber String  @unique
+  programmeId   String
+  programme     Programme @relation(fields: [programmeId], references: [id])
+  memberships   ProjectMember[]
+  preferences   TopicPreference[]
+}
+
+model StaffProfile {
+  id                 String @id @default(uuid())
+  userId             String @unique
+  user               User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  staffNumber        String @unique
+  title              String
+  researchAreas      String[]
+  /// Enforced across all their topics, not per topic.
+  supervisionCapacity Int   @default(8)
+  topics             Topic[]
+  supervisedProjects Project[]
+}
+
+// ──────────────────────────────────────────────────────── topics & projects
+
+model Topic {
+  id             String  @id @default(uuid())
+  supervisorId   String
+  supervisor     StaffProfile @relation(fields: [supervisorId], references: [id])
+  title          String
+  description    String
+  prerequisites  String?
+  expectedOutputs String?
+  tags           String[]
+  capacity       Int     @default(1)
+  groupSuitable  Boolean @default(true)
+  studentProposed Boolean @default(false)
+  published      Boolean @default(false)
+  createdAt      DateTime @default(now())
+  preferences    TopicPreference[]
+  projects       Project[]
+}
+
+model TopicPreference {
+  id        String @id @default(uuid())
+  studentId String
+  student   StudentProfile @relation(fields: [studentId], references: [id])
+  topicId   String
+  topic     Topic  @relation(fields: [topicId], references: [id])
+  rank      Int
+  createdAt DateTime @default(now())
+
+  @@unique([studentId, rank])
+  @@unique([studentId, topicId])
+}
+
+enum ProjectState {
+  REGISTERED
+  TOPIC_SELECTED
+  AGREEMENT_SIGNED
+  PROPOSAL_DEVELOPMENT
+  ETHICS_SUBMITTED
+  ETHICS_NOT_REQUIRED
+  ETHICS_APPROVED
+  P1_NOMINATED
+  P1_PRESENTED
+  IMPLEMENTATION
+  P2_NOMINATED
+  P2_PRESENTED
+  DOCUMENTATION_SUBMITTED
+  SUPERVISOR_MARKED
+  MODERATED
+  GRADED
+  PUBLISHED
+  ARCHIVED
+  WITHDRAWN
+  DEFERRED
+  ON_HOLD
+}
+
+model Project {
+  id           String  @id @default(uuid())
+  cycleId      String
+  cycle        AcademicCycle @relation(fields: [cycleId], references: [id])
+  courseId     String
+  course       Course  @relation(fields: [courseId], references: [id])
+  topicId      String?
+  topic        Topic?  @relation(fields: [topicId], references: [id])
+  supervisorId String?
+  supervisor   StaffProfile? @relation(fields: [supervisorId], references: [id])
+  title        String
+  state        ProjectState @default(REGISTERED)
+  createdAt    DateTime @default(now())
+
+  members      ProjectMember[]
+  transitions  StateTransition[]
+  agreements   Agreement[]
+  consultations Consultation[]
+  deliverables Deliverable[]
+  ethics       EthicsApplication[]
+  nominations  PresentationNomination[]
+}
+
+/// Marks and consultations belong to the STUDENT; artefacts belong to the project.
+model ProjectMember {
+  id                   String @id @default(uuid())
+  projectId            String
+  project              Project @relation(fields: [projectId], references: [id])
+  studentId            String
+  student              StudentProfile @relation(fields: [studentId], references: [id])
+  contributionStatement String?
+  joinedAt             DateTime @default(now())
+  withdrawnAt          DateTime?
+
+  consultations   Consultation[]
+  sheets          AssessorSheet[]
+  documentationMarks DocumentationMark[]
+  snapshots       MarkSnapshot[]
+  nominations     PresentationNomination[]
+
+  @@unique([projectId, studentId])
+}
+
+model StateTransition {
+  id         String @id @default(uuid())
+  projectId  String
+  project    Project @relation(fields: [projectId], references: [id])
+  fromState  ProjectState
+  toState    ProjectState
+  actorId    String
+  note       String?
+  occurredAt DateTime @default(now())
+}
+
+// ───────────────────────────────────────────────────── agreement (e-signed)
+
+model Agreement {
+  id          String @id @default(uuid())
+  projectId   String
+  project     Project @relation(fields: [projectId], references: [id])
+  version     Int    @default(1)
+  topicTitle  String
+  supervisorName String
+  pdfPath     String?
+  contentHash String
+  supersedesId String?
+  executedAt  DateTime?
+  createdAt   DateTime @default(now())
+  signatures  AgreementSignature[]
+
+  @@unique([projectId, version])
+}
+
+model AgreementSignature {
+  id          String @id @default(uuid())
+  agreementId String
+  agreement   Agreement @relation(fields: [agreementId], references: [id])
+  signerId    String
+  signerRole  RoleCode
+  signedAt    DateTime @default(now())
+  ip          String?
+  contentHash String
+
+  @@unique([agreementId, signerId])
+}
+
+// ────────────────────────────────────────────── consultations & attestation
+
+enum ConsultationStatus {
+  REQUESTED
+  CONFIRMED
+  RESCHEDULED
+  COMPLETED
+  NO_SHOW_STUDENT
+  NO_SHOW_SUPERVISOR
+  CANCELLED
+}
+
+model AvailabilitySlot {
+  id           String @id @default(uuid())
+  supervisorId String
+  startsAt     DateTime
+  endsAt       DateTime
+  mode         String @default("IN_PERSON")
+  recurrenceRule String?
+  bookedById   String?
+}
+
+model Consultation {
+  id           String @id @default(uuid())
+  projectId    String
+  project      Project @relation(fields: [projectId], references: [id])
+  memberId     String
+  member       ProjectMember @relation(fields: [memberId], references: [id])
+  periodCode   String
+  supervisorId String
+  startsAt     DateTime
+  endsAt       DateTime
+  mode         String @default("IN_PERSON")
+  meetingLink  String?
+  agenda       String?
+  status       ConsultationStatus @default(REQUESTED)
+  notes        String?
+  /// Raw rubric total and the maximum it was awarded against.
+  rawTotal     Int?
+  rubricVersionId String?
+  rubricMax    Int?
+  gradedById   String?
+  gradedAt     DateTime?
+  createdAt    DateTime @default(now())
+
+  attestations Attestation[]
+  actionItems  ActionItem[]
+  deliverables Deliverable[]
+
+  @@index([memberId, periodCode, status])
+}
+
+/// Replaces the paper register. Append-only: corrections supersede.
+model Attestation {
+  id             String @id @default(uuid())
+  consultationId String
+  consultation   Consultation @relation(fields: [consultationId], references: [id])
+  actorId        String
+  actorRole      RoleCode
+  attestedAt     DateTime @default(now())
+  ip             String?
+  sessionCode    String?
+  supersedesId   String?
+  supersedeReason String?
+
+  @@index([consultationId, actorId])
+}
+
+model ActionItem {
+  id             String @id @default(uuid())
+  consultationId String
+  consultation   Consultation @relation(fields: [consultationId], references: [id])
+  description    String
+  dueOn          DateTime?
+  completedAt    DateTime?
+  carriedFromId  String?
+}
+
+// ────────────────────────────────────────────────── deliverables & ethics
+
+model Deliverable {
+  id             String @id @default(uuid())
+  projectId      String
+  project        Project @relation(fields: [projectId], references: [id])
+  consultationId String?
+  consultation   Consultation? @relation(fields: [consultationId], references: [id])
+  kind           String
+  title          String
+  createdAt      DateTime @default(now())
+  versions       DeliverableVersion[]
+}
+
+model DeliverableVersion {
+  id            String @id @default(uuid())
+  deliverableId String
+  deliverable   Deliverable @relation(fields: [deliverableId], references: [id])
+  version       Int
+  storagePath   String
+  mediaType     String
+  byteSize      Int
+  sha256        String
+  scanStatus    String   @default("PENDING")
+  scanEngine    String?
+  uploadedById  String
+  uploadedAt    DateTime @default(now())
+
+  @@unique([deliverableId, version])
+}
+
+model EthicsApplication {
+  id          String @id @default(uuid())
+  projectId   String
+  project     Project @relation(fields: [projectId], references: [id])
+  required    Boolean
+  justification String?
+  submittedAt DateTime?
+  approvedAt  DateTime?
+  reference   String?
+  documentId  String?
+}
+
+// ───────────────────────────────────────────────────────────────── rubrics
+
+model Rubric {
+  id       String @id @default(uuid())
+  code     String @unique // P1 / P2 / CONSULT / DOC
+  name     String
+  kind     String
+  provisional Boolean @default(false)
+  versions RubricVersion[]
+}
+
+/// Immutable once used. Edits fork a new version; historical scores are untouched.
+model RubricVersion {
+  id         String @id @default(uuid())
+  rubricId   String
+  rubric     Rubric @relation(fields: [rubricId], references: [id])
+  version    Int
+  maxTotal   Int
+  locked     Boolean @default(false)
+  createdAt  DateTime @default(now())
+  criteria   RubricCriterion[]
+  sheets     AssessorSheet[]
+
+  @@unique([rubricId, version])
+}
+
+model RubricCriterion {
+  id              String @id @default(uuid())
+  rubricVersionId String
+  rubricVersion   RubricVersion @relation(fields: [rubricVersionId], references: [id])
+  ordinal         Int
+  label           String
+  maxMark         Int
+  descriptors     Json?
+  scores          CriterionScore[]
+
+  @@unique([rubricVersionId, ordinal])
+}
+
+// ─────────────────────────────────────────────── presentations & grading
+
+model PresentationSession {
+  id           String @id @default(uuid())
+  cycleId      String
+  cycle        AcademicCycle @relation(fields: [cycleId], references: [id])
+  componentKey String // p1 / p2
+  serialNo     Int
+  scheduledFor DateTime
+  venue        String?
+  published    Boolean @default(false)
+  nominations  PresentationNomination[]
+
+  @@unique([cycleId, componentKey, serialNo])
+}
+
+model PresentationNomination {
+  id         String @id @default(uuid())
+  sessionId  String?
+  session    PresentationSession? @relation(fields: [sessionId], references: [id])
+  projectId  String
+  project    Project @relation(fields: [projectId], references: [id])
+  memberId   String
+  member     ProjectMember @relation(fields: [memberId], references: [id])
+  componentKey String
+  nominatedById String
+  nominatedAt DateTime @default(now())
+  readinessNote String?
+  declinedReason String?
+  sheets     AssessorSheet[]
+  moderation Moderation?
+
+  @@unique([memberId, componentKey])
+}
+
+/// One assessor's sheet for one student. Submission is the digital signature.
+model AssessorSheet {
+  id             String @id @default(uuid())
+  nominationId   String
+  nomination     PresentationNomination @relation(fields: [nominationId], references: [id])
+  memberId       String
+  member         ProjectMember @relation(fields: [memberId], references: [id])
+  assessorId     String
+  rubricVersionId String
+  rubricVersion  RubricVersion @relation(fields: [rubricVersionId], references: [id])
+  /// Persisted at submission alongside rubricMax — never recomputed live.
+  rawTotal       Int?
+  rubricMax      Int
+  submitted      Boolean @default(false)
+  submittedAt    DateTime?
+  attestation    String?
+  unlockedById   String?
+  unlockedAt     DateTime?
+  scores         CriterionScore[]
+
+  @@unique([nominationId, assessorId])
+}
+
+model CriterionScore {
+  id          String @id @default(uuid())
+  sheetId     String
+  sheet       AssessorSheet @relation(fields: [sheetId], references: [id], onDelete: Cascade)
+  criterionId String
+  criterion   RubricCriterion @relation(fields: [criterionId], references: [id])
+  /// null means "not scored" — never coerce to zero.
+  mark        Int?
+  comment     String?
+
+  @@unique([sheetId, criterionId])
+}
+
+model Moderation {
+  id              String @id @default(uuid())
+  nominationId    String @unique
+  nomination      PresentationNomination @relation(fields: [nominationId], references: [id])
+  moderatorId     String
+  rationale       String
+  agreedPercentage Decimal @db.Decimal(6, 3)
+  moderatedAt     DateTime @default(now())
+}
+
+model DocumentationMark {
+  id              String @id @default(uuid())
+  memberId        String
+  member          ProjectMember @relation(fields: [memberId], references: [id])
+  rubricVersionId String
+  rawTotal        Int
+  rubricMax       Int
+  markedById      String
+  markedAt        DateTime @default(now())
+  moderatorId     String?
+  moderatedRawTotal Int?
+  moderationNote  String?
+  moderatedAt     DateTime?
+
+  @@unique([memberId])
+}
+
+// ──────────────────────────────────────────────── configuration & snapshots
+
+model AssessmentConfig {
+  id           String @id @default(uuid())
+  cycleId      String
+  cycle        AcademicCycle @relation(fields: [cycleId], references: [id])
+  profileCode  String
+  profileLabel String
+  version      Int
+  /// Full serialised AssessmentConfig — historical marks recompute against it.
+  payload      Json
+  active       Boolean @default(false)
+  createdById  String
+  createdAt    DateTime @default(now())
+  snapshots    MarkSnapshot[]
+
+  @@unique([cycleId, profileCode, version])
+}
+
+/// Immutable. A correction creates a superseding row; nothing is updated.
+model MarkSnapshot {
+  id            String @id @default(uuid())
+  memberId      String
+  member        ProjectMember @relation(fields: [memberId], references: [id])
+  configId      String
+  config        AssessmentConfig @relation(fields: [configId], references: [id])
+  payload       Json
+  finalMark     Decimal? @db.Decimal(6, 3)
+  grade         String?
+  blocked       Boolean  @default(false)
+  published     Boolean  @default(false)
+  publishedById String?
+  publishedAt   DateTime?
+  supersedesId  String?  @unique
+  supersedeReason String?
+  computedById  String
+  computedAt    DateTime @default(now())
+
+  @@index([memberId, computedAt])
+}
+
+// ───────────────────────────────────────────────────── audit & notification
+
+/// Append-only, hash-chained. No update or delete path exists in the API.
+model AuditEvent {
+  id           String   @id @default(uuid())
+  sequence     BigInt   @unique
+  occurredAt   DateTime @default(now())
+  actorId      String?
+  actorRole    RoleCode?
+  action       String
+  entityType   String
+  entityId     String
+  before       Json?
+  after        Json?
+  ip           String?
+  userAgent    String?
+  previousHash String
+  entryHash    String   @unique
+
+  @@index([entityType, entityId])
+  @@index([actorId, occurredAt])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  kind      String
+  subject   String
+  body      String
+  readAt    DateTime?
+  emailedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId, readAt])
+}
+
+/// Durable snapshot of the application's working state (topics, consultations,
+/// marks, registrations) so data survives restarts. Mirrors the in-memory
+/// store until the full per-entity Prisma migration lands.
+model StoreState {
+  key       String   @id
+  payload   Json
+  updatedAt DateTime @updatedAt
+}

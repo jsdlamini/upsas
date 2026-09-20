@@ -1,0 +1,53 @@
+# Single-server deployment. Every core flow works with no outbound internet:
+# login, booking, grading, marking, computation and publication are all local.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-upsas}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-upsas}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./backups:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-upsas}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [internal]
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-upsas}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-upsas}
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET}
+      TOTP_ENC_KEY: ${TOTP_ENC_KEY:?set TOTP_ENC_KEY}
+      PASSWORD_BLOCKLIST_PATH: /app/data/password-blocklist.txt
+      SMTP_HOST: ${SMTP_HOST:-mail.uniswa.sz}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      TZ: Africa/Mbabane
+    volumes:
+      - uploads:/var/lib/upsas/uploads
+    ports: ["3000:3000"]
+    networks: [internal, edge]
+
+  # Local signature updates only; drop this service for a fully air-gapped site.
+  clamav:
+    image: clamav/clamav:stable
+    restart: unless-stopped
+    volumes: [clam-db:/var/lib/clamav]
+    networks: [internal]
+
+volumes:
+  db-data:
+  uploads:
+  clam-db:
+
+networks:
+  internal: { internal: true }
+  edge: {}
