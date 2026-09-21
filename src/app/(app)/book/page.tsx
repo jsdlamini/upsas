@@ -108,10 +108,11 @@ async function decideMeeting(formData: FormData) {
 
 export default async function Book({
   searchParams,
-}: { searchParams: Promise<{ saved?: string; e?: string; added?: string }> }) {
+}: { searchParams: Promise<{ saved?: string; e?: string; added?: string; focus?: string }> }) {
   const principal = await currentPrincipal();
   if (!principal) redirect('/login');
-  const { saved, e, added } = await searchParams;
+  // `focus` is the event a notification was opened for; its row is highlighted.
+  const { saved, e, added, focus } = await searchParams;
   const person = findPerson(principal.userId);
   const nowIso = new Date().toISOString();
 
@@ -152,7 +153,8 @@ export default async function Book({
           <div className="box">
             <strong>Booked</strong>
             {mine.map((s) => (
-              <p key={s.id} style={{ margin: '6px 0 0' }}>
+              <p key={s.id} id={`booking-${s.id}`} className={focus === s.id ? 'focused' : undefined}
+                 style={{ margin: '6px 0 0' }}>
                 <span className="mono">{when(s.startsAt)}</span> · {s.mode === 'ONLINE' ? 'online' : s.venue} · {s.agenda}
                 <span className={`chip ${s.status === 'CONFIRMED' ? 'ok' : 'warn'}`} style={{ marginLeft: 6 }}>
                   {s.status === 'CONFIRMED' ? 'confirmed' : 'awaiting confirmation'}
@@ -175,7 +177,8 @@ export default async function Book({
           <div className="box">
             <strong>Meeting requests</strong>
             {myRequests.map((r) => (
-              <p key={r.id} style={{ margin: '6px 0 0' }}>
+              <p key={r.id} id={`request-${r.id}`} className={focus === r.id ? 'focused' : undefined}
+                 style={{ margin: '6px 0 0' }}>
                 <span className="muted" style={{ fontSize: 12 }}>{r.preferredTimes}</span> · {r.agenda}{' '}
                 <span className={`chip ${r.status === 'APPROVED' ? 'ok' : r.status === 'DECLINED' ? 'bad' : 'warn'}`}>
                   {r.status.toLowerCase()}
@@ -185,7 +188,7 @@ export default async function Book({
           </div>
         )}
 
-        <h2 style={{ fontSize: 15 }}>Open slots</h2>
+        <h2 style={{ fontSize: 15 }} id="open-slots">Open slots</h2>
         {open.length === 0 ? (
           <div className="box">
             <strong>No open slots right now.</strong>
@@ -261,6 +264,11 @@ export default async function Book({
   const mine = slotsOf(principal.userId);
   const upcoming = mine.filter((s) => s.startsAt > nowIso);
   const requests = meetingRequestsFor(principal.userId);
+  // Every booked slot is listed, and so is the one a notification points at;
+  // only open slots are trimmed. Trimming by position used to hide bookings
+  // past the sixteenth row, which a notification link would then land short of.
+  const openShown = new Set(upcoming.filter((s) => !s.bookedByStudentId).slice(0, 16).map((s) => s.id));
+  const shown = upcoming.filter((s) => s.bookedByStudentId || openShown.has(s.id) || s.id === focus);
   return (
     <>
       <h1 className="page">My availability</h1>
@@ -299,7 +307,7 @@ export default async function Book({
                 {requests.filter((r) => r.status === 'PENDING').map((r) => {
                   const st = findStudent(r.studentId);
                   return (
-                    <tr key={r.id}>
+                    <tr key={r.id} id={`request-${r.id}`} className={focus === r.id ? 'focused' : undefined}>
                       <td><strong>{st ? `${st.surname}, ${st.otherNames}` : r.studentId}</strong></td>
                       <td className="muted" style={{ fontSize: 12 }}>{r.preferredTimes}</td>
                       <td style={{ fontSize: 12 }}>{r.agenda}</td>
@@ -330,10 +338,10 @@ export default async function Book({
           <thead><tr><th style={{ width: '24%' }}>When</th><th style={{ width: '16%' }}>Where</th>
             <th style={{ width: '22%' }}>Booked by</th><th>Agenda</th><th style={{ width: '20%' }}></th></tr></thead>
           <tbody>
-            {upcoming.slice(0, 16).map((s) => {
+            {shown.map((s) => {
               const student = s.bookedByStudentId ? findStudent(s.bookedByStudentId) : null;
               return (
-                <tr key={s.id}>
+                <tr key={s.id} id={`slot-${s.id}`} className={focus === s.id ? 'focused' : undefined}>
                   <td className="mono">{when(s.startsAt)}</td>
                   <td className="muted">{s.mode === 'ONLINE' ? 'Online' : s.venue}</td>
                   <td>{student

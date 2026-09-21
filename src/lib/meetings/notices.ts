@@ -49,6 +49,13 @@ export interface MeetingNotice {
   supersededAt: string | null;
   /** True when the reader has to do something, not just know something. */
   actionRequired: boolean;
+  /**
+   * Where the event lives, for this reader: the exact row where it can be
+   * confirmed, declined or rebooked. Chosen when the notice is created, because
+   * that is when it is known whose screen it will land on. Absent on notices
+   * stored before links existed; those fall back to the booking page.
+   */
+  href?: string;
 }
 
 /** Bad news is kept visible for a week even when the meeting time has passed. */
@@ -103,6 +110,27 @@ export function supersede(notices: MeetingNotice[], meetingRef: string, now: Dat
     retired += 1;
   }
   return retired;
+}
+
+/**
+ * Already-read notices from the last week, for the "Earlier" part of the bell.
+ * A notification list that forgets everything the moment it is opened makes
+ * people afraid to open it.
+ */
+export function recentlySeen(
+  notices: readonly MeetingNotice[], userId: string, now: Date, limit = 8,
+): MeetingNotice[] {
+  const cutoff = now.getTime() - BAD_NEWS_DAYS * 86_400_000;
+  return notices
+    .filter((n) => n.forUserId === userId && n.seenAt && !n.supersededAt
+      && Date.parse(n.createdAt) >= cutoff)
+    .slice()
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, limit);
+}
+
+export function hrefOf(notice: MeetingNotice): string {
+  return notice.href ?? '/book';
 }
 
 /** Only the person a notice is addressed to may dismiss it. */

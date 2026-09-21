@@ -19,7 +19,7 @@ import {
 } from '../rubrics/instrument';
 import { notifyUser } from '../notifications';
 import {
-  makeNotice, supersede, visibleFor, dismiss, dismissAll, whenLabel,
+  makeNotice, supersede, visibleFor, dismiss, dismissAll, whenLabel, recentlySeen, hrefOf,
   type MeetingNotice, type NoticeKind,
 } from '../meetings/notices';
 
@@ -1036,20 +1036,38 @@ function where(slot: Slot): string {
  */
 function announce(
   meetingRef: string, startsAt: string | null,
-  notices: Array<{ forUserId: string; kind: NoticeKind; title: string; body: string; actionRequired?: boolean }>,
+  notices: Array<{ forUserId: string; kind: NoticeKind; title: string; body: string; actionRequired?: boolean; href: string }>,
 ): void {
   const now = new Date();
   supersede(meetingNotices, meetingRef, now);
   for (const n of notices) {
     meetingNotices.push(makeNotice({
       forUserId: n.forUserId, meetingRef, kind: n.kind, title: n.title, body: n.body,
-      startsAt, actionRequired: n.actionRequired ?? false,
+      startsAt, actionRequired: n.actionRequired ?? false, href: n.href,
     }, now));
   }
 }
 
 export function noticesFor(userId: string, now: Date = new Date()): MeetingNotice[] {
   return visibleFor(meetingNotices, userId, now);
+}
+
+export function recentNoticesFor(userId: string, now: Date = new Date()): MeetingNotice[] {
+  return recentlySeen(meetingNotices, userId, now);
+}
+
+/**
+ * Open a notice from the bell: mark it read and say where to go. Anyone else's
+ * notice id is treated as unknown rather than confirmed to exist.
+ */
+export function openNotice(id: string, userId: string): string | null {
+  const notice = meetingNotices.find((n) => n.id === id && n.forUserId === userId);
+  if (!notice) return null;
+  if (!notice.seenAt) {
+    notice.seenAt = new Date().toISOString();
+    schedulePersist();
+  }
+  return hrefOf(notice);
 }
 
 export function dismissNotice(id: string, userId: string): boolean {
@@ -1093,11 +1111,13 @@ export function bookSlot(
   announce(slot.id, slot.startsAt, [
     {
       forUserId: slot.supervisorId, kind: 'BOOKED', actionRequired: true,
+      href: `/book?focus=${slot.id}#slot-${slot.id}`,
       title: `${studentName(studentId)} booked ${when}`,
       body: `${slot.agenda} · ${where(slot)}. Confirm or decline it under My availability.`,
     },
     {
       forUserId: personIdForStudent(studentId), kind: 'REQUESTED',
+      href: `/book?focus=${slot.id}#booking-${slot.id}`,
       title: `Booking sent for ${when}`,
       body: `With ${staffName(slot.supervisorId)} · ${where(slot)}. It is not confirmed until they accept it.`,
     },
@@ -1127,11 +1147,13 @@ export function confirmBooking(slotId: string, supervisorId: string): { ok: true
   announce(slot.id, slot.startsAt, [
     {
       forUserId: personIdForStudent(slot.bookedByStudentId), kind: 'CONFIRMED',
+      href: `/book?focus=${slot.id}#booking-${slot.id}`,
       title: `Confirmed: ${confirmedWhen}`,
       body: `${staffName(slot.supervisorId)} confirmed your consultation · ${where(slot)}.`,
     },
     {
       forUserId: slot.supervisorId, kind: 'CONFIRMED',
+      href: `/book?focus=${slot.id}#slot-${slot.id}`,
       title: `Confirmed: ${studentName(slot.bookedByStudentId)}, ${confirmedWhen}`,
       body: `${slot.agenda ?? 'Consultation'} · ${where(slot)}. The student has been told.`,
     },
@@ -1154,11 +1176,13 @@ export function declineBooking(slotId: string, supervisorId: string): { ok: true
   announce(slot.id, slot.startsAt, [
     {
       forUserId: personIdForStudent(slot.bookedByStudentId), kind: 'DECLINED', actionRequired: true,
+      href: '/book#open-slots',
       title: `Not accepted: ${declinedWhen}`,
       body: `${staffName(slot.supervisorId)} could not take this slot. Book another time.`,
     },
     {
       forUserId: slot.supervisorId, kind: 'DECLINED',
+      href: `/book?focus=${slot.id}#slot-${slot.id}`,
       title: `You declined ${studentName(slot.bookedByStudentId)}, ${declinedWhen}`,
       body: 'The slot is open again and the student has been told.',
     },
@@ -1182,11 +1206,13 @@ export function cancelBooking(slotId: string, studentId: string, now: Date): { o
   announce(slot.id, slot.startsAt, [
     {
       forUserId: slot.supervisorId, kind: 'CANCELLED',
+      href: `/book?focus=${slot.id}#slot-${slot.id}`,
       title: `Cancelled: ${studentName(studentId)}, ${cancelledWhen}`,
       body: 'The student cancelled with enough notice. The slot is open again.',
     },
     {
       forUserId: personIdForStudent(studentId), kind: 'CANCELLED',
+      href: '/book#open-slots',
       title: `You cancelled ${cancelledWhen}`,
       body: `${staffName(slot.supervisorId)} has been told.`,
     },
@@ -1390,6 +1416,21 @@ export function requestMeeting(input: {
     agenda: input.agenda.trim(), preferredTimes: input.preferredTimes.trim(),
     status: 'PENDING', requestedAt: new Date().toISOString(), decidedAt: null,
   });
+  const request = meetingRequests[meetingRequests.length - 1]!;
+  announce(request.id, null, [
+    {
+      forUserId: input.supervisorId, kind: 'BOOKED', actionRequired: true,
+      href: `/book?focus=${request.id}#request-${request.id}`,
+      title: `${studentName(input.studentId)} asked for a meeting`,
+      body: `${request.agenda} · suggests ${request.preferredTimes}. Approve or decline it.`,
+    },
+    {
+      forUserId: personIdForStudent(input.studentId), kind: 'REQUESTED',
+      href: `/book?focus=${request.id}#request-${request.id}`,
+      title: 'Meeting request sent',
+      body: `${staffName(input.supervisorId)} will approve or decline it.`,
+    },
+  ]);
   schedulePersist();
   return { ok: true };
 }
@@ -1409,6 +1450,7 @@ export function decideMeetingRequest(id: string, decision: 'APPROVED' | 'DECLINE
     {
       forUserId: personIdForStudent(m.studentId), kind: approved ? 'CONFIRMED' : 'DECLINED',
       actionRequired: !approved,
+      href: approved ? `/book?focus=${m.id}#request-${m.id}` : '/book#open-slots',
       title: approved ? 'Meeting request accepted' : 'Meeting request not accepted',
       body: approved
         ? `${staffName(m.supervisorId)} accepted your request (${m.preferredTimes}). Watch for the time.`
@@ -1416,6 +1458,7 @@ export function decideMeetingRequest(id: string, decision: 'APPROVED' | 'DECLINE
     },
     {
       forUserId: m.supervisorId, kind: approved ? 'CONFIRMED' : 'DECLINED',
+      href: `/book?focus=${m.id}#request-${m.id}`,
       title: `${approved ? 'Accepted' : 'Declined'}: ${studentName(m.studentId)}'s meeting request`,
       body: `${m.agenda} · the student has been told.`,
     },
