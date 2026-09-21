@@ -134,7 +134,11 @@ export type FlagCode =
   | 'PRESENTATION_MODERATION_REQUIRED'
   | 'PRESENTATION_INSUFFICIENT_ASSESSORS'
   | 'PRESENTATION_PENDING'
-  | 'DOCUMENTATION_MISSING';
+  | 'DOCUMENTATION_MISSING'
+  /** The student is deferred or withdrawn: no mark is produced this cycle. */
+  | 'NOT_ASSESSED_THIS_CYCLE'
+  /** A component credited from an earlier cycle rather than marked in this one. */
+  | 'COMPONENT_CARRIED';
 
 export interface Flag {
   readonly code: FlagCode;

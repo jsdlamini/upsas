@@ -11,7 +11,7 @@
   /* structure */
   --ink:        #0F1B2D;
   --ink-soft:   #3A4657;
-  --muted:      #67748A;
+  --muted:      #5A6679;   /* AA at 11.5px on --canvas */
   --canvas:     #F4F6F9;
   --surface:    #FFFFFF;
   --rule:       #DFE5EC;
@@ -24,7 +24,7 @@
   --accent-dim: #E9EFFA;
   --moss:       #2E7D5B;
   --moss-dim:   #E7F3ED;
-  --ochre:      #B7791F;
+  --ochre:      #8A5A12;   /* AA on --ochre-dim */
   --ochre-dim:  #FBF3E3;
   --rust:       #B23B35;
   --rust-dim:   #FCEBEA;
@@ -41,10 +41,14 @@
   --serif: ui-serif, Georgia, "Times New Roman", serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
 
+  --field-line: #9AA7B6;   /* 3:1 against surface and canvas (WCAG 1.4.11) */
+  --placeholder:#6E7A88;
+
   --rail-w: 248px;
 }
 
 *{ box-sizing:border-box }
+html{ color-scheme:light dark }
 html,body{ height:100% }
 body{
   margin:0; background:var(--canvas); color:var(--ink);
@@ -62,12 +66,12 @@ a:hover{ text-decoration:underline }
 
 /* ─────────────────────────────────────────────────────────── shell */
 
-.shell{ display:flex; min-height:100vh }
+.shell{ display:flex; min-height:100vh; min-height:100dvh }
 
 .rail{
   width:var(--rail-w); flex:0 0 var(--rail-w);
   background:var(--rail); color:#C6D0DB;
-  display:flex; flex-direction:column; position:sticky; top:0; height:100vh;
+  display:flex; flex-direction:column; position:sticky; top:0; height:100vh; height:100dvh;
 }
 .rail .brand{ padding:22px 20px 18px; border-bottom:1px solid var(--rail-line) }
 .rail .brand .mark{
@@ -95,7 +99,7 @@ a:hover{ text-decoration:underline }
 .rail .foot button.link:hover{ text-decoration:underline }
 
 .content{ flex:1; min-width:0; display:flex; flex-direction:column }
-main{ padding:26px 32px 72px; max-width:1560px; width:100% }
+main{ padding:26px 32px 72px; max-width:1560px; width:100%; margin-inline:auto }
 
 /* ──────────────────────────────────────────────────── page furniture */
 
@@ -161,17 +165,17 @@ td.sess div{ font:400 10px/1.4 var(--sans); color:var(--muted); margin-top:3px }
 input[type="text"], input[type="password"], input[type="number"], input[type="date"],
 input[type="email"], select, textarea, input:not([type]){
   font:13.5px var(--sans); color:var(--ink); background:var(--surface);
-  border:1px solid #C6D0DA; border-radius:var(--radius-sm); padding:8px 10px;
+  border:1px solid var(--field-line); border-radius:var(--radius-sm); padding:8px 10px;
   transition:border-color .15s ease, box-shadow .15s ease;
 }
 input:focus, select:focus, textarea:focus{
   outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-dim);
 }
-input::placeholder, textarea::placeholder{ color:#9AA6B2 }
+input::placeholder, textarea::placeholder{ color:var(--placeholder) }
 
 input.mark{
   width:52px; text-align:center; font:14px var(--mono);
-  padding:6px 4px; border-color:#CFD8E1;
+  padding:6px 4px; border-color:var(--field-line);
 }
 input.mark:focus{ background:#F4F8FF }
 input.mark:disabled{ background:#F4F6F9; color:var(--muted) }
@@ -334,8 +338,7 @@ a{ transition:color .12s ease }
   .rail nav a{ border-left:0; border-bottom:2px solid transparent; margin:0 }
   .rail nav a.on{ border-left:0; border-bottom-color:#6E93D6 }
   .rail .brand{ padding:14px 16px 10px }
-  .rail .foot{ display:none }
-  main{ padding:18px 16px 48px }
+    main{ padding:18px 16px 48px }
   .auth{ padding:32px 16px }
 }
 @media (max-width: 720px) {
@@ -446,4 +449,477 @@ h2{ font-size:14px; letter-spacing:.02em; text-transform:uppercase; color:var(--
 @keyframes toast-in{
   from{ opacity:0; transform:translate(-50%, 8px) }
   to{ opacity:1; transform:translate(-50%, 0) }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Usability, responsiveness, accessibility — appended layer.
+   Everything below overrides the rules above by cascade order.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ───────────────────────────────────────────── 1. wide tables never break out */
+
+/* A 13-column grading sheet must scroll inside its own box. Without this the
+   page body scrolls sideways and the rail and headings leave the screen. */
+.table-wrap{
+  overflow-x:auto; overscroll-behavior-x:contain;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-gutter:stable;
+  border-radius:var(--radius);
+  margin-bottom:16px;
+}
+.table-wrap > table.list, .table-wrap > table.grid{ margin-bottom:0 }
+.table-wrap:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
+
+/* Tells a touch user there is more to the right, and disappears once scrolled. */
+.scroll-hint{
+  display:none; font-size:12px; color:var(--muted); margin:0 0 6px;
+}
+@media (max-width: 900px){ .scroll-hint{ display:block } }
+
+/* ────────────────────────────────────────── 2. accessible names and focus */
+
+.sr-only{
+  position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;
+}
+:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
+.btn:focus-visible{ outline:2px solid var(--ink); outline-offset:2px }
+.rail nav a:focus-visible{ outline:2px solid #8FAEDD; outline-offset:-2px }
+
+/* A field the server rejected, named in the error list above the sheet. */
+input[aria-invalid="true"], select[aria-invalid="true"]{
+  border-color:var(--rust); background:var(--rust-dim);
+}
+input[aria-invalid="true"]:focus{ box-shadow:0 0 0 3px var(--rust-dim) }
+
+/* ──────────────────────────────────────────────── 3. motion and preferences */
+
+@media (prefers-reduced-motion: reduce){
+  *, *::before, *::after{
+    animation-duration:.01ms !important; animation-iteration-count:1 !important;
+    transition-duration:.01ms !important; scroll-behavior:auto !important;
+  }
+}
+
+/* ───────────────────────────────────────────── 4. the mobile shell */
+
+/* The checkbox is the menu state. No JavaScript, so the shell behaves the
+   same way the rest of the app does when scripts fail to load. */
+.nav-toggle{ position:absolute; opacity:0; pointer-events:none }
+.nav-toggle-btn{ display:none }
+
+@media (max-width: 900px){
+  .shell{ flex-direction:column }
+  .rail{
+    width:100%; flex:0 0 auto; height:auto; position:sticky; top:0; z-index:40;
+    padding-top:env(safe-area-inset-top, 0px);
+  }
+  .rail .brand{
+    display:flex; align-items:center; gap:12px;
+    padding:10px 16px; border-bottom:1px solid var(--rail-line);
+  }
+  .rail .brand .mark{ flex:1; min-width:0; font-size:14px }
+  .rail .brand .sub{ display:none }
+
+  .nav-toggle-btn{
+    display:inline-flex; align-items:center; gap:8px;
+    min-height:44px; padding:0 14px; cursor:pointer;
+    color:#C6D0DB; font:600 13px/1 var(--sans);
+    background:#18273A; border:1px solid var(--rail-line); border-radius:var(--radius-sm);
+  }
+  .nav-toggle-btn::before{
+    content:""; width:15px; height:2px; background:currentColor;
+    box-shadow:0 5px 0 currentColor, 0 -5px 0 currentColor;
+  }
+  .nav-toggle:focus-visible ~ .brand .nav-toggle-btn{ outline:2px solid #8FAEDD; outline-offset:2px }
+  .nav-toggle:checked ~ .brand .nav-toggle-btn{ background:#22344B; color:#fff }
+
+  /* Collapsed by default; the checkbox reveals both the links and the
+     identity block. Sign-out used to be display:none below 900px, which left
+     a shared lab machine signed in with no way out. */
+  .rail nav, .rail .foot{ display:none }
+  .nav-toggle:checked ~ nav{
+    display:flex; flex-direction:column; padding:8px 12px 4px;
+    max-height:min(62vh, 520px); overflow-y:auto;
+  }
+  .nav-toggle:checked ~ .foot{
+    display:flex; padding:12px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+  }
+  .rail nav a{
+    border-left:0; margin:0 0 2px;
+    min-height:44px; display:flex; align-items:center;   /* touch target */
+  }
+  .rail nav a.on{ border-left:0; background:#1D3049 }
+
+  main{ padding:18px 16px 48px }
+  .auth{ padding:32px 16px }
+}
+
+@media (max-width: 720px){
+  .marks-grid{ grid-template-columns:1fr 1fr }
+  .register-options, .form-grid{ grid-template-columns:1fr }
+  .steps, .journey{ font-size:12px }
+  h1.page{ font-size:22px }
+  .verdict .figure{ font-size:42px }
+}
+@media (max-width: 460px){
+  .marks-grid{ grid-template-columns:1fr }
+  .tabs-switch{ display:flex; width:100% }
+  .tabs-switch a{ flex:1; text-align:center; padding:9px 10px }
+  .btn{ width:100%; text-align:center }
+  .actionbar .btn{ width:auto }
+}
+
+/* ────────────────────────────────── 5. the grading sheet on a small screen */
+
+/* Dense marking is comparison work, so the columns stay columns and the sheet
+   scrolls. What must not move is who you are marking. */
+@media (max-width: 900px){
+  table.grid td.stud, table.grid thead th.stud{
+    position:sticky; left:0; z-index:3;
+    background:var(--surface); border-right:1px solid var(--rule);
+    box-shadow:2px 0 0 rgba(15,27,45,.05);
+    max-width:142px;
+  }
+  table.grid thead th.stud{ background:#F4F6F9; z-index:4 }
+  table.grid tbody tr:nth-child(even) td.stud{ background:#FAFBFD }
+  table.grid td.idcol, table.grid th.idcol{ display:none }  /* number is on the row already */
+  input.mark{ width:46px; min-height:38px }
+}
+
+/* The save control follows the assessor down a forty-row sheet. */
+.actionbar{
+  position:sticky; bottom:0; z-index:20;
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  margin-top:14px; padding:12px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+  background:color-mix(in srgb, var(--surface) 92%, transparent);
+  -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+  border:1px solid var(--rule); border-radius:var(--radius);
+  box-shadow:var(--shadow);
+}
+.actionbar .hint{ font-size:12.5px; color:var(--muted); flex:1; min-width:220px }
+.actionbar .dirty{
+  display:none; font-size:12.5px; font-weight:600; color:var(--ochre);
+  background:var(--ochre-dim); border:1px solid #E4CFA3;
+  border-radius:999px; padding:4px 11px;
+}
+form[data-dirty="1"] .actionbar .dirty{ display:inline-block }
+
+.errorlist{ margin:6px 0 0; padding-left:18px }
+.errorlist li{ margin:2px 0 }
+
+/* ───────────────────────────────────────────────── 6. empty states */
+
+.empty{
+  background:var(--surface); border:1px dashed var(--rule);
+  border-radius:var(--radius); padding:26px 22px; text-align:center;
+  color:var(--muted); font-size:13.5px;
+}
+.empty strong{ display:block; color:var(--ink); font:600 15px/1.3 var(--serif); margin-bottom:5px }
+
+/* ───────────────────────────────────────────────── 7. loading skeleton */
+
+.skeleton{ display:flex; flex-direction:column; gap:10px }
+.skeleton i{
+  display:block; height:13px; border-radius:4px; background:var(--rule-soft);
+  animation:pulse 1.4s ease-in-out infinite;
+}
+.skeleton i.wide{ height:26px; width:44% }
+.skeleton i.box{ height:150px }
+@keyframes pulse{ 0%,100%{ opacity:1 } 50%{ opacity:.45 } }
+
+/* ─────────────────────────────────────────────────────── 8. dark mode */
+
+/* Every colour was already a token, so the dark scheme is a second set of
+   values rather than a second stylesheet. */
+@media (prefers-color-scheme: dark){
+  :root{
+    --ink:        #E8EDF4;
+    --ink-soft:   #B7C2D0;
+    --muted:      #93A1B2;
+    --canvas:     #0C131C;
+    --surface:    #141D29;
+    --rule:       #26313F;
+    --rule-soft:  #1D2734;
+    --rail:       #0A111A;
+    --rail-line:  #1F2B3B;
+
+    --accent:     #7CA2EA;
+    --accent-dim: #1B2942;
+    --moss:       #6FCB9F;
+    --moss-dim:   #14291F;
+    --ochre:      #E0B25C;
+    --ochre-dim:  #2C2413;
+    --rust:       #EE8983;
+    --rust-dim:   #2E1817;
+    --seal:       #E8EDF4;
+
+    --field-line: #3B495B;
+    --placeholder:#8492A4;
+
+    --shadow-sm:  0 1px 2px rgba(0,0,0,.4);
+    --shadow:     0 1px 3px rgba(0,0,0,.45), 0 4px 16px rgba(0,0,0,.35);
+  }
+  table.list thead th, table.grid thead th{ background:#1A2532; color:var(--ink-soft) }
+  table.list tbody tr:nth-child(even) td, table.grid tbody tr:nth-child(even) td{ background:#17212E }
+  table.list tbody tr:hover td, table.grid tbody tr:hover td{ background:#1C2836 }
+  table.list tbody tr:nth-child(even):hover td{ background:#1C2836 }
+  td.total{ background:#1B2635 }
+  table.grid tbody tr:hover td.total{ background:#22303F }
+  td.sess{ background:#1A2532 }
+  tr.band.solo td{ background:#1A2532; color:var(--ink-soft) }
+  tr.band td{ color:#BFD2F2 }
+  input[type="text"], input[type="password"], input[type="number"], input[type="date"],
+  input[type="email"], select, textarea, input:not([type]){ background:#0F1823; color:var(--ink) }
+  input.mark:focus{ background:#132033 }
+  input.mark:disabled{ background:#131C27; color:var(--muted) }
+  .btn:disabled{ background:#1E2835; border-color:#2A3746; color:#6F7D8D }
+  .btn.ghost{ background:var(--surface) }
+  .chip{ background:#1A2532 }
+  .steps span, .journey span, .page-context .cycle-chip{ background:var(--surface) }
+  .role-check{ background:#0F1823 }
+  .mark-cell{ background:#101A26 }
+  .auth-brand{ background:linear-gradient(180deg, #080E16 0%, #10202F 100%) }
+  .toast{ background:#1D2836 }
+  .skeleton i{ background:#1D2734 }
+  .nav-toggle-btn{ background:#16212F }
+}
+
+/* ─────────────────────────────────────────────────────────── 9. print */
+
+/* Registers, session lists and mark sheets get printed and filed. */
+@media print{
+  :root{ --canvas:#fff; --surface:#fff }
+  .rail, .actionbar, .toast, .tabs-switch, .scroll-hint, .btn, form[data-dirty] .dirty{ display:none !important }
+  .shell{ display:block }
+  main{ padding:0; max-width:none }
+  .table-wrap{ overflow:visible }
+  table.list, table.grid{ font-size:10.5pt; border:1px solid #000 }
+  table.list thead th, table.grid thead th{
+    background:#fff !important; color:#000; border-bottom:1px solid #000; position:static;
+  }
+  table.list td, table.grid td{ border-bottom:1px solid #999 }
+  thead{ display:table-header-group }          /* repeat headers across pages */
+  tr, .box{ break-inside:avoid }
+  a[href]::after{ content:"" }
+  .print-only{ display:block }
+  body{ background:#fff; color:#000 }
+}
+.print-only{ display:none }
+
+/* ─────────────────────────────────────────────────── 10. skip link */
+
+/* Visible only when tabbed to: a keyboard user should not have to walk the
+   whole rail on every page to reach the sheet. */
+.skip:focus{
+  position:fixed; top:10px; left:10px; z-index:100;
+  width:auto; height:auto; margin:0; clip:auto; overflow:visible;
+  background:var(--surface); color:var(--accent);
+  border:1px solid var(--accent); border-radius:var(--radius-sm);
+  padding:10px 16px; font-weight:600; text-decoration:none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   11. Colour as wayfinding
+   ═══════════════════════════════════════════════════════════════════════════
+
+   The original rule here was that colour is reserved for status and never used
+   to decorate. That rule stays: moss, ochre and rust still mean pass, watch and
+   problem, and nothing below borrows them.
+
+   What is added is a second, separate job for colour — telling you which part
+   of the system you are in. Each area carries a hue, and that hue appears in
+   exactly four places: the active rail item, the rule under the page title, the
+   line under a table header, and a wash behind the top of the page. Buttons stay
+   one blue everywhere, because an action should look the same wherever it is.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+:root{
+  --section:      #2E5AC8;   /* fallback: the system blue */
+  --section-tint: color-mix(in srgb, var(--section) 9%,  var(--surface));
+  --section-wash: color-mix(in srgb, var(--section) 5%,  var(--canvas));
+  --section-line: color-mix(in srgb, var(--section) 38%, var(--rule));
+  --section-lift: color-mix(in srgb, var(--section) 52%, #ffffff);  /* legible on the rail */
+}
+
+[data-section="home"]         { --section:#16628C }   /* supervisees, my dashboard */
+[data-section="topics"]       { --section:#5B43BF }   /* the topic pool */
+[data-section="book"]         { --section:#0E7480 }   /* slots and availability */
+[data-section="consultations"]{ --section:#1F7A5A }   /* the register */
+[data-section="grading"]      { --section:#2E5AC8 }   /* marking */
+[data-section="publish"]      { --section:#9B3D76 }   /* moderation and release */
+[data-section="reports"]      { --section:#2C4A6B }   /* the archive */
+
+@media (prefers-color-scheme: dark){
+  [data-section="home"]         { --section:#63B3E0 }
+  [data-section="topics"]       { --section:#A996F0 }
+  [data-section="book"]         { --section:#5CC5CE }
+  [data-section="consultations"]{ --section:#6FCB9F }
+  [data-section="grading"]      { --section:#7CA2EA }
+  [data-section="publish"]      { --section:#E28BBF }
+  [data-section="reports"]      { --section:#9DB6D4 }
+}
+
+/* The page sits on a faint wash of its own hue. Enough to tell two screens
+   apart at a glance from across a desk; not enough to tint a mark. */
+.content{ background:var(--section-wash) }
+main{
+  background:
+    radial-gradient(900px 260px at 12% -80px,
+      color-mix(in srgb, var(--section) 11%, transparent), transparent 70%);
+}
+
+/* The title carries the hue, so the first thing you read tells you where you are. */
+h1.page{ margin-bottom:10px }
+h1.page + p.lede{ margin-top:0 }
+h1.page::after{
+  content:""; display:block; width:56px; height:3px; border-radius:2px; margin:10px 0 0;
+  background:linear-gradient(90deg, var(--section), color-mix(in srgb, var(--section) 25%, transparent));
+}
+
+/* Section headings: a coloured stub instead of a grey hairline. */
+h2{
+  border-bottom:1px solid var(--rule);
+  box-shadow:inset 0 -1px 0 0 transparent;
+  position:relative;
+}
+h2::after{
+  content:""; position:absolute; left:0; bottom:-1px; width:34px; height:2px;
+  background:var(--section); border-radius:2px;
+}
+
+/* Tables: the header keeps its quiet fill and gains the hue as an underline. */
+table.list thead th, table.grid thead th{
+  background:var(--section-tint);
+  border-bottom:2px solid var(--section-line);
+  color:var(--ink);
+}
+table.list tbody tr:hover td, table.grid tbody tr:hover td{
+  background:color-mix(in srgb, var(--section) 6%, var(--surface));
+}
+table.list tbody tr:nth-child(even):hover td, table.grid tbody tr:nth-child(even):hover td{
+  background:color-mix(in srgb, var(--section) 8%, var(--surface));
+}
+.table-wrap{ box-shadow:0 1px 2px color-mix(in srgb, var(--section) 12%, transparent) }
+
+/* ─────────────────────────────────────────────────────── the rail */
+
+/* One deliberate flourish: a spine down the edge of the rail carrying every
+   section hue in order, with the current one lit. It is the only purely
+   expressive mark in the interface. */
+.rail{
+  background:linear-gradient(180deg, #0C1624 0%, #101E30 55%, #0B1523 100%);
+  position:sticky;
+}
+.rail::after{
+  content:""; position:absolute; top:0; right:0; bottom:0; width:3px;
+  background:linear-gradient(180deg, #16628C, #5B43BF 22%, #0E7480 42%,
+             #1F7A5A 60%, #2E5AC8 78%, #9B3D76 100%);
+  opacity:.9;
+}
+.rail nav a.on{
+  background:linear-gradient(90deg,
+    color-mix(in srgb, var(--section) 26%, transparent), transparent 82%);
+  border-left-color:var(--section-lift);
+  color:#fff;
+}
+.rail nav a.on svg{ color:var(--section-lift); opacity:1 }
+.rail .brand .logo{
+  background:linear-gradient(140deg, #2E5AC8, #5B43BF);
+  box-shadow:0 2px 8px rgba(46,90,200,.45);
+}
+.avatar{
+  background:linear-gradient(140deg,
+    color-mix(in srgb, var(--section) 85%, #ffffff), var(--section));
+}
+
+/* ───────────────────────────────────────────── numbers and progress */
+
+/* The student's four marks read as four different things, so they look like
+   four different things rather than four grey boxes. */
+.marks-grid .mark-cell:nth-child(1){ --cell:#16628C }
+.marks-grid .mark-cell:nth-child(2){ --cell:#1F7A5A }
+.marks-grid .mark-cell:nth-child(3){ --cell:#5B43BF }
+.marks-grid .mark-cell:nth-child(4){ --cell:#9B3D76 }
+.marks-grid .mark-cell{
+  background:color-mix(in srgb, var(--cell, var(--section)) 7%, var(--surface));
+  border-color:color-mix(in srgb, var(--cell, var(--section)) 24%, var(--rule));
+  border-top:3px solid var(--cell, var(--section));
+}
+.marks-grid .mark-cell .mark-value{ color:color-mix(in srgb, var(--cell) 88%, var(--ink)) }
+.mark-cell.final{
+  background:color-mix(in srgb, var(--accent) 12%, var(--surface));
+  border-color:var(--accent);
+}
+.mark-cell.final .mark-value{ color:var(--accent) }
+.grade-pill{
+  background:var(--accent); color:#fff; border-color:var(--accent);
+}
+
+.progress-fill{ background:linear-gradient(90deg, #1F7A5A, #0E7480) }
+.verdict .figure{ color:var(--section) }
+.verdict .grade{
+  border-color:var(--section-line);
+  background:var(--section-tint);
+}
+td.sess{ color:var(--section) }
+tr.band td{
+  background:color-mix(in srgb, var(--section) 12%, var(--surface));
+  color:color-mix(in srgb, var(--section) 78%, var(--ink));
+  border-bottom:1px solid color-mix(in srgb, var(--section) 26%, var(--rule));
+}
+
+/* ───────────────────────────────────────────── smaller furniture */
+
+.btn{ background:linear-gradient(180deg, #3866D6, #2E5AC8) }
+.btn:hover{ background:linear-gradient(180deg, #2F58C0, #2450B0) }
+.btn.ghost{ background:var(--surface); border-color:var(--accent) }
+.btn:disabled{ background:#E4E8ED }
+
+.steps b, .journey span.done{ color:var(--section) }
+.journey span.done{
+  border-color:color-mix(in srgb, var(--section) 45%, var(--rule));
+  background:var(--section-tint);
+}
+.steps span{ border-left:3px solid color-mix(in srgb, var(--section) 40%, var(--rule)) }
+.page-context .cycle-chip{
+  border-color:color-mix(in srgb, var(--section) 34%, var(--rule));
+  color:color-mix(in srgb, var(--section) 70%, var(--ink));
+}
+.page-context .rule-spacer{
+  background:linear-gradient(90deg, var(--section-line), transparent);
+  height:2px; border-radius:2px;
+}
+.register-card:hover{ border-color:var(--section); background:var(--section-tint) }
+.empty{ border-color:color-mix(in srgb, var(--section) 30%, var(--rule)) }
+.tabs-switch a.on{ color:var(--section); box-shadow:inset 0 -2px 0 var(--section) }
+.box{ border-top:2px solid color-mix(in srgb, var(--section) 22%, var(--rule)) }
+.notice{ border-top-width:1px }
+
+/* ───────────────────────────────────────────── the sign-in screen */
+
+.auth-brand{
+  background:
+    radial-gradient(900px 420px at -15% -20%, rgba(91,67,191,.32), transparent 62%),
+    radial-gradient(700px 400px at 115% 108%, rgba(14,116,128,.30), transparent 60%),
+    linear-gradient(165deg, #0B1420 0%, #12263D 62%, #14304A 100%);
+  position:relative;
+}
+.auth-brand::after{
+  content:""; position:absolute; top:0; right:0; bottom:0; width:3px;
+  background:linear-gradient(180deg, #16628C, #5B43BF 30%, #0E7480 55%, #9B3D76 100%);
+}
+.brand-points li:nth-child(1)::before{ background:#63B3E0 }
+.brand-points li:nth-child(2)::before{ background:#A996F0 }
+.brand-points li:nth-child(3)::before{ background:#5CC5CE }
+.brand-points li:nth-child(4)::before{ background:#E28BBF }
+.brand-logo{ background:linear-gradient(140deg, #2E5AC8, #5B43BF) }
+
+/* ───────────────────────────────────────────── print and reduced colour */
+
+@media print{
+  .content, main, table.list thead th, table.grid thead th, tr.band td,
+  .marks-grid .mark-cell{ background:#fff !important }
+  .rail::after, .auth-brand::after, h1.page::after{ display:none }
+  h2::after{ background:#000 }
 }

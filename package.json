@@ -2,8 +2,9 @@
   "name": "upsas",
   "version": "0.1.0",
   "private": true,
-  "description": "Research Project Supervision & Assessment System — Department of Computer Science, University of Eswatini",
+  "description": "Research Project Supervision & Assessment System \u2014 Department of Computer Science, University of Eswatini",
   "scripts": {
+    "postinstall": "prisma generate",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

@@ -179,41 +179,43 @@ export default async function Topics({
       )}
 
       <h2 style={{ fontSize: 15 }}>Topic pool</h2>
-      <table className="list">
-        <thead>
-          <tr>
-            <th style={{ width: '44%' }}>Topic</th>
-            <th style={{ width: '16%' }}>Supervisor</th>
-            <th style={{ width: '18%' }}>Prerequisites</th>
-            <th style={{ width: '12%' }}>Places</th>
-            <th style={{ width: '10%' }}>Interest</th>
-          </tr>
-        </thead>
-        <tbody>
-          {topics.map((t) => {
-            const sup = findPerson(t.supervisorId);
-            const taken = loadOf(t.supervisorId);
-            const full = taken >= CAPACITY;
-            return (
-              <tr key={t.id}>
-                <td>
-                  <strong>{t.title}</strong>
-                  <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>{t.description}</div>
-                  {t.studentProposed && <span className="chip">student proposal</span>}
-                  {t.groupSuitable
-                    ? <span className="chip">suits a pair</span>
-                    : <span className="chip">individual only</span>}
-                </td>
-                <td>{sup?.fullName}
-                  <div className="muted" style={{ fontSize: 11 }}>{taken} of {CAPACITY} places used</div></td>
-                <td className="muted" style={{ fontSize: 12 }}>{t.prerequisites || '—'}</td>
-                <td className="num">{t.capacity}{full && <div><span className="chip warn">supervisor full</span></div>}</td>
-                <td className="num mono">{preferencesForTopic(t.id).length}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <div className="table-wrap">
+        <table className="list">
+          <thead>
+            <tr>
+              <th style={{ width: '44%' }}>Topic</th>
+              <th style={{ width: '16%' }}>Supervisor</th>
+              <th style={{ width: '18%' }}>Prerequisites</th>
+              <th style={{ width: '12%' }}>Places</th>
+              <th style={{ width: '10%' }}>Interest</th>
+            </tr>
+          </thead>
+          <tbody>
+            {topics.map((t) => {
+              const sup = findPerson(t.supervisorId);
+              const taken = loadOf(t.supervisorId);
+              const full = taken >= CAPACITY;
+              return (
+                <tr key={t.id}>
+                  <td>
+                    <strong>{t.title}</strong>
+                    <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>{t.description}</div>
+                    {t.studentProposed && <span className="chip">student proposal</span>}
+                    {t.groupSuitable
+                      ? <span className="chip">suits a pair</span>
+                      : <span className="chip">individual only</span>}
+                  </td>
+                  <td>{sup?.fullName}
+                    <div className="muted" style={{ fontSize: 11 }}>{taken} of {CAPACITY} places used</div></td>
+                  <td className="muted" style={{ fontSize: 12 }}>{t.prerequisites || '—'}</td>
+                  <td className="num">{t.capacity}{full && <div><span className="chip warn">supervisor full</span></div>}</td>
+                  <td className="num mono">{preferencesForTopic(t.id).length}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
       {isStudent && (
         <>

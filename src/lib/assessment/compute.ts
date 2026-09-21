@@ -23,6 +23,25 @@ export interface DocumentationInput {
   readonly agreedRawTotal?: number;
 }
 
+/** A component passed in an earlier cycle and credited to this one. */
+export interface CarriedComponentInput {
+  readonly componentKey: string;
+  /** Carried as a percentage, never a raw total: the earlier cycle's rubric
+   *  maximum is not this cycle's, and raw totals do not travel. */
+  readonly percentage: number;
+  readonly fromCycleId: string;
+  readonly ref: string;
+}
+
+/**
+ * Where a student sits relative to the ordinary path. Absent means active,
+ * which is what every existing caller means.
+ */
+export interface EnrolmentInput {
+  readonly status: 'ACTIVE' | 'DEFERRED' | 'WITHDRAWN' | 'SUPPLEMENTARY' | 'CARRY_OVER';
+  readonly carried?: readonly CarriedComponentInput[];
+}
+
 export interface ComputeInput {
   readonly studentId: string;
   readonly cycleId: string;
@@ -31,6 +50,7 @@ export interface ComputeInput {
   readonly documentation?: DocumentationInput;
   readonly computedBy: string;
   readonly now?: Date;
+  readonly enrolment?: EnrolmentInput;
 }
 
 /**
@@ -44,6 +64,15 @@ export function computeFinalMark(input: ComputeInput, cfg: AssessmentConfig): Ma
   const flags: Flag[] = [];
   const rubricVersionIds = new Set<string>();
   const components: ComponentOutcome[] = [];
+
+  // A deferred or withdrawn student is not marked at all. Running the ordinary
+  // path would produce a shelf of PENDING flags that read as a department
+  // behind on its marking rather than a student who is not being assessed.
+  const status = input.enrolment?.status ?? 'ACTIVE';
+  if (status === 'DEFERRED' || status === 'WITHDRAWN') {
+    return notAssessed(input, cfg, status);
+  }
+  const carried = input.enrolment?.carried ?? [];
 
   const consultation = evaluateConsultations(input.consultations, cfg.consultation);
   if (!consultation.gateMet) {
@@ -65,6 +94,24 @@ export function computeFinalMark(input: ComputeInput, cfg: AssessmentConfig): Ma
         percentage: pct,
         points: pct === null ? (c.weightPoints === 0 ? 0 : null) : snap((pct / 100) * c.weightPoints),
         detail: { periods: consultation.periods, gateMet: consultation.gateMet },
+      });
+      continue;
+    }
+
+    // Credit carried from an earlier cycle stands in for the panel. Nobody
+    // marks a component the student has already passed, and the snapshot says
+    // where the figure came from.
+    const credit = carried.find((x) => x.componentKey === c.key);
+    if (credit) {
+      flags.push({
+        code: 'COMPONENT_CARRIED', blocking: false,
+        message: `${c.label}: ${credit.percentage}% carried from ${credit.fromCycleId} (${credit.ref}).`,
+      });
+      components.push({
+        key: c.key, label: c.label, kind: c.kind, weightPoints: c.weightPoints,
+        percentage: credit.percentage,
+        points: snap((credit.percentage / 100) * c.weightPoints),
+        detail: { status: 'CARRIED', source: 'CARRIED', fromCycleId: credit.fromCycleId, ref: credit.ref },
       });
       continue;
     }
@@ -108,7 +155,15 @@ export function computeFinalMark(input: ComputeInput, cfg: AssessmentConfig): Ma
   }
 
   let documentationScore: number | null = null;
-  if (input.documentation) {
+  const carriedDocumentation = carried.find((x) => x.componentKey === 'DOCUMENTATION');
+  if (carriedDocumentation) {
+    documentationScore = carriedDocumentation.percentage;
+    flags.push({
+      code: 'COMPONENT_CARRIED', blocking: false,
+      message: `Documentation: ${carriedDocumentation.percentage}% carried from ` +
+               `${carriedDocumentation.fromCycleId} (${carriedDocumentation.ref}).`,
+    });
+  } else if (input.documentation) {
     const d = input.documentation;
     rubricVersionIds.add(d.rubricVersionId);
     documentationScore = normalisePercentage(d.agreedRawTotal ?? d.rawTotal, d.rubricMax);
@@ -147,6 +202,44 @@ export function computeFinalMark(input: ComputeInput, cfg: AssessmentConfig): Ma
     flags,
     blocked,
     rubricVersionIds: [...rubricVersionIds].sort(),
+    policies: {
+      consultation: cfg.consultation.policy,
+      panel: cfg.panel.aggregation,
+      rounding: `HALF_UP@${cfg.roundingDp}dp`,
+    },
+    computedAt: (input.now ?? new Date()).toISOString(),
+    computedBy: input.computedBy,
+  };
+}
+
+/**
+ * The snapshot for a student who is not being assessed this cycle. It is a real
+ * snapshot rather than a null, so the provenance of the decision is recorded
+ * the same way every other mark decision is.
+ */
+function notAssessed(
+  input: ComputeInput, cfg: AssessmentConfig, status: 'DEFERRED' | 'WITHDRAWN',
+): MarkSnapshot {
+  return {
+    studentId: input.studentId,
+    cycleId: input.cycleId,
+    configId: cfg.id,
+    profileCode: cfg.profileCode,
+    components: [],
+    caPoints: null,
+    caScore: null,
+    documentationScore: null,
+    documentationPoints: null,
+    finalMark: null,
+    grade: null,
+    flags: [{
+      code: 'NOT_ASSESSED_THIS_CYCLE', blocking: true,
+      message: status === 'DEFERRED'
+        ? 'Deferred: not assessed this cycle. Records are kept and resume on return.'
+        : 'Withdrawn: not assessed this cycle.',
+    }],
+    blocked: true,
+    rubricVersionIds: [],
     policies: {
       consultation: cfg.consultation.policy,
       panel: cfg.panel.aggregation,
