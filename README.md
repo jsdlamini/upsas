@@ -441,3 +441,29 @@ also solve.
 
 Verifying that the person on the phone is who they say remains a procedure, not
 code, and it is the part the department has to get right.
+
+## Meeting emails
+
+Every meeting event that rings the bell is also emailed, to both people, from
+the same event, so the inbox and the screen always say the same thing. A booking
+reaches the supervisor with a **Confirm or decline** button; a confirmation,
+decline or cancellation reaches both sides. A reply goes to the other person in
+the meeting rather than to a no-reply address. The button opens the exact row
+where the meeting can be acted on, signing the reader in first if necessary.
+
+Mail is sent through [Resend](https://resend.com). Set in `.env`:
+
+| Variable | Purpose |
+|---|---|
+| `RESEND_API_KEY` | Empty means emails are written to the server log instead of sent |
+| `RESEND_FROM` | The sender. `onboarding@resend.dev` only delivers to the Resend account owner's own address; verify a domain in Resend to reach students and staff |
+| `EMAIL_REDIRECT_TO` | Testing: send everything to one inbox, subject prefixed with the intended recipient |
+| `APP_URL` | Public address of the deployment, used for links in emails |
+
+Only people with an address on file are emailed. Students give one at
+registration; a coordinator can set or correct anyone's under
+**Cohort register → Account access**. Sending never blocks a booking: if Resend
+is slow or refuses, the booking stands and the bell still rings.
+
+Sign-in, recovery and MFA remain entirely local. Resend carries outbound
+notifications only.

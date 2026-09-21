@@ -17,7 +17,8 @@ import {
   planChange, migrateSheet, describePlan,
   type Instrument, type Draft, type ChangePlan, type PlanResult,
 } from '../rubrics/instrument';
-import { notifyUser } from '../notifications';
+import { notifyUser, sendEmail } from '../notifications';
+import { renderNoticeEmail } from '../meetings/email';
 import {
   makeNotice, supersede, visibleFor, dismiss, dismissAll, whenLabel, recentlySeen, hrefOf,
   type MeetingNotice, type NoticeKind,
@@ -61,6 +62,8 @@ export interface Student {
   programme: string;
   courseCode: string;
   projectId: string;
+  /** Given at registration. Used for meeting and result emails. */
+  email?: string;
 }
 
 export interface Project {
@@ -223,6 +226,7 @@ export function studentAccounts(): Person[] {
     id: `u-${s.id}`, username: s.studentNumber, fullName: `${s.surname}, ${s.otherNames}`,
     surname: s.surname, totpConfirmed: false, studentId: s.id,
     grants: [grant('STUDENT')],
+    ...(s.email ? { email: s.email } : {}),
   }));
 }
 
@@ -383,13 +387,15 @@ interface Tables {
   extensions: Extension[];
   resetTickets: ResetTicket[];
   meetingNotices: MeetingNotice[];
+  /** Addresses a coordinator set, keyed by account id. Wins over the rest. */
+  contactEmails: Record<string, string>;
   seeded: boolean;
 }
 const globalForData = globalThis as unknown as { __upsasData?: Tables };
 const tables: Tables = (globalForData.__upsasData ??= {
   consultations: [], sheets: [], docMarks: [], publications: [], moderations: [],
   topics: [], preferences: [], slots: [], meetingRequests: [], signatures: [], deliverables: [], passwords: {},
-  enrolments: [], deadlines: [], extensions: [], resetTickets: [], meetingNotices: [], seeded: false,
+  enrolments: [], deadlines: [], extensions: [], resetTickets: [], meetingNotices: [], contactEmails: {}, seeded: false,
 });
 const consultations = tables.consultations;
 const sheets = tables.sheets;
@@ -408,6 +414,7 @@ const extensions = tables.extensions;
 const resetTickets = tables.resetTickets;
 // Older persisted snapshots predate this table.
 tables.meetingNotices ??= [];
+tables.contactEmails ??= {};
 const meetingNotices = tables.meetingNotices;
 
 function seedConsultations(): void {
@@ -1040,11 +1047,72 @@ function announce(
 ): void {
   const now = new Date();
   supersede(meetingNotices, meetingRef, now);
+  const created: MeetingNotice[] = [];
   for (const n of notices) {
-    meetingNotices.push(makeNotice({
+    const notice = makeNotice({
       forUserId: n.forUserId, meetingRef, kind: n.kind, title: n.title, body: n.body,
       startsAt, actionRequired: n.actionRequired ?? false, href: n.href,
-    }, now));
+    }, now);
+    meetingNotices.push(notice);
+    created.push(notice);
+  }
+  emailNotices(created);
+}
+
+const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+/**
+ * Where to email someone. A coordinator-set address wins, then whatever the
+ * account was registered with. Seeded accounts have none until one is set.
+ */
+export function emailOf(userId: string): string | null {
+  const set = tables.contactEmails[userId];
+  if (set) return set;
+  return findPerson(userId)?.email ?? null;
+}
+
+export function setContactEmail(userId: string, email: string): { ok: true } | { ok: false; error: string } {
+  if (!findPerson(userId)) return { ok: false, error: 'No such account.' };
+  const value = email.trim().toLowerCase();
+  if (value && !EMAIL_PATTERN.test(value)) return { ok: false, error: 'That email address does not look right.' };
+  if (value) tables.contactEmails[userId] = value; else delete tables.contactEmails[userId];
+  schedulePersist();
+  return { ok: true };
+}
+
+/** Student names are stored "Surname, Other names"; a greeting wants them the other way round. */
+function displayName(fullName: string): string {
+  const [surname, rest] = fullName.split(',').map((part) => part.trim());
+  return rest ? `${rest} ${surname}` : fullName;
+}
+
+/** The public address of this deployment, for links in email. */
+function appUrl(): string {
+  return (process.env.APP_URL || 'http://localhost:3000').replace(/\/+$/, '');
+}
+
+/**
+ * Send each new notice by email as well, through the same event that raised
+ * the banner and rang the bell, so the two channels cannot disagree.
+ *
+ * Replies go to the other person in the meeting: a student answering "can we
+ * make it 14:30?" reaches their supervisor, not a no-reply address. Sending is
+ * fire-and-forget — a slow or failing mail service must never make a booking
+ * fail — and anyone without an address on file is simply skipped.
+ */
+function emailNotices(notices: MeetingNotice[]): void {
+  for (const notice of notices) {
+    const person = findPerson(notice.forUserId);
+    const to = emailOf(notice.forUserId);
+    if (!person || !to) continue;
+    const counterpart = notices.find((other) => other.forUserId !== notice.forUserId);
+    const replyTo = counterpart ? emailOf(counterpart.forUserId) : null;
+    const openUrl = `${appUrl()}/api/notifications/${encodeURIComponent(notice.id)}/open`;
+    const mail = renderNoticeEmail(notice, displayName(person.fullName), openUrl);
+    void sendEmail({
+      to, subject: mail.subject, body: mail.text, html: mail.html,
+      ...(replyTo ? { replyTo } : {}),
+    });
   }
 }
 
@@ -1123,16 +1191,6 @@ export function bookSlot(
     },
   ]);
   schedulePersist();
-  // Booking requested — notify the student (best-effort).
-  const bookedPerson = findPerson(`u-${studentId}`);
-  const bookedBody = `Your consultation request for ${slot.startsAt} was sent — awaiting supervisor confirmation.`;
-  void notifyUser(
-    `u-${studentId}`,
-    'booking_confirmed',
-    'Consultation requested',
-    bookedBody,
-    bookedPerson?.email ? { to: bookedPerson.email, subject: 'Consultation requested', body: bookedBody } : undefined,
-  );
   return { ok: true };
 }
 
@@ -1159,10 +1217,6 @@ export function confirmBooking(slotId: string, supervisorId: string): { ok: true
     },
   ]);
   schedulePersist();
-  const person = findPerson(`u-${slot.bookedByStudentId}`);
-  const body = `Your consultation for ${slot.startsAt} was confirmed.${slot.meetingLink ? ` Meeting link: ${slot.meetingLink}` : ''}`;
-  void notifyUser(`u-${slot.bookedByStudentId}`, 'booking_confirmed', 'Consultation confirmed', body,
-    person?.email ? { to: person.email, subject: 'Consultation confirmed', body } : undefined);
   return { ok: true };
 }
 
@@ -1282,14 +1336,17 @@ export function publish(
   publications.push(row);
   schedulePersist();
   // Grade released — notify the student (best-effort).
-  const releasedPerson = findPerson(`u-${studentId}`);
+  const releasedPerson = findPerson(personIdForStudent(studentId));
   const releasedBody = `Your final mark has been released: ${finalMark ?? '—'}${grade ? ` (${grade})` : ''}.`;
   void notifyUser(
-    `u-${studentId}`,
+    personIdForStudent(studentId),
     'grade_released',
     'Result released',
     releasedBody,
-    releasedPerson?.email ? { to: releasedPerson.email, subject: 'Result released', body: releasedBody } : undefined,
+    (() => {
+      const to = releasedPerson ? emailOf(releasedPerson.id) : null;
+      return to ? { to, subject: 'Result released', body: releasedBody } : undefined;
+    })(),
   );
   return row;
 }
@@ -1356,6 +1413,9 @@ export async function registerStudent(input: {
     id: `s-${number}`, studentNumber: number, surname: input.surname.trim(), otherNames: input.otherNames.trim(),
     programme: input.programme || PROGRAMMES[0], courseCode: input.courseCode || COURSES[0],
     projectId: 'unallocated',
+    // Previously validated and then dropped, so no registered student could
+    // ever receive an email from the system.
+    ...(input.email.trim() ? { email: input.email.trim().toLowerCase() } : {}),
   });
   tables.passwords[number] = await hashPassword(input.password);
   schedulePersist();
@@ -1777,6 +1837,7 @@ function collectState() {
     deadlines: tables.deadlines,
     extensions: tables.extensions,
     meetingNotices: tables.meetingNotices,
+    contactEmails: tables.contactEmails,
     students: STUDENTS,
     registeredStaff: REGISTERED_STAFF,
     projects: PROJECTS,
@@ -1817,6 +1878,10 @@ async function hydrateFromPersistence(): Promise<void> {
     replaceArray(tables.deadlines, state.deadlines);
     replaceArray(tables.extensions, state.extensions);
     replaceArray(tables.meetingNotices, state.meetingNotices);
+    if (state.contactEmails && typeof state.contactEmails === 'object') {
+      for (const k of Object.keys(tables.contactEmails)) delete tables.contactEmails[k];
+      Object.assign(tables.contactEmails, state.contactEmails as Record<string, string>);
+    }
     // Reset codes are deliberately absent: an outstanding code must not
     // survive a restart it was never meant to outlive.
     replaceArray(STUDENTS, state.students);

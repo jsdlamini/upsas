@@ -21,19 +21,33 @@ export interface OutgoingEmail {
   to: string;
   subject: string;
   body: string;
+  /** Optional HTML part. The plain-text body is always sent alongside it. */
+  html?: string;
+  /** Where a reply should go, e.g. the other person in the meeting. */
+  replyTo?: string;
 }
+
+export type SendOutcome = 'sent' | 'stubbed' | 'failed';
 
 /**
  * Send via Resend (https://resend.com). Falls back to a console log when no
  * API key is configured, so the demo runs without outbound mail.
  */
-export async function sendEmail(email: OutgoingEmail): Promise<void> {
+export async function sendEmail(email: OutgoingEmail): Promise<SendOutcome> {
   const key = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM_EMAIL || process.env.RESEND_FROM || "UNESWA Research Chain <onboarding@resend.dev>";
   if (!key || !email.to) {
     console.log("[email:stub]", email.to || "(no recipient)", "|", email.subject);
-    return;
+    return "stubbed";
   }
+
+  // Testing switch. Resend's shared onboarding@resend.dev sender will only
+  // deliver to the address that owns the Resend account, so until a domain is
+  // verified every message is redirected there, labelled with who it was for.
+  const redirect = process.env.EMAIL_REDIRECT_TO?.trim();
+  const to = redirect || email.to;
+  const subject = redirect ? `[for ${email.to}] ${email.subject}` : email.subject;
+
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -43,16 +57,24 @@ export async function sendEmail(email: OutgoingEmail): Promise<void> {
       },
       body: JSON.stringify({
         from,
-        to: [email.to],
-        subject: email.subject,
+        to: [to],
+        subject,
         text: email.body,
+        ...(email.html ? { html: email.html } : {}),
+        ...(email.replyTo ? { reply_to: email.replyTo } : {}),
       }),
     });
     if (!res.ok) {
-      console.log("[email:failed]", email.to, "|", email.subject, "|", res.status);
+      // Resend explains itself in the body; the usual one is the shared test
+      // sender refusing a recipient other than the account owner.
+      const detail = await res.text().catch(() => "");
+      console.log("[email:failed]", to, "|", subject, "|", res.status, detail.slice(0, 300));
+      return "failed";
     }
+    return "sent";
   } catch (error) {
-    console.log("[email:failed]", email.to, "|", email.subject, "|", error instanceof Error ? error.message : String(error));
+    console.log("[email:failed]", to, "|", subject, "|", error instanceof Error ? error.message : String(error));
+    return "failed";
   }
 }
 

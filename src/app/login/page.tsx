@@ -32,8 +32,22 @@ const MESSAGES: Record<string, string> = {
   MFA_ENROLMENT_REQUIRED: 'This role requires a second factor and none is enrolled. See a coordinator to enrol.',
 };
 
+/**
+ * Where to go after signing in. Only an internal path is ever honoured, so a
+ * crafted link cannot use the sign-in page to bounce someone off-site. This is
+ * what lets a link in an email land on the booking it is about.
+ */
+function safeNext(value: unknown): string | null {
+  const next = typeof value === 'string' ? value : '';
+  if (!next.startsWith('/') || next.startsWith('//') || next.startsWith('/\\')) return null;
+  if (next.startsWith('/login')) return null;
+  return next;
+}
+
 async function signIn(formData: FormData) {
   'use server';
+  const next = safeNext(formData.get('next'));
+  const carry = next ? `&next=${encodeURIComponent(next)}` : '';
   const challengeId = String(formData.get('challenge') ?? '');
   const code = String(formData.get('code') ?? '');
 
@@ -45,7 +59,7 @@ async function signIn(formData: FormData) {
     const challenge = CHALLENGES.get(challengeId);
     CHALLENGES.delete(challengeId);
     if (!challenge || challenge.expiresAt < Date.now()) {
-      redirect('/login?e=CHALLENGE_EXPIRED');
+      redirect(`/login?e=CHALLENGE_EXPIRED${carry}`);
     }
     username = challenge.username;
     password = DEMO_PASSWORD;
@@ -76,10 +90,10 @@ async function signIn(formData: FormData) {
   if (outcome.status === 'MFA_REQUIRED') {
     const id = randomBytes(16).toString('base64url');
     CHALLENGES.set(id, { userId: outcome.userId, username, expiresAt: Date.now() + CHALLENGE_TTL_MS });
-    redirect(`/login?e=MFA_REQUIRED&challenge=${id}`);
+    redirect(`/login?e=MFA_REQUIRED&challenge=${id}${carry}`);
   }
   if (outcome.status !== 'OK') {
-    redirect(`/login?e=${outcome.status}&u=${encodeURIComponent(username)}`);
+    redirect(`/login?e=${outcome.status}&u=${encodeURIComponent(username)}${carry}`);
   }
 
   const issued = createSession(outcome.principal.userId, outcome.principal.mfaSatisfied);
@@ -87,14 +101,15 @@ async function signIn(formData: FormData) {
   jar.set(COOKIE, `${issued.record.id}.${issued.token}`, {
     httpOnly: true, sameSite: 'lax', path: '/', expires: new Date(issued.record.expiresAt),
   });
-  redirect('/');
+  redirect(next ?? '/');
 }
 
 export default async function LoginPage({
   searchParams,
-}: { searchParams: Promise<{ e?: string; u?: string; challenge?: string; registered?: string }> }) {
-  if (await currentPrincipal()) redirect('/');
-  const { e, u, challenge, registered } = await searchParams;
+}: { searchParams: Promise<{ e?: string; u?: string; challenge?: string; registered?: string; next?: string }> }) {
+  const { e, u, challenge, registered, next: rawNext } = await searchParams;
+  const next = safeNext(rawNext);
+  if (await currentPrincipal()) redirect(next ?? '/');
   const needsCode = e === 'MFA_REQUIRED' && Boolean(challenge);
   const coordinatorSecret = findPersonByUsername('coordinator')?.totpSecret ?? '';
   const coordinatorCode = coordinatorSecret ? currentTotpCode(coordinatorSecret) : null;
@@ -159,6 +174,7 @@ export default async function LoginPage({
           </>
         )}
         {needsCode && <input type="hidden" name="challenge" value={challenge} />}
+        {next && <input type="hidden" name="next" value={next} />}
         {needsCode && (
           <p style={{ margin: '0 0 10px' }}>
             <label>Authenticator code
