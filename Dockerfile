@@ -30,6 +30,9 @@ COPY --from=build /app/public ./public
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/data ./data
 COPY package.json ./
+# The app runs as upsas and prisma migrate deploy writes into node_modules
+# (engine binaries), so give the runtime user ownership of the tree.
+RUN chown -R upsas:upsas /app
 USER upsas
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s \
