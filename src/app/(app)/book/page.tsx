@@ -198,33 +198,35 @@ export default async function Book({
             {groupByDay(open).slice(0, 4).map(([day, daySlots]) => (
               <div className="slot-day" key={day}>
                 <div className="slot-day-head">{day}</div>
-                <table className="list" style={{ marginTop: 0 }}>
-                  <thead><tr><th style={{ width: '22%' }}>When</th><th style={{ width: '18%' }}>Where</th>
-                    <th>What you want to cover</th><th>Mode + link</th><th style={{ width: '12%' }}></th></tr></thead>
-                  <tbody>
-                    {daySlots.map((s) => (
-                      <tr key={s.id}>
-                        <td className="mono">{when(s.startsAt).split(' ').slice(1).join(' ')}</td>
-                        <td className="muted">{s.mode === 'ONLINE' ? 'Online' : s.venue}</td>
-                        <td>
-                          <form action={book} id={`f-${s.id}`}>
-                            <input type="hidden" name="slotId" value={s.id} />
-                            <input name="agenda" placeholder="e.g. Chapter 3 draft and methodology"
-                                   style={{ width: '100%', padding: 6 }} />
-                            <select name="mode" style={{ padding: 5, marginTop: 4, width: '100%' }}>
-                              <option value="IN_PERSON">In person</option>
-                              <option value="ONLINE">Virtual</option>
-                            </select>
-                            <input name="meetingLink" placeholder="Meeting link (if virtual)"
-                                   style={{ width: '100%', padding: 6, marginTop: 4 }} />
-                          </form>
-                        </td>
-                        <td className="muted" style={{ fontSize: 11 }}>{s.venue}</td>
-                        <td><button className="btn" form={`f-${s.id}`} style={{ padding: '5px 12px', fontSize: 12 }}>Book</button></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="table-wrap">
+                  <table className="list" style={{ marginTop: 0 }}>
+                    <thead><tr><th style={{ width: '22%' }}>When</th><th style={{ width: '18%' }}>Where</th>
+                      <th>What you want to cover</th><th>Mode + link</th><th style={{ width: '12%' }}></th></tr></thead>
+                    <tbody>
+                      {daySlots.map((s) => (
+                        <tr key={s.id}>
+                          <td className="mono">{when(s.startsAt).split(' ').slice(1).join(' ')}</td>
+                          <td className="muted">{s.mode === 'ONLINE' ? 'Online' : s.venue}</td>
+                          <td>
+                            <form action={book} id={`f-${s.id}`}>
+                              <input type="hidden" name="slotId" value={s.id} />
+                              <input name="agenda" placeholder="e.g. Chapter 3 draft and methodology"
+                                     style={{ width: '100%', padding: 6 }} />
+                              <select name="mode" style={{ padding: 5, marginTop: 4, width: '100%' }}>
+                                <option value="IN_PERSON">In person</option>
+                                <option value="ONLINE">Virtual</option>
+                              </select>
+                              <input name="meetingLink" placeholder="Meeting link (if virtual)"
+                                     style={{ width: '100%', padding: 6, marginTop: 4 }} />
+                            </form>
+                          </td>
+                          <td className="muted" style={{ fontSize: 11 }}>{s.venue}</td>
+                          <td><button className="btn" form={`f-${s.id}`} style={{ padding: '5px 12px', fontSize: 12 }}>Book</button></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             ))}
           </div>
@@ -290,75 +292,79 @@ export default async function Book({
           <p className="muted" style={{ margin: '6px 0 10px' }}>
             Students asked for times when you had nothing open. Approve and publish a slot, or decline.
           </p>
-          <table className="list" style={{ marginTop: 10 }}>
-            <thead><tr><th>Student</th><th>Preferred times</th><th>Agenda</th><th></th></tr></thead>
-            <tbody>
-              {requests.filter((r) => r.status === 'PENDING').map((r) => {
-                const st = findStudent(r.studentId);
-                return (
-                  <tr key={r.id}>
-                    <td><strong>{st ? `${st.surname}, ${st.otherNames}` : r.studentId}</strong></td>
-                    <td className="muted" style={{ fontSize: 12 }}>{r.preferredTimes}</td>
-                    <td style={{ fontSize: 12 }}>{r.agenda}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
-                      <form action={decideMeeting} style={{ display: 'inline' }}>
-                        <input type="hidden" name="id" value={r.id} />
-                        <input type="hidden" name="decision" value="APPROVED" />
-                        <button className="btn" style={{ padding: '3px 10px', fontSize: 12 }}>Approve</button>
-                      </form>{' '}
-                      <form action={decideMeeting} style={{ display: 'inline' }}>
-                        <input type="hidden" name="id" value={r.id} />
-                        <input type="hidden" name="decision" value="DECLINED" />
-                        <button className="btn ghost" style={{ padding: '3px 10px', fontSize: 12 }}>Decline</button>
-                      </form>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="table-wrap">
+            <table className="list" style={{ marginTop: 10 }}>
+              <thead><tr><th>Student</th><th>Preferred times</th><th>Agenda</th><th></th></tr></thead>
+              <tbody>
+                {requests.filter((r) => r.status === 'PENDING').map((r) => {
+                  const st = findStudent(r.studentId);
+                  return (
+                    <tr key={r.id}>
+                      <td><strong>{st ? `${st.surname}, ${st.otherNames}` : r.studentId}</strong></td>
+                      <td className="muted" style={{ fontSize: 12 }}>{r.preferredTimes}</td>
+                      <td style={{ fontSize: 12 }}>{r.agenda}</td>
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        <form action={decideMeeting} style={{ display: 'inline' }}>
+                          <input type="hidden" name="id" value={r.id} />
+                          <input type="hidden" name="decision" value="APPROVED" />
+                          <button className="btn" style={{ padding: '3px 10px', fontSize: 12 }}>Approve</button>
+                        </form>{' '}
+                        <form action={decideMeeting} style={{ display: 'inline' }}>
+                          <input type="hidden" name="id" value={r.id} />
+                          <input type="hidden" name="decision" value="DECLINED" />
+                          <button className="btn ghost" style={{ padding: '3px 10px', fontSize: 12 }}>Decline</button>
+                        </form>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
       <h2 style={{ fontSize: 15 }}>Upcoming</h2>
-      <table className="list">
-        <thead><tr><th style={{ width: '24%' }}>When</th><th style={{ width: '16%' }}>Where</th>
-          <th style={{ width: '22%' }}>Booked by</th><th>Agenda</th><th style={{ width: '20%' }}></th></tr></thead>
-        <tbody>
-          {upcoming.slice(0, 16).map((s) => {
-            const student = s.bookedByStudentId ? findStudent(s.bookedByStudentId) : null;
-            return (
-              <tr key={s.id}>
-                <td className="mono">{when(s.startsAt)}</td>
-                <td className="muted">{s.mode === 'ONLINE' ? 'Online' : s.venue}</td>
-                <td>{student
-                  ? <strong>{student.surname}, {student.otherNames}</strong>
-                  : <span className="muted">open</span>}</td>
-                <td className="muted" style={{ fontSize: 12 }}>
-                  {s.agenda ?? '—'}
-                  {s.meetingLink && <div style={{ fontSize: 11 }}><a href={s.meetingLink} target="_blank" rel="noreferrer">{s.meetingLink}</a></div>}
-                </td>
-                <td style={{ whiteSpace: 'nowrap' }}>
-                  {s.bookedByStudentId && s.status !== 'CONFIRMED' ? (
-                    <>
-                      <form action={confirm} style={{ display: 'inline' }}>
-                        <input type="hidden" name="slotId" value={s.id} />
-                        <button className="btn" style={{ padding: '3px 10px', fontSize: 12 }}>Confirm</button>
-                      </form>{' '}
-                      <form action={decline} style={{ display: 'inline' }}>
-                        <input type="hidden" name="slotId" value={s.id} />
-                        <button className="btn ghost" style={{ padding: '3px 10px', fontSize: 12 }}>Decline</button>
-                      </form>
-                    </>
-                  ) : s.bookedByStudentId ? (
-                    <span className="chip ok">confirmed</span>
-                  ) : null}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <div className="table-wrap">
+        <table className="list">
+          <thead><tr><th style={{ width: '24%' }}>When</th><th style={{ width: '16%' }}>Where</th>
+            <th style={{ width: '22%' }}>Booked by</th><th>Agenda</th><th style={{ width: '20%' }}></th></tr></thead>
+          <tbody>
+            {upcoming.slice(0, 16).map((s) => {
+              const student = s.bookedByStudentId ? findStudent(s.bookedByStudentId) : null;
+              return (
+                <tr key={s.id}>
+                  <td className="mono">{when(s.startsAt)}</td>
+                  <td className="muted">{s.mode === 'ONLINE' ? 'Online' : s.venue}</td>
+                  <td>{student
+                    ? <strong>{student.surname}, {student.otherNames}</strong>
+                    : <span className="muted">open</span>}</td>
+                  <td className="muted" style={{ fontSize: 12 }}>
+                    {s.agenda ?? '—'}
+                    {s.meetingLink && <div style={{ fontSize: 11 }}><a href={s.meetingLink} target="_blank" rel="noreferrer">{s.meetingLink}</a></div>}
+                  </td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    {s.bookedByStudentId && s.status !== 'CONFIRMED' ? (
+                      <>
+                        <form action={confirm} style={{ display: 'inline' }}>
+                          <input type="hidden" name="slotId" value={s.id} />
+                          <button className="btn" style={{ padding: '3px 10px', fontSize: 12 }}>Confirm</button>
+                        </form>{' '}
+                        <form action={decline} style={{ display: 'inline' }}>
+                          <input type="hidden" name="slotId" value={s.id} />
+                          <button className="btn ghost" style={{ padding: '3px 10px', fontSize: 12 }}>Decline</button>
+                        </form>
+                      </>
+                    ) : s.bookedByStudentId ? (
+                      <span className="chip ok">confirmed</span>
+                    ) : null}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </>
   );
 }

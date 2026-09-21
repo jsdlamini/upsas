@@ -169,6 +169,9 @@ export default async function LoginPage({
           </p>
         )}
         <button className="btn" type="submit">{needsCode ? 'Verify code' : 'Sign in'}</button>
+        {!needsCode && (
+          <a href="/recover" style={{ marginLeft: 14, fontSize: 13.5 }}>Forgotten your password?</a>
+        )}
       </form>
 
       {!needsCode && (
@@ -198,25 +201,27 @@ export default async function LoginPage({
             For evaluation only — not for real students. Password for every account:
             <span className="mono">{DEMO_PASSWORD}</span>
           </p>
-          <table className="list">
-            <thead><tr><th>Username</th><th>Who</th><th>Roles</th></tr></thead>
-            <tbody>
-              {PEOPLE.map((p) => (
-                <tr key={p.id}>
-                  <td className="mono">{p.username}</td>
-                  <td>{p.fullName}</td>
-                  <td className="muted">{p.grants.map((g) => g.role).join(', ')}</td>
-                </tr>
-              ))}
-              {studentAccounts().slice(0, 4).map((p) => (
-                <tr key={p.id}>
-                  <td className="mono">{p.username}</td>
-                  <td>{p.fullName} <span className="muted">(student)</span></td>
-                  <td className="muted">STUDENT</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="table-wrap">
+            <table className="list">
+              <thead><tr><th>Username</th><th>Who</th><th>Roles</th></tr></thead>
+              <tbody>
+                {PEOPLE.map((p) => (
+                  <tr key={p.id}>
+                    <td className="mono">{p.username}</td>
+                    <td>{p.fullName}</td>
+                    <td className="muted">{p.grants.map((g) => g.role).join(', ')}</td>
+                  </tr>
+                ))}
+                {studentAccounts().slice(0, 4).map((p) => (
+                  <tr key={p.id}>
+                    <td className="mono">{p.username}</td>
+                    <td>{p.fullName} <span className="muted">(student)</span></td>
+                    <td className="muted">STUDENT</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           <p className="muted" style={{ margin: '8px 0 0', fontSize: 12 }}>
             <span className="mono">coordinator</span> holds a privileged role, so after the password it
             asks for a six-digit TOTP code. Current code for quick testing: <span className="mono">{coordinatorCode ?? '—'}</span>.

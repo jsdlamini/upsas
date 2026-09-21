@@ -26,6 +26,24 @@ export function destroySession(id: string): void {
 }
 
 /**
+ * End every session an account holds.
+ *
+ * Called after a password reset, and available to an administrator when an
+ * account is compromised or a member of staff leaves. A forgotten password and
+ * a stolen one look identical from here, so the safe assumption after a reset
+ * is that somebody else may be signed in.
+ */
+export function destroySessionsFor(userId: string): number {
+  let ended = 0;
+  for (const [id, record] of SESSIONS) {
+    if (record.userId !== userId) continue;
+    SESSIONS.delete(id);
+    ended += 1;
+  }
+  return ended;
+}
+
+/**
  * Rebuilds the principal from live grants on every request. A role revoked a
  * moment ago is gone from the next page load, not from the next sign-in.
  */

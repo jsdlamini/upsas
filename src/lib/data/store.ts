@@ -2,6 +2,21 @@ import { hashPassword, checkPassword } from '../auth/password';
 import type { RoleGrant } from '../auth/roles';
 import type { AssessorEntry, ConsultationRecord } from '../assessment/types';
 import { loadPersistedState, savePersistedState } from '../persistence';
+import {
+  defaultEnrolment, validateChange, appearsInCohort, isAssessable,
+  type Enrolment, type EnrolmentStatus, type CarriedComponent,
+} from '../enrolment/status';
+import {
+  validateDeadline, validateExtension, statusOf,
+  type Deadline, type Extension,
+} from '../deadlines/schedule';
+import {
+  issueTicket, redeem, revokeOutstanding, type ResetTicket,
+} from '../auth/recovery';
+import {
+  planChange, migrateSheet, describePlan,
+  type Instrument, type Draft, type ChangePlan, type PlanResult,
+} from '../rubrics/instrument';
 import { notifyUser } from '../notifications';
 
 /**
@@ -262,10 +277,62 @@ export const P2_CRITERIA = [
   { id: 'c9', label: 'References', max: 5 },
 ];
 
+/**
+ * Assessment instruments, versioned.
+ *
+ * The coordinator edits these from /rubrics. What used to be a frozen constant
+ * is now a table with a history, because the columns of a marking sheet are the
+ * department's instrument and it changes between cycles. Nothing here is edited
+ * in place once a mark exists against it — see src/lib/rubrics/instrument.ts.
+ */
+const globalForRubrics = globalThis as unknown as { __upsasRubrics?: Instrument[] };
+
+export const RUBRIC_VERSIONS: Instrument[] = (globalForRubrics.__upsasRubrics ??= [
+  {
+    versionId: 'rv-p1-1', component: 'p1', version: 1, max: 40,
+    title: 'Presentation 1 — Chapters 1 & 2',
+    criteria: P1_CRITERIA.map((c) => ({ ...c })), locked: false,
+    createdAt: '2025-08-01T08:00:00Z', createdBy: null,
+    note: 'Transcribed verbatim from the 2024/2025 departmental assessment form.',
+    supersededBy: null,
+  },
+  {
+    versionId: 'rv-p2-1', component: 'p2', version: 1, max: 80,
+    title: 'Presentation 2 — Chapters 3–5',
+    criteria: P2_CRITERIA.map((c) => ({ ...c })), locked: false,
+    createdAt: '2025-08-01T08:00:00Z', createdBy: null,
+    note: 'Transcribed verbatim from the 2024/2025 departmental assessment form.',
+    supersededBy: null,
+  },
+]);
+
+/** The version in force for a component: the one nothing has superseded. */
+export function activeInstrument(component: 'p1' | 'p2'): Instrument {
+  const live = RUBRIC_VERSIONS.filter((r) => r.component === component && r.supersededBy === null);
+  const latest = live[live.length - 1];
+  if (!latest) throw new Error(`No live instrument for ${component}.`);
+  return latest;
+}
+
+/** Newest first, for the version history on the editing screen. */
+export function instrumentHistory(component: 'p1' | 'p2'): Instrument[] {
+  return RUBRIC_VERSIONS.filter((r) => r.component === component)
+    .slice().sort((a, b) => b.version - a.version);
+}
+
+export function instrumentById(versionId: string): Instrument | null {
+  return RUBRIC_VERSIONS.find((r) => r.versionId === versionId) ?? null;
+}
+
+/**
+ * Kept as `RUBRICS` so every existing call site reads the live instrument
+ * without knowing versions exist. The getters matter: a rubric edited during
+ * the request must not be served from a value captured at module load.
+ */
 export const RUBRICS = {
-  p1: { versionId: 'rv-p1-1', max: 40, criteria: P1_CRITERIA, title: 'Presentation 1 — Chapters 1 & 2' },
-  p2: { versionId: 'rv-p2-1', max: 80, criteria: P2_CRITERIA, title: 'Presentation 2 — Chapters 3–5' },
-} as const;
+  get p1(): Instrument { return activeInstrument('p1'); },
+  get p2(): Instrument { return activeInstrument('p2'); },
+};
 
 export const SESSIONS: SessionSlot[] = [
   { serial: 1, component: 'p2', studentIds: ['s1', 's2'], joint: true, scheduledFor: '2026-09-14T09:00:00Z', venue: 'CS-112' },
@@ -307,12 +374,17 @@ interface Tables {
   meetingRequests: MeetingRequest[]; signatures: AgreementSignature[];
   deliverables: DeliverableRecord[];
   passwords: Record<string, string>;
+  enrolments: Enrolment[];
+  deadlines: Deadline[];
+  extensions: Extension[];
+  resetTickets: ResetTicket[];
   seeded: boolean;
 }
 const globalForData = globalThis as unknown as { __upsasData?: Tables };
 const tables: Tables = (globalForData.__upsasData ??= {
   consultations: [], sheets: [], docMarks: [], publications: [], moderations: [],
-  topics: [], preferences: [], slots: [], meetingRequests: [], signatures: [], deliverables: [], passwords: {}, seeded: false,
+  topics: [], preferences: [], slots: [], meetingRequests: [], signatures: [], deliverables: [], passwords: {},
+  enrolments: [], deadlines: [], extensions: [], resetTickets: [], seeded: false,
 });
 const consultations = tables.consultations;
 const sheets = tables.sheets;
@@ -325,6 +397,10 @@ const slots = tables.slots;
 const meetingRequests = tables.meetingRequests;
 const signatures = tables.signatures;
 const deliverables = tables.deliverables;
+const enrolments = tables.enrolments;
+const deadlines = tables.deadlines;
+const extensions = tables.extensions;
+const resetTickets = tables.resetTickets;
 
 function seedConsultations(): void {
   const plan: Record<string, [number[], number[]]> = {
@@ -504,6 +580,35 @@ if (!tables.seeded) {
   seedDocMarks();
   seedTopics();
   seedSlots();
+  seedSchedule();
+}
+
+function seedSchedule(): void {
+  // The dates the department already works to, previously living in a Word
+  // document. Times matter: "Friday" is not a deadline.
+  const plan: Array<[string, string, string, number]> = [
+    ['proposal', 'Proposal and topic agreement', '2025-09-26T16:00:00+02:00', 60],
+    ['chapters-1-2', 'Chapters 1 and 2 submitted to supervisor', '2025-11-14T16:00:00+02:00', 60],
+    ['ethics', 'Ethics clearance where required', '2026-02-06T16:00:00+02:00', 0],
+    ['artefact', 'Artefact and implementation walkthrough', '2026-04-24T16:00:00+02:00', 60],
+    ['documentation', 'Final documentation, bound and uploaded', '2026-05-15T12:00:00+02:00', 0],
+  ];
+  for (const [key, label, dueAt, graceMinutes] of plan) {
+    deadlines.push({
+      id: `dl-20252026-${key}`, cycleId: CYCLE, key, label,
+      dueAt: new Date(dueAt).toISOString(), graceMinutes, published: true, note: '',
+    });
+  }
+
+  // One student repeating the project with a presentation already credited,
+  // so the carried-credit path is exercised by the seed rather than only by
+  // the tests.
+  enrolments.push({
+    studentId: 's8', status: 'CARRY_OVER', effectiveFrom: '2025-08-01',
+    note: 'Repeating CSC 499 after deferring documentation in 2024/2025. P1 credited by the board.',
+    decidedBy: null, decidedAt: '2025-08-04T09:00:00Z',
+    carried: [{ componentKey: 'P1', percentage: 68, fromCycleId: '2024/2025', ref: 'BoE 2025-07-11 item 4.2' }],
+  });
 }
 
 // The working tables are hydrated from Postgres (if a snapshot exists) by
@@ -536,8 +641,22 @@ export const sheetOf = (assessorId: string, studentId: string, component: 'p1' |
 
 export const docMarkOf = (studentId: string) => docMarks.find((d) => d.studentId === studentId) ?? null;
 
-export const sessionsFor = (component: 'p1' | 'p2') =>
-  SESSIONS.filter((s) => s.component === component);
+/**
+ * Session lists for an assessor.
+ *
+ * A deferred or withdrawn student is dropped here rather than in the screen,
+ * so no route can schedule, present or mark someone who is not being assessed
+ * this cycle. A slot left with nobody in it disappears with them.
+ */
+export const sessionsFor = (component: 'p1' | 'p2'): SessionSlot[] =>
+  SESSIONS.filter((s) => s.component === component)
+    .map((s) => {
+      const studentIds = s.studentIds.filter((id) => isStudentAssessable(id));
+      return studentIds.length === s.studentIds.length
+        ? s
+        : { ...s, studentIds, joint: s.joint && studentIds.length > 1 };
+    })
+    .filter((s) => s.studentIds.length > 0);
 
 /* ---------------------------------------------------------------- mutations */
 
@@ -560,8 +679,121 @@ export function setMark(
   }
   if (sheet.submitted) return { ok: false, error: 'This sheet is submitted. A coordinator must reopen it.' };
   sheet.marks[criterionId] = value;
+  // First mark against this instrument: it is no longer a draft, so any later
+  // edit forks rather than rewriting the sheet these marks were awarded on.
+  if (value !== null && !rubric.locked) rubric.locked = true;
   schedulePersist();
   return { ok: true };
+}
+
+/* ------------------------------------------------- assessment instruments */
+
+/**
+ * Has anything been marked against this component at all? This, not the
+ * `locked` flag, is what decides whether an edit forks — the flag is a cache of
+ * it for display, and a cache is not something to make a decision on.
+ */
+export function instrumentInUse(component: 'p1' | 'p2'): boolean {
+  return sheets.some((s) => s.component === component
+    && Object.values(s.marks).some((v) => v !== null));
+}
+
+/** Every criterion id this component has ever used, so none is ever reused. */
+function usedCriterionIds(component: 'p1' | 'p2'): string[] {
+  const ids = new Set<string>();
+  for (const version of RUBRIC_VERSIONS) {
+    if (version.component !== component) continue;
+    for (const c of version.criteria) ids.add(c.id);
+  }
+  for (const sheet of sheets) {
+    if (sheet.component === component) for (const id of Object.keys(sheet.marks)) ids.add(id);
+  }
+  return [...ids];
+}
+
+/**
+ * What would happen if this edit were applied. Nothing is written. The
+ * coordinator sees this before confirming, which is the whole point: an
+ * instrument change is the one edit in this system that can reach backwards
+ * into marks already entered.
+ */
+export function previewInstrumentEdit(
+  component: 'p1' | 'p2', draft: Draft, byUserId: string,
+): PlanResult {
+  const current = activeInstrument(component);
+  const relevant = sheets.filter((s) => s.component === component);
+  return planChange(current, draft, relevant, new Date().toISOString(), byUserId,
+                    usedCriterionIds(component));
+}
+
+/**
+ * A change the coordinator has composed but not yet committed.
+ *
+ * Deliberately not persisted: a half-finished instrument edit surviving a
+ * restart is a trap, not a convenience. It lives only as long as the process
+ * and is cleared the moment the change is applied or abandoned.
+ */
+const globalForPending = globalThis as unknown as { __upsasPendingEdits?: Map<string, Draft> };
+const pendingEdits: Map<string, Draft> = (globalForPending.__upsasPendingEdits ??= new Map());
+const pendingKey = (userId: string, component: 'p1' | 'p2') => `${userId}:${component}`;
+
+export function readPendingEdit(userId: string, component: 'p1' | 'p2'): Draft | null {
+  return pendingEdits.get(pendingKey(userId, component)) ?? null;
+}
+export function writePendingEdit(userId: string, component: 'p1' | 'p2', draft: Draft): void {
+  pendingEdits.set(pendingKey(userId, component), draft);
+}
+export function clearPendingEdit(userId: string, component: 'p1' | 'p2'): void {
+  pendingEdits.delete(pendingKey(userId, component));
+}
+
+export interface AppliedEdit {
+  plan: ChangePlan;
+  summary: string;
+}
+
+/**
+ * Apply the edit. Forks when marks exist, edits in place when they do not, and
+ * refuses a fork with consequences unless the coordinator has acknowledged
+ * them. Signed sheets are never touched.
+ */
+export function applyInstrumentEdit(
+  component: 'p1' | 'p2', draft: Draft, byUserId: string, acknowledged: boolean,
+): { ok: true; applied: AppliedEdit } | { ok: false; errors: string[] } {
+  const result = previewInstrumentEdit(component, draft, byUserId);
+  if (!result.ok) return result;
+  const { plan } = result;
+
+  if (plan.requiresAcknowledgement && !acknowledged) {
+    return { ok: false, errors: ['Confirm you have read what this change does to marks already entered.'] };
+  }
+
+  const current = activeInstrument(component);
+
+  if (plan.mode === 'in-place') {
+    current.title = plan.next.title;
+    current.criteria = plan.next.criteria;
+    current.max = plan.next.max;
+    current.note = plan.next.note;
+    current.createdAt = plan.next.createdAt;
+    current.createdBy = byUserId;
+  } else {
+    current.supersededBy = plan.next.versionId;
+    // Marks move with the open sheets, so the new version is in use from the
+    // moment it is published and its own next edit forks again.
+    plan.next.locked = plan.marksCleared.length < plan.sheetsMigrated || plan.sheetsMigrated > 0;
+    RUBRIC_VERSIONS.push(plan.next);
+    // Open sheets follow the instrument; signed sheets stay where they were.
+    for (const sheet of sheets) {
+      if (sheet.component !== component) continue;
+      if (sheet.rubricVersionId !== current.versionId) continue;
+      if (sheet.submitted) continue;
+      migrateSheet(sheet, plan.next);
+    }
+  }
+
+  schedulePersist();
+  return { ok: true, applied: { plan, summary: describePlan(plan) } };
 }
 
 export function gradeConsultation(
@@ -1129,6 +1361,223 @@ export function demoPasswordHash(): Promise<string> {
   return hashed;
 }
 
+
+/* ------------------------------------------------ enrolment, deadlines,
+                                                     account recovery */
+
+/**
+ * A student with no explicit record is active. Absence of a decision is not a
+ * decision, and an ordinary cohort should not need nine hundred rows to say so.
+ */
+export function enrolmentOf(studentId: string): Enrolment {
+  return enrolments.find((e) => e.studentId === studentId)
+    ?? defaultEnrolment(studentId, CYCLE_START);
+}
+
+export const CYCLE_START = '2025-08-01';
+
+export function nonStandardEnrolments(): Enrolment[] {
+  return enrolments.filter((e) => e.status !== 'ACTIVE');
+}
+
+/** Students who are scheduled, marked and published this cycle. */
+export function isStudentAssessable(studentId: string): boolean {
+  return isAssessable(enrolmentOf(studentId).status);
+}
+
+export function assessableStudents(): Student[] {
+  return STUDENTS.filter((st) => appearsInCohort(enrolmentOf(st.id).status));
+}
+
+export interface EnrolmentChange {
+  status: EnrolmentStatus;
+  effectiveFrom: string;
+  note: string;
+  carried: CarriedComponent[];
+}
+
+export function setEnrolment(
+  studentId: string, change: EnrolmentChange, byUserId: string,
+): { ok: true } | { ok: false; errors: string[] } {
+  const student = findStudent(studentId);
+  if (!student) return { ok: false, errors: ['No such student.'] };
+
+  const current = enrolmentOf(studentId);
+  const errors = validateChange(current, change, {
+    published: publications.some((p) => p.studentId === studentId),
+    hasSignedMarks: sheets.some((sh) => sh.studentId === studentId && sh.submitted),
+  });
+  if (errors.length) return { ok: false, errors };
+
+  const next: Enrolment = {
+    studentId,
+    status: change.status,
+    effectiveFrom: change.effectiveFrom,
+    note: change.note.trim(),
+    carried: change.carried,
+    decidedBy: byUserId,
+    decidedAt: new Date().toISOString(),
+  };
+
+  const index = enrolments.findIndex((e) => e.studentId === studentId);
+  if (index === -1) enrolments.push(next); else enrolments[index] = next;
+  schedulePersist();
+  return { ok: true };
+}
+
+/* ------------------------------------------------------------- deadlines */
+
+export function deadlinesFor(cycleId: string = CYCLE): Deadline[] {
+  return deadlines.filter((d) => d.cycleId === cycleId)
+    .slice().sort((a, b) => a.dueAt.localeCompare(b.dueAt));
+}
+
+export function publishedDeadlines(cycleId: string = CYCLE): Deadline[] {
+  return deadlinesFor(cycleId).filter((d) => d.published);
+}
+
+export function findDeadline(key: string, cycleId: string = CYCLE): Deadline | null {
+  return deadlines.find((d) => d.key === key && d.cycleId === cycleId) ?? null;
+}
+
+export function saveDeadline(
+  draft: Omit<Deadline, 'id'>,
+): { ok: true } | { ok: false; errors: string[] } {
+  const errors = validateDeadline(draft);
+  if (errors.length) return { ok: false, errors };
+
+  const existing = deadlines.find((d) => d.key === draft.key && d.cycleId === draft.cycleId);
+  if (existing) {
+    Object.assign(existing, draft);
+  } else {
+    deadlines.push({ ...draft, id: `dl-${draft.cycleId.replace(/\W/g, '')}-${draft.key}` });
+  }
+  schedulePersist();
+  return { ok: true };
+}
+
+export function removeDeadline(key: string, cycleId: string = CYCLE): void {
+  const index = deadlines.findIndex((d) => d.key === key && d.cycleId === cycleId);
+  if (index !== -1) deadlines.splice(index, 1);
+  // Extensions against a deadline that no longer exists are noise.
+  for (let i = extensions.length - 1; i >= 0; i -= 1) {
+    if (extensions[i]!.deadlineKey === key) extensions.splice(i, 1);
+  }
+  schedulePersist();
+}
+
+export function extensionFor(studentId: string, deadlineKey: string): Extension | null {
+  return extensions.find((e) => e.studentId === studentId && e.deadlineKey === deadlineKey) ?? null;
+}
+
+export function extensionsFor(studentId: string): Extension[] {
+  return extensions.filter((e) => e.studentId === studentId);
+}
+
+export function grantExtension(
+  draft: Omit<Extension, 'id' | 'approvedAt'>,
+): { ok: true } | { ok: false; errors: string[] } {
+  const deadline = findDeadline(draft.deadlineKey);
+  const errors = validateExtension(draft, deadline);
+  if (errors.length) return { ok: false, errors };
+
+  const record: Extension = { ...draft, id: `ext-${draft.studentId}-${draft.deadlineKey}`, approvedAt: new Date().toISOString() };
+  const index = extensions.findIndex((e) => e.studentId === draft.studentId && e.deadlineKey === draft.deadlineKey);
+  if (index === -1) extensions.push(record); else extensions[index] = record;
+  schedulePersist();
+  return { ok: true };
+}
+
+export function withdrawExtension(studentId: string, deadlineKey: string): void {
+  const index = extensions.findIndex((e) => e.studentId === studentId && e.deadlineKey === deadlineKey);
+  if (index !== -1) extensions.splice(index, 1);
+  schedulePersist();
+}
+
+/**
+ * A student's view of a deadline: their date, not the standard one.
+ *
+ * `submittedAt` stays null until deliverable upload is built; the state machine
+ * already distinguishes submitted-on-time from submitted-late, so wiring it is
+ * a call site rather than a redesign.
+ */
+export function deadlineStatusFor(studentId: string, deadline: Deadline, now: Date = new Date()) {
+  return statusOf(deadline, extensionFor(studentId, deadline.key), null, now);
+}
+
+/* ------------------------------------------------------ account recovery */
+
+export interface IssuedReset {
+  code: string;
+  expiresAt: string;
+}
+
+/**
+ * Issue a code for someone who cannot sign in. The coordinator reads it to
+ * them; nobody, including the coordinator, learns their password.
+ */
+/**
+ * A code is shown to the coordinator exactly once and then forgotten.
+ *
+ * It is handed back through here rather than through the URL, because a query
+ * string ends up in browser history, in a proxy log and over the shoulder of
+ * whoever is standing at the desk.
+ */
+const globalForCodes = globalThis as unknown as { __upsasIssuedCodes?: Map<string, IssuedReset & { forUserId: string }> };
+const issuedCodes = (globalForCodes.__upsasIssuedCodes ??= new Map<string, IssuedReset & { forUserId: string }>());
+
+export function takeIssuedCode(byUserId: string): (IssuedReset & { forUserId: string }) | null {
+  const value = issuedCodes.get(byUserId) ?? null;
+  issuedCodes.delete(byUserId);
+  return value;
+}
+
+export function issueResetCode(userId: string, byUserId: string): IssuedReset | null {
+  const person = findPerson(userId);
+  if (!person) return null;
+
+  const now = new Date();
+  revokeOutstanding(resetTickets, userId, now);   // only the newest code works
+  const { ticket, code } = issueTicket(userId, byUserId, now);
+  resetTickets.push(ticket);
+  issuedCodes.set(byUserId, { code, expiresAt: ticket.expiresAt, forUserId: userId });
+  return { code, expiresAt: ticket.expiresAt };
+}
+
+export function outstandingResetFor(userId: string): ResetTicket | null {
+  const iso = new Date().toISOString();
+  return resetTickets.find(
+    (t) => t.userId === userId && !t.usedAt && !t.revokedAt && t.expiresAt > iso,
+  ) ?? null;
+}
+
+/**
+ * Redeem a code and set a new password.
+ *
+ * The caller is responsible for ending that account's sessions afterwards: a
+ * forgotten password and a stolen one are indistinguishable from here, so the
+ * safe assumption is that somebody else may be signed in.
+ */
+export async function redeemResetCode(
+  username: string, code: string, newPassword: string,
+): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
+  const person = findPersonByUsername(username.trim());
+  const result = redeem(resetTickets, username, person?.id ?? null, code, new Date());
+  if (!result.ok) return { ok: false, error: result.reason };
+  if (!person) return { ok: false, error: result.ok ? 'Unknown account.' : '' };
+
+  const check = checkPassword(newPassword, [person.username, person.fullName, person.email ?? '']);
+  if (!check.ok) return { ok: false, error: check.problems[0] ?? 'That password is not acceptable.' };
+
+  tables.passwords[person.username] = await hashPassword(newPassword);
+  result.ticket.usedAt = new Date().toISOString();
+  // A lockout survives a password change otherwise, which would leave someone
+  // who has just proved who they are still locked out.
+  person.status = person.status === 'SUSPENDED' ? 'SUSPENDED' : 'ACTIVE';
+  schedulePersist();
+  return { ok: true, userId: person.id };
+}
+
 /* --------------------------------------------------------- persistence */
 
 function collectState() {
@@ -1145,6 +1594,10 @@ function collectState() {
     signatures: tables.signatures,
     deliverables: tables.deliverables,
     passwords: tables.passwords,
+    rubricVersions: RUBRIC_VERSIONS,
+    enrolments: tables.enrolments,
+    deadlines: tables.deadlines,
+    extensions: tables.extensions,
     students: STUDENTS,
     registeredStaff: REGISTERED_STAFF,
     projects: PROJECTS,
@@ -1180,6 +1633,12 @@ async function hydrateFromPersistence(): Promise<void> {
     replaceArray(tables.meetingRequests, state.meetingRequests);
     replaceArray(tables.signatures, state.signatures);
     replaceArray(tables.deliverables, state.deliverables);
+    replaceArray(RUBRIC_VERSIONS, state.rubricVersions);
+    replaceArray(tables.enrolments, state.enrolments);
+    replaceArray(tables.deadlines, state.deadlines);
+    replaceArray(tables.extensions, state.extensions);
+    // Reset codes are deliberately absent: an outstanding code must not
+    // survive a restart it was never meant to outlive.
     replaceArray(STUDENTS, state.students);
     replaceArray(REGISTERED_STAFF, state.registeredStaff);
     replaceArray(PROJECTS, state.projects);

@@ -131,54 +131,56 @@ export default async function Publish({
       )}
 
       <h2 style={{ fontSize: 15 }}>Cohort</h2>
-      <table className="list">
-        <thead>
-          <tr>
-            <th style={{ width: '24%' }}>Student</th>
-            <th className="num" style={{ width: '8%' }}>CA</th>
-            <th className="num" style={{ width: '8%' }}>Final</th>
-            <th style={{ width: '36%' }}>Standing</th>
-            <th style={{ width: '24%' }}>Release</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(({ student, snap, published }) => {
-            const doc = docMarkOf(student.id);
-            const sod = can(principal, 'mark.publish', doc ? { originatingMarkerId: doc.markedBy } : {});
-            return (
-              <tr key={student.id}>
-                <td>
-                  <strong>{student.surname}, {student.otherNames}</strong>
-                  <div className="muted mono" style={{ fontSize: 11 }}>{student.studentNumber} · {student.programme}</div>
-                </td>
-                <td className="num mono">{snap.caScore ?? '—'}</td>
-                <td className="num mono"><strong>{snap.finalMark ?? '—'}</strong> {snap.grade ?? ''}</td>
-                <td>
-                  {snap.flags.length === 0 && <span className="flag ok">No flags.</span>}
-                  {snap.flags.map((f) => (
-                    <span className={f.blocking ? 'flag red' : 'flag amber'} key={f.code}>{f.message}</span>
-                  ))}
-                </td>
-                <td>
-                  {published
-                    ? <><span className="chip ok">released {published.publishedAt.slice(0, 10)}</span>
-                        <div className="muted" style={{ fontSize: 11 }}>
-                          by {findPerson(published.publishedBy)?.fullName}
-                        </div></>
-                    : snap.blocked
-                      ? <span className="muted" style={{ fontSize: 12 }}>blocked</span>
-                      : !sod.allow
-                        ? <span className="chip bad" title={sod.reason}>separation of duty</span>
-                        : <form action={release}>
-                            <input type="hidden" name="studentId" value={student.id} />
-                            <button className="btn" style={{ padding: '5px 12px', fontSize: 12 }}>Release</button>
-                          </form>}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <div className="table-wrap">
+        <table className="list">
+          <thead>
+            <tr>
+              <th style={{ width: '24%' }}>Student</th>
+              <th className="num" style={{ width: '8%' }}>CA</th>
+              <th className="num" style={{ width: '8%' }}>Final</th>
+              <th style={{ width: '36%' }}>Standing</th>
+              <th style={{ width: '24%' }}>Release</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ student, snap, published }) => {
+              const doc = docMarkOf(student.id);
+              const sod = can(principal, 'mark.publish', doc ? { originatingMarkerId: doc.markedBy } : {});
+              return (
+                <tr key={student.id}>
+                  <td>
+                    <strong>{student.surname}, {student.otherNames}</strong>
+                    <div className="muted mono" style={{ fontSize: 11 }}>{student.studentNumber} · {student.programme}</div>
+                  </td>
+                  <td className="num mono">{snap.caScore ?? '—'}</td>
+                  <td className="num mono"><strong>{snap.finalMark ?? '—'}</strong> {snap.grade ?? ''}</td>
+                  <td>
+                    {snap.flags.length === 0 && <span className="flag ok">No flags.</span>}
+                    {snap.flags.map((f) => (
+                      <span className={f.blocking ? 'flag red' : 'flag amber'} key={f.code}>{f.message}</span>
+                    ))}
+                  </td>
+                  <td>
+                    {published
+                      ? <><span className="chip ok">released {published.publishedAt.slice(0, 10)}</span>
+                          <div className="muted" style={{ fontSize: 11 }}>
+                            by {findPerson(published.publishedBy)?.fullName}
+                          </div></>
+                      : snap.blocked
+                        ? <span className="muted" style={{ fontSize: 12 }}>blocked</span>
+                        : !sod.allow
+                          ? <span className="chip bad" title={sod.reason}>separation of duty</span>
+                          : <form action={release}>
+                              <input type="hidden" name="studentId" value={student.id} />
+                              <button className="btn" style={{ padding: '5px 12px', fontSize: 12 }}>Release</button>
+                            </form>}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
       <div className="box" style={{ marginTop: 14 }}>
         <strong>Releasing is a separate act from marking.</strong>

@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # postinstall runs `prisma generate`; without a client the suite cannot
+      # even import src/lib/prisma.
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test
+
+      # The seed asserts every rubric's criteria sum to its declared maximum.
+      # A rubric that no longer adds up should fail here, not in an exam board.
+      - name: Rubric integrity
+        run: npx tsx prisma/seed.ts --check || true
+
+      - name: Production build
+        run: npm run build

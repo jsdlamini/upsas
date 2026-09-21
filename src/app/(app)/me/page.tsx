@@ -1,8 +1,10 @@
 import { redirect } from 'next/navigation';
+import { shortState } from '@/lib/deadlines/schedule';
 import { currentPrincipal } from '@/lib/auth/current';
 import { can } from '@/lib/rbac/policy';
 import { evaluateConsultations, computeFinalMark, PROFILE_A, normalisePercentage } from '@/lib/assessment';
 import {
+  publishedDeadlines, deadlineStatusFor,
   findPerson, findStudent, projectOf, consultationsOf, toConsultationRecords,
   attestConsultation, publicationOf, findStudentByNumber, docMarkOf, toAssessorEntries,
 } from '@/lib/data/store';
@@ -67,6 +69,12 @@ export default async function MyProject({
   const p1pct = snapshot?.components.find((c) => c.key === 'p1')?.percentage ?? null;
   const p2pct = snapshot?.components.find((c) => c.key === 'p2')?.percentage ?? null;
   const awaiting = rows.filter((c) => c.status === 'COMPLETED' && c.supervisorAttested && !c.studentAttested);
+  // A student sees their own dates. Where an extension applies it is theirs
+  // that shows, and the reason behind it is never rendered anywhere.
+  const now = new Date();
+  const myDeadlines = publishedDeadlines().map((deadline) => ({
+    deadline, status: deadlineStatusFor(student.id, deadline, now),
+  }));
 
   return (
     <>
@@ -82,6 +90,50 @@ export default async function MyProject({
 
       {saved && <div className="notice">Confirmed.</div>}
       {e && <div className="notice bad">{e}</div>}
+
+      {myDeadlines.length > 0 && (
+        <>
+          <h2>What is due</h2>
+          <div className="table-wrap">
+            <table className="list">
+              <thead>
+                <tr>
+                  <th scope="col">Deadline</th>
+                  <th scope="col" style={{ width: 190 }}>Your date</th>
+                  <th scope="col" style={{ width: 170 }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {myDeadlines.map(({ deadline, status }) => (
+                  <tr key={deadline.key}>
+                    <td>
+                      <strong>{deadline.label}</strong>
+                      {status.extended && (
+                        <div className="muted" style={{ fontSize: 12 }}>
+                          Agreed with the coordinator — this date is yours, not the cohort&apos;s.
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      {new Date(status.effectiveDueAt).toLocaleString('en-GB', {
+                        day: 'numeric', month: 'short', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Mbabane',
+                      })}
+                    </td>
+                    <td>
+                      {status.state === 'MISSED'
+                        ? <span className="chip bad">missed</span>
+                        : status.state === 'DUE_SOON' || status.state === 'GRACE'
+                          ? <span className="chip warn">{shortState(status)}</span>
+                          : <span className="chip">{shortState(status)}</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
 
       {!project && (
         <div className="box" style={{ borderLeftColor: 'var(--accent)' }}>
@@ -147,65 +199,69 @@ export default async function MyProject({
             </div>
           ))}
         </div>
-        <table className="list" style={{ marginTop: 10 }}>
+        <div className="table-wrap">
+          <table className="list" style={{ marginTop: 10 }}>
+            <thead>
+              <tr><th>Period</th><th className="num">Counted</th><th className="num">Required</th>
+                <th className="num">Average</th><th className="num">Period score</th><th>Standing</th></tr>
+            </thead>
+            <tbody>
+              {outcome.periods.map((p) => (
+                <tr key={p.periodId}>
+                  <td>{p.periodId}</td>
+                  <td className="num mono">{p.gradedCount}</td>
+                  <td className="num mono">{p.requiredCount}</td>
+                  <td className="num mono">{p.rawMean === null ? '—' : p.rawMean.toFixed(1)}</td>
+                  <td className="num mono"><strong>{p.score ?? '—'}</strong></td>
+                  <td style={{ fontSize: 11.5 }}>
+                    {p.gateMet
+                      ? <span className="chip ok">minimum met</span>
+                      : <span className="chip warn">
+                          {p.requiredCount - p.gradedCount} more needed — your average is
+                          scaled to {p.complianceFactor} until then
+                        </span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2 style={{ fontSize: 15 }}>My consultation register</h2>
+      <div className="table-wrap">
+        <table className="list">
           <thead>
-            <tr><th>Period</th><th className="num">Counted</th><th className="num">Required</th>
-              <th className="num">Average</th><th className="num">Period score</th><th>Standing</th></tr>
+            <tr><th style={{ width: 90 }}>Held</th><th style={{ width: 60 }}>Period</th><th>What was reviewed</th>
+              <th style={{ width: 110 }}>Status</th><th style={{ width: 170 }}>Confirmation</th>
+              <th style={{ width: 90 }} className="num">Mark</th></tr>
           </thead>
           <tbody>
-            {outcome.periods.map((p) => (
-              <tr key={p.periodId}>
-                <td>{p.periodId}</td>
-                <td className="num mono">{p.gradedCount}</td>
-                <td className="num mono">{p.requiredCount}</td>
-                <td className="num mono">{p.rawMean === null ? '—' : p.rawMean.toFixed(1)}</td>
-                <td className="num mono"><strong>{p.score ?? '—'}</strong></td>
+            {rows.map((c) => (
+              <tr key={c.id}>
+                <td className="mono" style={{ fontSize: 11 }}>{c.heldAt.slice(0, 10)}</td>
+                <td>{c.periodId}</td>
+                <td>{c.agenda}</td>
+                <td style={{ fontSize: 11.5 }}>{c.status.replaceAll('_', ' ').toLowerCase()}</td>
                 <td style={{ fontSize: 11.5 }}>
-                  {p.gateMet
-                    ? <span className="chip ok">minimum met</span>
-                    : <span className="chip warn">
-                        {p.requiredCount - p.gradedCount} more needed — your average is
-                        scaled to {p.complianceFactor} until then
-                      </span>}
+                  {c.supervisorAttested ? <span className="chip ok">supervisor</span> : <span className="chip">supervisor pending</span>}
+                  {c.studentAttested
+                    ? <span className="chip ok">you</span>
+                    : c.status === 'COMPLETED'
+                      ? <form action={attest} style={{ display: 'inline' }}>
+                          <input type="hidden" name="id" value={c.id} />
+                          <button className="btn" style={{ padding: '2px 10px', fontSize: 11 }}>Confirm</button>
+                        </form>
+                      : <span className="chip">n/a</span>}
+                </td>
+                <td className="num mono">
+                  {c.rawTotal === null ? '—' : `${normalisePercentage(c.rawTotal, c.rubricMax).toFixed(0)}%`}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-
-      <h2 style={{ fontSize: 15 }}>My consultation register</h2>
-      <table className="list">
-        <thead>
-          <tr><th style={{ width: 90 }}>Held</th><th style={{ width: 60 }}>Period</th><th>What was reviewed</th>
-            <th style={{ width: 110 }}>Status</th><th style={{ width: 170 }}>Confirmation</th>
-            <th style={{ width: 90 }} className="num">Mark</th></tr>
-        </thead>
-        <tbody>
-          {rows.map((c) => (
-            <tr key={c.id}>
-              <td className="mono" style={{ fontSize: 11 }}>{c.heldAt.slice(0, 10)}</td>
-              <td>{c.periodId}</td>
-              <td>{c.agenda}</td>
-              <td style={{ fontSize: 11.5 }}>{c.status.replaceAll('_', ' ').toLowerCase()}</td>
-              <td style={{ fontSize: 11.5 }}>
-                {c.supervisorAttested ? <span className="chip ok">supervisor</span> : <span className="chip">supervisor pending</span>}
-                {c.studentAttested
-                  ? <span className="chip ok">you</span>
-                  : c.status === 'COMPLETED'
-                    ? <form action={attest} style={{ display: 'inline' }}>
-                        <input type="hidden" name="id" value={c.id} />
-                        <button className="btn" style={{ padding: '2px 10px', fontSize: 11 }}>Confirm</button>
-                      </form>
-                    : <span className="chip">n/a</span>}
-              </td>
-              <td className="num mono">
-                {c.rawTotal === null ? '—' : `${normalisePercentage(c.rawTotal, c.rubricMax).toFixed(0)}%`}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
 
       <h2 style={{ fontSize: 15 }}>My result</h2>
       {published ? (
