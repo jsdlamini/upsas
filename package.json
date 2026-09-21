@@ -4,7 +4,6 @@
   "private": true,
   "description": "Research Project Supervision & Assessment System \u2014 Department of Computer Science, University of Eswatini",
   "scripts": {
-    "postinstall": "prisma generate",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
