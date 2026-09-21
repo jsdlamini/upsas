@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { cookies, headers } from 'next/headers';
 import Link from 'next/link';
 import { MeetingNotices } from '@/components/meeting-notices';
+import { NotificationBell } from '@/components/notification-bell';
 import type { ReactNode } from 'react';
 import { currentPrincipal, destroySession, COOKIE } from '@/lib/auth/current';
 import { findPerson, noticesFor } from '@/lib/data/store';
@@ -100,6 +101,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         <div className="brand">
           <span className="mark"><span className="logo">RC</span> University of Eswatini</span>
           <span className="sub">Computer Science<br />Research project supervision</span>
+          <NotificationBell userId={principal.userId} />
           <label className="nav-toggle-btn" htmlFor="nav-toggle">Menu</label>
         </div>
         <nav aria-label="Sections">

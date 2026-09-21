@@ -1004,3 +1004,178 @@ tr.band td{
 }
 /* Stays bright in dark mode on purpose: this is the one thing meant to stand out. */
 @media print{ .meeting-notices{ display:none } }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   13. The notification bell, its list, and the balloons
+
+   Desktop: the bell floats in the top-right corner of the page, where people
+   look for one. Narrow screens: it sits in the top bar beside Menu. One
+   element, placed by CSS, so there is only ever one count to keep right.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+.bell-wrap{ position:fixed; top:14px; right:18px; z-index:80 }
+.bell{ position:relative }
+.bell > summary{
+  list-style:none; cursor:pointer; position:relative;
+  width:44px; height:44px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--surface); color:var(--ink);
+  border:1px solid var(--rule); box-shadow:var(--shadow);
+  transition:transform .12s ease, box-shadow .12s ease;
+}
+.bell > summary::-webkit-details-marker{ display:none }
+.bell > summary:hover{ transform:translateY(-1px) }
+.bell[open] > summary{ border-color:var(--accent); color:var(--accent) }
+.bell > summary:focus-visible{ outline:2px solid var(--accent); outline-offset:3px }
+
+/* The count: bright and round, the thing the eye goes to. */
+.bell-count{
+  position:absolute; top:-5px; right:-6px;
+  min-width:22px; height:22px; padding:0 6px; border-radius:999px;
+  display:flex; align-items:center; justify-content:center;
+  background:#FF4D3D; color:#fff; font:800 11.5px/1 var(--sans);
+  border:2px solid var(--surface);
+  box-shadow:0 0 0 0 rgba(255,77,61,.55); animation:bell-ring 2.2s ease-out infinite;
+}
+@keyframes bell-ring{
+  0%{ box-shadow:0 0 0 0 rgba(255,77,61,.55) }
+  70%,100%{ box-shadow:0 0 0 9px rgba(255,77,61,0) }
+}
+
+.bell-panel{
+  position:absolute; top:calc(100% + 10px); right:0;
+  width:min(400px, calc(100vw - 24px)); max-height:min(72vh, 620px); overflow-y:auto;
+  background:var(--surface); color:var(--ink);
+  border:1px solid var(--rule); border-radius:14px;
+  box-shadow:0 18px 48px -12px rgba(15,27,45,.35), 0 2px 6px rgba(15,27,45,.08);
+  padding:6px 0 0;
+}
+.bell-panel::before{
+  content:""; position:absolute; top:-7px; right:16px; width:12px; height:12px;
+  background:var(--surface); border-left:1px solid var(--rule); border-top:1px solid var(--rule);
+  transform:rotate(45deg);
+}
+.bell-head{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 16px 8px; border-bottom:1px solid var(--rule-soft);
+}
+.bell-head strong{ font:700 15px/1.2 var(--serif) }
+.bell-head form{ margin:0 }
+.bell-empty{ padding:18px 16px; margin:0; color:var(--muted); font-size:13px }
+.bell-section{
+  margin:0; padding:10px 16px 4px; font:700 11px/1 var(--sans);
+  letter-spacing:.08em; text-transform:uppercase; color:var(--muted);
+}
+.bell-list{ list-style:none; margin:0; padding:4px 0 }
+
+.bell-item a{
+  display:flex; gap:12px; align-items:flex-start;
+  padding:11px 16px; color:inherit; text-decoration:none;
+}
+.bell-item a:hover, .bell-item a:focus-visible{ background:var(--section-tint, #F4F6F9); outline:none }
+.bell-item.unread a{ background:color-mix(in srgb, var(--bell-tone) 10%, var(--surface)) }
+.bell-item.unread a:hover{ background:color-mix(in srgb, var(--bell-tone) 18%, var(--surface)) }
+.bell-item.confirmed{ --bell-tone:#1FC16B }
+.bell-item.pending  { --bell-tone:#FFB81C }
+.bell-item.cancelled{ --bell-tone:#FF6250 }
+.bell-tone{
+  flex:0 0 10px; height:10px; margin-top:5px; border-radius:50%;
+  background:var(--bell-tone);
+}
+.bell-item:not(.unread) .bell-tone{ opacity:.35 }
+.bell-copy{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px }
+.bell-kind{
+  font:700 10.5px/1.2 var(--sans); letter-spacing:.07em; text-transform:uppercase; color:var(--muted);
+}
+.bell-kind em{
+  font-style:normal; margin-left:6px; padding:1px 6px; border-radius:999px;
+  background:#FFD23F; color:#2B1B00; letter-spacing:.04em; white-space:nowrap;
+}
+.bell-copy strong{ font:600 13.5px/1.35 var(--sans) }
+.bell-item:not(.unread) .bell-copy strong{ font-weight:500; color:var(--ink-soft) }
+.bell-body{ font-size:12.5px; color:var(--muted); line-height:1.4 }
+.bell-copy time{ font-size:11.5px; color:var(--muted) }
+.bell-go{ color:var(--muted); font-size:20px; line-height:1; margin-top:8px }
+.bell-foot{
+  display:flex; justify-content:space-between; align-items:center; gap:10px;
+  padding:10px 16px 12px; border-top:1px solid var(--rule-soft); font-size:12.5px;
+  position:sticky; bottom:0; background:var(--surface);
+}
+.bell-alerts{ font-size:12.5px; color:var(--muted) }
+.bell-alerts.on{ color:var(--moss); font-weight:600 }
+button.bell-alerts{ color:var(--accent) }
+
+/* ------------------------------------------------------------- balloons */
+
+.balloons{
+  position:fixed; top:70px; right:18px; z-index:90;
+  display:flex; flex-direction:column; gap:10px; width:min(360px, calc(100vw - 24px));
+}
+.balloon{
+  --mn-ink:#04291A; --mn-a:#3DDC84; --mn-b:#1FC16B;
+  position:relative; border-radius:14px;
+  background:linear-gradient(110deg, var(--mn-a), var(--mn-b)); color:var(--mn-ink);
+  box-shadow:0 16px 36px -10px color-mix(in srgb, var(--mn-b) 75%, transparent);
+  animation:balloon-in .45s cubic-bezier(.2,1.4,.4,1) both;
+}
+.balloon.pending  { --mn-ink:#2B1B00; --mn-a:#FFD23F; --mn-b:#FFB81C }
+.balloon.cancelled{ --mn-ink:#2B0703; --mn-a:#FF8A7A; --mn-b:#FF6250 }
+.balloon-link{
+  display:flex; flex-direction:column; gap:3px; padding:13px 40px 13px 15px;
+  color:inherit; text-decoration:none;
+}
+.balloon-link strong{ font:700 14.5px/1.3 var(--sans) }
+.balloon-link > span:last-child{ font-size:12.5px; line-height:1.4; opacity:.92 }
+.balloon-kind{
+  display:inline-flex; align-items:center; gap:6px; align-self:flex-start;
+  background:var(--mn-ink); color:var(--mn-a);
+  font:700 10.5px/1 var(--sans); letter-spacing:.07em; text-transform:uppercase;
+  padding:5px 9px; border-radius:999px; margin-bottom:3px; white-space:nowrap;
+}
+.balloon-close{
+  position:absolute; top:8px; right:8px; width:28px; height:28px; border-radius:50%;
+  border:0; background:rgba(255,255,255,.5); color:var(--mn-ink);
+  font:700 17px/1 var(--sans); cursor:pointer;
+}
+.balloon-close:hover{ background:rgba(255,255,255,.8) }
+.balloon-link:focus-visible{ outline:2px solid var(--mn-ink); outline-offset:-4px; border-radius:14px }
+@keyframes balloon-in{
+  from{ opacity:0; transform:translateY(-10px) scale(.96) }
+  to{ opacity:1; transform:none }
+}
+
+/* ------------------------------------------------ where a link lands */
+
+/* The row a notification was opened for. :target covers a plain anchor jump,
+   .focused covers arriving through a redirect, where :target may not apply. */
+tr.focused td, tr:target td{
+  background:#FFF4C2 !important;
+  box-shadow:inset 0 2px 0 #FFB81C, inset 0 -2px 0 #FFB81C;
+}
+tr.focused td:first-child, tr:target td:first-child{ box-shadow:inset 3px 0 0 #FFB81C, inset 0 2px 0 #FFB81C, inset 0 -2px 0 #FFB81C }
+p.focused, p:target{
+  background:#FFF4C2; border-radius:8px; padding:8px 10px;
+  box-shadow:0 0 0 2px #FFB81C;
+}
+[id^="slot-"], [id^="booking-"], [id^="request-"], #open-slots{ scroll-margin-top:90px }
+@media (prefers-color-scheme: dark){
+  tr.focused td, tr:target td, p.focused, p:target{ background:#3A2F0A !important }
+}
+
+/* Leave room so the floating bell never sits on a page heading. */
+main{ padding-right:max(32px, 76px) }
+
+@media (max-width: 900px){
+  .bell-wrap{ position:static; order:2 }
+  .rail .brand .nav-toggle-btn{ order:3 }
+  .bell > summary{
+    width:44px; height:44px; background:#18273A; color:#E8EDF4;
+    border-color:var(--rail-line); box-shadow:none;
+  }
+  .bell-count{ border-color:#0C1624 }
+  .bell-panel{ position:fixed; top:66px; left:10px; right:10px; width:auto }
+  .bell-panel::before{ display:none }
+  .balloons{ top:auto; bottom:16px; left:12px; right:12px; width:auto }
+  main{ padding-right:16px }
+}
+@media print{ .bell-wrap, .balloons{ display:none } }
