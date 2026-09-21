@@ -23,6 +23,8 @@ COPY --from=deps /app/node_modules ./node_modules
 # only production deps, so @prisma/client there is not generated).
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build /app/node_modules/@prisma/client ./node_modules/@prisma/client
+COPY --from=build /app/node_modules/prisma ./node_modules/prisma
+COPY --from=build /app/node_modules/@prisma/engines ./node_modules/@prisma/engines
 COPY --from=build /app/.next ./.next
 COPY --from=build /app/public ./public
 COPY --from=build /app/prisma ./prisma
@@ -32,4 +34,4 @@ USER upsas
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s \
   CMD node -e "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["npm", "run", "start"]
+CMD ["sh", "-c", "npx prisma migrate deploy && npm run start"]
