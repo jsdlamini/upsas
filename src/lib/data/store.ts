@@ -1,7 +1,8 @@
 import { hashPassword, checkPassword } from '../auth/password';
 import type { RoleGrant } from '../auth/roles';
 import type { AssessorEntry, ConsultationRecord } from '../assessment/types';
-import { loadPersistedState, savePersistedState } from '../persistence';
+import { loadPersistedState, savePersistedState, persistenceEnabled, type SaveOutcome } from '../persistence';
+import { groupCommit } from '../group-commit';
 import {
   defaultEnrolment, validateChange, appearsInCohort, isAssessable,
   type Enrolment, type EnrolmentStatus, type CarriedComponent,
@@ -1853,14 +1854,49 @@ let hydratePromise: Promise<void> | null = null;
 
 /** Idempotent hydration: loads the persisted snapshot once and replaces the
  *  in-memory working tables. The root layout awaits this before rendering. */
+/**
+ * Where durable storage stands. `ready` is the only state in which writes are
+ * allowed: until the real snapshot has been read, this process holds seed data,
+ * and writing that back would overwrite every mark in the database.
+ */
+export type PersistenceHealth = 'disabled' | 'loading' | 'ready' | 'unreachable';
+
+const globalForPersist = globalThis as unknown as {
+  __upsasPersist?: { health: PersistenceHealth; lastError: string | null; lastSavedAt: string | null };
+};
+const persistState = (globalForPersist.__upsasPersist ??= {
+  health: 'loading', lastError: null, lastSavedAt: null,
+});
+
+export function persistenceHealth() {
+  return { ...persistState };
+}
+
 export function ensureHydrated(): Promise<void> {
+  // A failed attempt is not cached: the next request tries again, so a
+  // database that comes up late is picked up without a restart.
+  if (persistState.health === 'unreachable') hydratePromise = null;
   hydratePromise ??= hydrateFromPersistence();
   return hydratePromise;
 }
 
 async function hydrateFromPersistence(): Promise<void> {
-  const state = await loadPersistedState();
-  if (!state) return;
+  const loaded = await loadPersistedState();
+  if (loaded.status === 'disabled') { persistState.health = 'disabled'; return; }
+  if (loaded.status === 'unreachable') {
+    persistState.health = 'unreachable';
+    persistState.lastError = loaded.error;
+    console.error('[persist:unreachable] refusing to run on seed data:', loaded.error);
+    return;
+  }
+  if (loaded.status === 'empty') {
+    // First boot against this database: the seed is the real state. Write it
+    // straight away so the next boot finds a snapshot.
+    persistState.health = 'ready';
+    await persistNow();
+    return;
+  }
+  const state = loaded.state;
   try {
     replaceArray(tables.consultations, state.consultations);
     replaceArray(tables.sheets, state.sheets);
@@ -1891,16 +1927,60 @@ async function hydrateFromPersistence(): Promise<void> {
       for (const k of Object.keys(tables.passwords)) delete tables.passwords[k];
       Object.assign(tables.passwords, state.passwords);
     }
-  } catch {
-    // Malformed snapshot — keep the in-memory seed.
+    persistState.health = 'ready';
+  } catch (error) {
+    // An unreadable snapshot is not an empty one. Carrying on with seed data
+    // would overwrite it on the next save, so writes stay blocked until a
+    // person has looked.
+    persistState.health = 'unreachable';
+    persistState.lastError = `snapshot unreadable: ${error instanceof Error ? error.message : String(error)}`;
+    console.error('[persist:unreadable]', persistState.lastError);
   }
 }
 
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
+let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+async function writeSnapshot(): Promise<SaveOutcome> {
+  if (!persistenceEnabled()) return 'disabled';
+  // Never write before the real state is loaded: see PersistenceHealth.
+  if (persistState.health !== 'ready') return 'failed';
+  const outcome = await savePersistedState(collectState());
+  if (outcome === 'saved') {
+    persistState.lastSavedAt = new Date().toISOString();
+    persistState.lastError = null;
+  } else if (outcome === 'failed') {
+    persistState.lastError = 'last write to the database failed';
+    // Keep trying in the background so a short database outage loses nothing
+    // that was entered during it.
+    retryTimer ??= setTimeout(() => { retryTimer = null; void persistNow(); }, 5000);
+  }
+  return outcome;
+}
+
+/**
+ * Write the working state to the database now, and resolve only once the
+ * write that includes the caller's change has finished.
+ *
+ * Writes are grouped: while one is in flight, every later caller shares a
+ * single follow-up write, which will contain all of their changes. Forty
+ * assessors tabbing through a sheet produce a handful of writes, not forty,
+ * and none of them is acknowledged before its data is in Postgres.
+ */
+const committed = groupCommit(writeSnapshot);
+
+export function persistNow(): Promise<SaveOutcome> {
+  if (persistTimer) { clearTimeout(persistTimer); persistTimer = null; }
+  return committed();
+}
+/**
+ * For changes that are not acknowledged to anyone as saved: coalesce into one
+ * write a moment later. Marks do not go this way — they use persistNow().
+ */
 export function schedulePersist(): void {
   if (persistTimer) clearTimeout(persistTimer);
   persistTimer = setTimeout(() => {
     persistTimer = null;
-    void savePersistedState(collectState());
+    void persistNow();
   }, 1500);
 }

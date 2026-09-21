@@ -1179,3 +1179,80 @@ main{ padding-right:max(32px, 76px) }
   main{ padding-right:16px }
 }
 @media print{ .bell-wrap, .balloons{ display:none } }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   14. The lit rail item, and marks that save themselves
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* The current page is unmistakable: a solid tinted pill, a bright bar on the
+   left, white bold text and a lit icon. It follows every click, because the
+   highlight is now decided in the browser (see NavLinks). */
+.rail nav a{ position:relative; border-radius:8px; margin:1px 8px 1px 0 }
+.rail nav a.on{
+  background:linear-gradient(90deg,
+    color-mix(in srgb, var(--section) 55%, #0F1B2D) 0%,
+    color-mix(in srgb, var(--section) 30%, #0F1B2D) 100%) !important;
+  color:#fff !important; font-weight:700;
+  border-left-color:transparent !important;
+  box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--section) 60%, transparent);
+}
+.rail nav a.on::before{
+  content:""; position:absolute; left:-2px; top:7px; bottom:7px; width:4px; border-radius:3px;
+  background:color-mix(in srgb, var(--section) 45%, #ffffff);
+  box-shadow:0 0 10px color-mix(in srgb, var(--section) 70%, transparent);
+}
+.rail nav a.on svg{ color:#fff; opacity:1 }
+@media (max-width: 900px){
+  .rail nav a{ margin:0 0 2px }
+  .rail nav a.on::before{ left:0 }
+}
+
+/* ---------------------------------------------------------- autosave */
+
+.autosave-note{
+  display:inline-flex; align-items:center; gap:8px;
+  font:600 12.5px/1 var(--sans); color:var(--moss);
+}
+.autosave-dot{ width:8px; height:8px; border-radius:50%; background:#1FC16B;
+  box-shadow:0 0 0 3px color-mix(in srgb, #1FC16B 25%, transparent) }
+form[data-dirty="1"] .autosave-dot{ background:#FFB81C; box-shadow:0 0 0 3px rgba(255,184,28,.25) }
+
+input.mark.saving{
+  background:linear-gradient(90deg, #EEF3FC 0%, #DCE6FA 50%, #EEF3FC 100%);
+  background-size:200% 100%; animation:mark-saving 1s linear infinite;
+}
+input.mark.saved-flash{ animation:mark-saved 1.4s ease-out }
+@keyframes mark-saving{ from{ background-position:100% 0 } to{ background-position:-100% 0 } }
+@keyframes mark-saved{
+  0%{ background:#C9F5DC; border-color:#1FC16B; box-shadow:0 0 0 3px rgba(31,193,107,.25) }
+  100%{ background:var(--surface) }
+}
+
+.save-toasts{
+  position:fixed; right:18px; bottom:18px; z-index:95;
+  display:flex; flex-direction:column; gap:8px; align-items:flex-end;
+  width:min(420px, calc(100vw - 24px));
+  padding-bottom:env(safe-area-inset-bottom, 0px);
+}
+.save-toast{
+  display:flex; align-items:center; gap:10px; width:100%;
+  padding:11px 10px 11px 12px; border-radius:12px;
+  font:600 13.5px/1.4 var(--sans);
+  box-shadow:0 12px 30px -10px rgba(15,27,45,.45);
+  animation:balloon-in .3s cubic-bezier(.2,1.4,.4,1) both;
+}
+.save-toast.ok  { background:linear-gradient(100deg, #3DDC84, #1FC16B); color:#04291A }
+.save-toast.warn{ background:linear-gradient(100deg, #FFD23F, #FFB81C); color:#2B1B00 }
+.save-toast.bad { background:linear-gradient(100deg, #FF8A7A, #FF6250); color:#2B0703 }
+.save-toast-icon{
+  flex:0 0 24px; height:24px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(0,0,0,.82); color:#fff; font:800 13px/1 var(--sans);
+}
+.save-toast span:nth-child(2){ flex:1 }
+.save-toast button{
+  flex:0 0 28px; height:28px; border:0; border-radius:50%; cursor:pointer;
+  background:rgba(255,255,255,.5); color:inherit; font:700 16px/1 var(--sans);
+}
+@media (max-width: 900px){ .save-toasts{ right:12px; left:12px; bottom:12px; width:auto } }
+@media print{ .save-toasts{ display:none } }

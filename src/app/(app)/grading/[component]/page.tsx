@@ -7,7 +7,7 @@ import { aggregatePanel, PROFILE_A, normalisePercentage } from '@/lib/assessment
 import { MarkGrid } from '@/components/mark-grid';
 import {
   RUBRICS, sessionsFor, findStudent, projectOf, findPerson,
-  sheetOf, setMark, submitSheet, rawTotalOf, toAssessorEntries,
+  sheetOf, setMark, submitSheet, rawTotalOf, toAssessorEntries, persistNow,
 } from '@/lib/data/store';
 
 export const dynamic = 'force-dynamic';
@@ -68,11 +68,13 @@ async function saveMarks(formData: FormData) {
     if (!result.ok) errors.push({ s: studentId, c: criterionId, m: result.error });
   }
 
+  // Acknowledge only what the database has: see persistNow().
+  const outcome = await persistNow();
   revalidatePath(`/grading/${component}`);
   redirect(
     errors.length
       ? `/grading/${component}?e=${encodeErrors(errors)}#sheet`
-      : `/grading/${component}?saved=1#sheet`,
+      : `/grading/${component}?saved=${outcome === 'failed' ? 'pending' : '1'}#sheet`,
   );
 }
 
@@ -82,6 +84,7 @@ async function submitAll(formData: FormData) {
   if (!principal) redirect('/login');
   const component = String(formData.get('component')) as Component;
   const n = submitSheet(principal.userId, component, new Date().toISOString());
+  await persistNow();
   revalidatePath(`/grading/${component}`);
   redirect(`/grading/${component}?submitted=${n}`);
 }
@@ -137,7 +140,13 @@ export default async function Grading({
         <span className="rule-spacer" />
       </div>
 
-      {saved && <div className="notice" role="status">Marks saved.</div>}
+      {saved === '1' && <div className="notice" role="status">Marks saved.</div>}
+      {saved === 'pending' && (
+        <div className="notice bad" role="alert">
+          Your marks were accepted but the database did not confirm the write. They are held on
+          the server and being retried; check back before you submit the sheet.
+        </div>
+      )}
       {submitted && <div className="notice" role="status">Sheet submitted — {submitted} rows locked.</div>}
       {fieldErrors.length > 0 && (
         <div className="notice bad" role="alert">
@@ -226,13 +235,15 @@ export default async function Grading({
                               <input className="mark" name={`m:${id}:${c.id}`} inputMode="numeric"
                                      min={0} max={c.max} type="number" disabled={locked}
                                      data-row={row} data-col={col}
+                                     data-student={id} data-criterion={c.id}
+                                     data-saved={sheet?.marks[c.id] ?? ''}
                                      aria-invalid={badField.has(`${id}:${c.id}`) || undefined}
                                      aria-label={`${who}, ${c.label}, out of ${c.max}`}
                                      defaultValue={sheet?.marks[c.id] ?? ''} />
                             </td>
                           ))}
-                          <td className="total">{total ?? '—'}</td>
-                          <td className="num muted mono">
+                          <td className="total" data-total-for={id}>{total ?? '—'}</td>
+                          <td className="num muted mono" data-norm-for={id}>
                             {total === null ? '—' : `${normalisePercentage(total, rubric.max).toFixed(1)}%`}
                           </td>
                           <td style={{ fontSize: 11.5 }}>
@@ -254,19 +265,25 @@ export default async function Grading({
 
         {/* Follows the assessor down the sheet instead of sitting forty rows below it. */}
         <div className="actionbar">
-          <button className="btn" type="submit" disabled={locked}>Save marks</button>
-          <span className="dirty" role="status">Unsaved marks</span>
+          <span className="autosave-note">
+            <span className="autosave-dot" aria-hidden="true" />
+            Each mark saves when you leave its box
+          </span>
+          <span className="dirty" role="status" />
           <span className="hint">
             {done} of {assigned.length} rows have marks. A row left blank is recorded as not
             assessed by you and excluded from the panel mean — never scored zero.
             <span className="muted"> Enter or ↓ moves down the column.</span>
           </span>
+          {/* Still here for anyone with scripts off: the sheet is an ordinary form. */}
+          <button className="btn ghost sm" type="submit" disabled={locked}>Save all now</button>
         </div>
       </form>
 
-      <MarkGrid formId="sheet-form" />
+      <MarkGrid formId="sheet-form" submitFormId="submit-form" component={component}
+                assessorId={principal.userId} />
 
-      <form action={submitAll} style={{ marginTop: 10 }}>
+      <form action={submitAll} id="submit-form" style={{ marginTop: 10 }}>
         <input type="hidden" name="component" value={component} />
         <button className="btn ghost" type="submit" disabled={locked}>Submit sheet</button>
         <span className="muted" style={{ marginLeft: 12 }}>

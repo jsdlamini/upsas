@@ -1,11 +1,12 @@
 import { redirect } from 'next/navigation';
 import { cookies, headers } from 'next/headers';
-import Link from 'next/link';
+import { NavLinks } from '@/components/nav-links';
+import { sectionOf } from '@/lib/nav/section';
 import { MeetingNotices } from '@/components/meeting-notices';
 import { NotificationBell } from '@/components/notification-bell';
 import type { ReactNode } from 'react';
 import { currentPrincipal, destroySession, COOKIE } from '@/lib/auth/current';
-import { findPerson, noticesFor } from '@/lib/data/store';
+import { findPerson, noticesFor, persistenceHealth } from '@/lib/data/store';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,28 +27,7 @@ function navIcon(href: string): ReactNode {
   return ICONS[href] ?? ICONS['/'];
 }
 
-/**
- * Which area of the system a path belongs to. The answer becomes a hue: the
- * rail item, the rule under the page title, the line under a table header and
- * the wash behind the page all take it, so a screen is recognisable before a
- * word of it is read. Status colours are untouched by this.
- */
-function sectionOf(path: string): string {
-  if (path === '/' || path.startsWith('/me') || path.startsWith('/cohort')) return 'home';
-  if (path.startsWith('/topics')) return 'topics';
-  if (path.startsWith('/book')) return 'book';
-  if (path.startsWith('/consultations')) return 'consultations';
-  // The marking sheet and the form it is built from belong to the same hue.
-  if (path.startsWith('/grading') || path.startsWith('/marks') || path.startsWith('/rubrics')) return 'grading';
-  if (path.startsWith('/publish')) return 'publish';
-  if (path.startsWith('/reports')) return 'reports';
-  return 'home';
-}
 
-/** Is `href` the page being viewed? '/' must match exactly or it matches all. */
-function isCurrent(href: string, path: string): boolean {
-  return href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`);
-}
 
 function initials(name: string | undefined): string {
   if (!name) return '—';
@@ -69,6 +49,25 @@ async function signOut() {
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const principal = await currentPrincipal();
   if (!principal) redirect('/login');
+
+  // A machine that could not load the real state shows nothing rather than
+  // seed data dressed up as the department's marks.
+  const persistence = persistenceHealth();
+  if (persistence.health === 'unreachable') {
+    return (
+      <main style={{ padding: '64px 24px', maxWidth: 640, margin: '0 auto' }}>
+        <h1 className="page">The database cannot be reached</h1>
+        <p className="lede">
+          UPSAS will not show or accept marks until it can read the saved state, so nothing you
+          see could be out of date and nothing you enter could overwrite what is stored. This
+          usually clears within a minute of a server restart. Reload to try again.
+        </p>
+        <p className="muted" style={{ fontSize: 12.5 }}>
+          For the administrator: {persistence.lastError ?? 'no detail'}
+        </p>
+      </main>
+    );
+  }
   const person = findPerson(principal.userId);
   // Set by src/middleware.ts. Falls back to '/' if middleware is bypassed.
   const path = (await headers()).get('x-pathname') ?? '/';
@@ -105,18 +104,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           <label className="nav-toggle-btn" htmlFor="nav-toggle">Menu</label>
         </div>
         <nav aria-label="Sections">
-          {tabs.map(([href, label]) => {
-            const on = isCurrent(href, path);
-            return (
-              <Link key={href} href={href} className={on ? 'on' : undefined}
-                    aria-current={on ? 'page' : undefined}>
-                {navIcon(href)}{label}
-                {href === '/book' && unseenMeetings > 0 && (
-                  <span className="nav-count" aria-label={`${unseenMeetings} new`}>{unseenMeetings}</span>
-                )}
-              </Link>
-            );
-          })}
+          <NavLinks items={tabs.map(([href, label]) => ({
+            href, label, icon: navIcon(href),
+            ...(href === '/book' && unseenMeetings > 0 ? { count: unseenMeetings } : {}),
+          }))} />
         </nav>
         <div className="foot">
           <span className="avatar" aria-hidden="true">{initials(person?.fullName)}</span>
@@ -134,6 +125,13 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       </aside>
       <div className="content">
         <main id="main">
+          {persistence.health === 'disabled' && process.env.NODE_ENV === 'production'
+            && principal.roles.some((r) => r !== 'STUDENT') && (
+            <div className="notice bad" role="alert">
+              <strong>Nothing is being saved durably.</strong> This server has no
+              DATABASE_URL, so every mark lives only in its memory and is lost when it restarts.
+            </div>
+          )}
           <MeetingNotices userId={principal.userId} />
           {children}
         </main>
