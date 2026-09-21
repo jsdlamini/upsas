@@ -6,7 +6,7 @@ import {
   CYCLE, STUDENTS, findStudent, findPerson, allPeople,
   enrolmentOf, setEnrolment, deadlinesFor, saveDeadline, removeDeadline,
   extensionFor, grantExtension, withdrawExtension, deadlineStatusFor,
-  issueResetCode, takeIssuedCode, outstandingResetFor,
+  issueResetCode, takeIssuedCode, outstandingResetFor, emailOf, setContactEmail,
 } from '@/lib/data/store';
 import {
   STATUS_LABEL, STATUS_MEANING, describe,
@@ -133,6 +133,15 @@ async function dropExtension(formData: FormData) {
   withdrawExtension(String(formData.get('studentId')), String(formData.get('deadlineKey')));
   revalidatePath('/cohort');
   back('extensions', '&done=' + encodeURIComponent('Extension withdrawn'));
+}
+
+async function saveEmail(formData: FormData) {
+  'use server';
+  await guard();
+  const result = setContactEmail(String(formData.get('userId')), String(formData.get('email') ?? ''));
+  if (!result.ok) back('recovery', `&e=${encodeURIComponent(JSON.stringify([result.error]))}`);
+  revalidatePath('/cohort');
+  back('recovery', '&done=' + encodeURIComponent('Email address saved'));
 }
 
 async function issueCode(formData: FormData) {
@@ -468,6 +477,8 @@ export default async function Cohort({
       {tab === 'recovery' && (
         <>
           <p>
+            The email address set here is where booking, confirmation and result emails go.
+            Anyone without one still gets the bell and banners, just not the email.
             Sign-in is local to the department, so there is no external account to recover
             through. Issue a code and read it to the person, having satisfied yourself they
             are who they say. You never see their password, the code works once, and it
@@ -490,6 +501,7 @@ export default async function Cohort({
                 <tr>
                   <th scope="col">Person</th>
                   <th scope="col" style={{ width: 160 }}>Username</th>
+                  <th scope="col" style={{ width: 290 }}>Email for meeting notices</th>
                   <th scope="col" style={{ width: 140 }}>Account</th>
                   <th scope="col" style={{ width: 170 }}>Outstanding code</th>
                   <th scope="col" style={{ width: 140 }} />
@@ -502,6 +514,15 @@ export default async function Cohort({
                     <tr key={person.id}>
                       <td><strong>{person.fullName}</strong></td>
                       <td className="mono">{person.username}</td>
+                      <td>
+                        <form action={saveEmail} style={{ display: 'flex', gap: 6 }}>
+                          <input type="hidden" name="userId" value={person.id} />
+                          <input type="email" name="email" defaultValue={emailOf(person.id) ?? ''}
+                                 placeholder="none — no emails sent" style={{ flex: 1, minWidth: 0 }}
+                                 aria-label={`Email address for ${person.fullName}`} />
+                          <button className="btn ghost sm" type="submit">Save</button>
+                        </form>
+                      </td>
                       <td>
                         {person.status === 'PENDING_APPROVAL'
                           ? <span className="chip warn">awaiting approval</span>

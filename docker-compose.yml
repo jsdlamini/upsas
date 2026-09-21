@@ -30,6 +30,12 @@ services:
       PASSWORD_BLOCKLIST_PATH: /app/data/password-blocklist.txt
       SMTP_HOST: ${SMTP_HOST:-mail.uniswa.sz}
       SMTP_PORT: ${SMTP_PORT:-587}
+      # Without these the container never saw the Resend key, so no email left
+      # a Docker deployment even when .env was filled in.
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM: ${RESEND_FROM:-UPSAS <onboarding@resend.dev>}
+      EMAIL_REDIRECT_TO: ${EMAIL_REDIRECT_TO:-}
       TZ: Africa/Mbabane
     volumes:
       - uploads:/var/lib/upsas/uploads

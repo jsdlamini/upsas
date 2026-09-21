@@ -13,10 +13,14 @@ export const dynamic = 'force-dynamic';
  * about whether it exists.
  */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const principal = await currentPrincipal();
-  if (!principal) return NextResponse.redirect(new URL('/login', request.url));
-
   const { id } = await params;
+  const principal = await currentPrincipal();
+  if (!principal) {
+    // Arriving from an email while signed out: sign in, then come straight back.
+    const back = `/api/notifications/${encodeURIComponent(id)}/open`;
+    return NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(back)}`, request.url), 303);
+  }
+
   const href = openNotice(decodeURIComponent(id), principal.userId) ?? '/book';
   // Only ever an internal path: a stored href is never allowed to send
   // someone off-site.
