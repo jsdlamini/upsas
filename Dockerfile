@@ -19,6 +19,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends clamav-daemon c
     && rm -rf /var/lib/apt/lists/*
 RUN useradd --system --uid 10001 upsas
 COPY --from=deps /app/node_modules ./node_modules
+# Copy the Prisma client generated in the build stage (the deps stage installed
+# only production deps, so @prisma/client there is not generated).
+COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=build /app/node_modules/@prisma/client ./node_modules/@prisma/client
 COPY --from=build /app/.next ./.next
 COPY --from=build /app/public ./public
 COPY --from=build /app/prisma ./prisma
