@@ -18,6 +18,10 @@ import {
   type Instrument, type Draft, type ChangePlan, type PlanResult,
 } from '../rubrics/instrument';
 import { notifyUser } from '../notifications';
+import {
+  makeNotice, supersede, visibleFor, dismiss, dismissAll, whenLabel,
+  type MeetingNotice, type NoticeKind,
+} from '../meetings/notices';
 
 /**
  * In-memory development store.
@@ -378,13 +382,14 @@ interface Tables {
   deadlines: Deadline[];
   extensions: Extension[];
   resetTickets: ResetTicket[];
+  meetingNotices: MeetingNotice[];
   seeded: boolean;
 }
 const globalForData = globalThis as unknown as { __upsasData?: Tables };
 const tables: Tables = (globalForData.__upsasData ??= {
   consultations: [], sheets: [], docMarks: [], publications: [], moderations: [],
   topics: [], preferences: [], slots: [], meetingRequests: [], signatures: [], deliverables: [], passwords: {},
-  enrolments: [], deadlines: [], extensions: [], resetTickets: [], seeded: false,
+  enrolments: [], deadlines: [], extensions: [], resetTickets: [], meetingNotices: [], seeded: false,
 });
 const consultations = tables.consultations;
 const sheets = tables.sheets;
@@ -401,6 +406,9 @@ const enrolments = tables.enrolments;
 const deadlines = tables.deadlines;
 const extensions = tables.extensions;
 const resetTickets = tables.resetTickets;
+// Older persisted snapshots predate this table.
+tables.meetingNotices ??= [];
+const meetingNotices = tables.meetingNotices;
 
 function seedConsultations(): void {
   const plan: Record<string, [number[], number[]]> = {
@@ -1000,6 +1008,62 @@ export const findSlot = (id: string) => slots.find((s) => s.id === id) ?? null;
 
 export const MIN_NOTICE_HOURS = 24;
 
+/* ------------------------------------------------------- meeting notices */
+
+/** A student's login, which is not always `u-<studentId>` for registered students. */
+function personIdForStudent(studentId: string): string {
+  return allPeople().find((p) => p.studentId === studentId)?.id ?? `u-${studentId}`;
+}
+
+function studentName(studentId: string): string {
+  const st = findStudent(studentId);
+  return st ? `${st.otherNames} ${st.surname}` : 'A student';
+}
+
+function staffName(personId: string): string {
+  return findPerson(personId)?.fullName ?? 'Your supervisor';
+}
+
+function where(slot: Slot): string {
+  return slot.mode === 'ONLINE'
+    ? (slot.meetingLink ? `online — ${slot.meetingLink}` : 'online')
+    : (slot.venue || 'in person');
+}
+
+/**
+ * Tell both people about a change to one meeting, retiring whatever either of
+ * them was previously told about it.
+ */
+function announce(
+  meetingRef: string, startsAt: string | null,
+  notices: Array<{ forUserId: string; kind: NoticeKind; title: string; body: string; actionRequired?: boolean }>,
+): void {
+  const now = new Date();
+  supersede(meetingNotices, meetingRef, now);
+  for (const n of notices) {
+    meetingNotices.push(makeNotice({
+      forUserId: n.forUserId, meetingRef, kind: n.kind, title: n.title, body: n.body,
+      startsAt, actionRequired: n.actionRequired ?? false,
+    }, now));
+  }
+}
+
+export function noticesFor(userId: string, now: Date = new Date()): MeetingNotice[] {
+  return visibleFor(meetingNotices, userId, now);
+}
+
+export function dismissNotice(id: string, userId: string): boolean {
+  const done = dismiss(meetingNotices, id, userId, new Date());
+  if (done) schedulePersist();
+  return done;
+}
+
+export function dismissAllNotices(userId: string): number {
+  const count = dismissAll(meetingNotices, userId, new Date());
+  if (count) schedulePersist();
+  return count;
+}
+
 export function bookSlot(
   slotId: string, studentId: string, agenda: string, now: Date,
   mode: 'IN_PERSON' | 'ONLINE' = 'IN_PERSON', meetingLink = '',
@@ -1025,6 +1089,19 @@ export function bookSlot(
   slot.mode = mode;
   slot.meetingLink = meetingLink.trim() || null;
   slot.status = 'REQUESTED';
+  const when = whenLabel(slot.startsAt);
+  announce(slot.id, slot.startsAt, [
+    {
+      forUserId: slot.supervisorId, kind: 'BOOKED', actionRequired: true,
+      title: `${studentName(studentId)} booked ${when}`,
+      body: `${slot.agenda} · ${where(slot)}. Confirm or decline it under My availability.`,
+    },
+    {
+      forUserId: personIdForStudent(studentId), kind: 'REQUESTED',
+      title: `Booking sent for ${when}`,
+      body: `With ${staffName(slot.supervisorId)} · ${where(slot)}. It is not confirmed until they accept it.`,
+    },
+  ]);
   schedulePersist();
   // Booking requested — notify the student (best-effort).
   const bookedPerson = findPerson(`u-${studentId}`);
@@ -1046,6 +1123,19 @@ export function confirmBooking(slotId: string, supervisorId: string): { ok: true
   if (slot.supervisorId !== supervisorId) return { ok: false, error: 'Not your slot.' };
   if (!slot.bookedByStudentId) return { ok: false, error: 'No booking on this slot.' };
   slot.status = 'CONFIRMED';
+  const confirmedWhen = whenLabel(slot.startsAt);
+  announce(slot.id, slot.startsAt, [
+    {
+      forUserId: personIdForStudent(slot.bookedByStudentId), kind: 'CONFIRMED',
+      title: `Confirmed: ${confirmedWhen}`,
+      body: `${staffName(slot.supervisorId)} confirmed your consultation · ${where(slot)}.`,
+    },
+    {
+      forUserId: slot.supervisorId, kind: 'CONFIRMED',
+      title: `Confirmed: ${studentName(slot.bookedByStudentId)}, ${confirmedWhen}`,
+      body: `${slot.agenda ?? 'Consultation'} · ${where(slot)}. The student has been told.`,
+    },
+  ]);
   schedulePersist();
   const person = findPerson(`u-${slot.bookedByStudentId}`);
   const body = `Your consultation for ${slot.startsAt} was confirmed.${slot.meetingLink ? ` Meeting link: ${slot.meetingLink}` : ''}`;
@@ -1060,6 +1150,19 @@ export function declineBooking(slotId: string, supervisorId: string): { ok: true
   if (!slot) return { ok: false, error: 'No such slot.' };
   if (slot.supervisorId !== supervisorId) return { ok: false, error: 'Not your slot.' };
   if (!slot.bookedByStudentId) return { ok: false, error: 'No booking on this slot.' };
+  const declinedWhen = whenLabel(slot.startsAt);
+  announce(slot.id, slot.startsAt, [
+    {
+      forUserId: personIdForStudent(slot.bookedByStudentId), kind: 'DECLINED', actionRequired: true,
+      title: `Not accepted: ${declinedWhen}`,
+      body: `${staffName(slot.supervisorId)} could not take this slot. Book another time.`,
+    },
+    {
+      forUserId: slot.supervisorId, kind: 'DECLINED',
+      title: `You declined ${studentName(slot.bookedByStudentId)}, ${declinedWhen}`,
+      body: 'The slot is open again and the student has been told.',
+    },
+  ]);
   slot.bookedByStudentId = null;
   slot.agenda = null;
   slot.status = undefined;
@@ -1075,8 +1178,24 @@ export function cancelBooking(slotId: string, studentId: string, now: Date): { o
   if (hours < MIN_NOTICE_HOURS) {
     return { ok: false, error: `Cancelling inside ${MIN_NOTICE_HOURS} hours is recorded as a missed session. Speak to your supervisor.` };
   }
+  const cancelledWhen = whenLabel(slot.startsAt);
+  announce(slot.id, slot.startsAt, [
+    {
+      forUserId: slot.supervisorId, kind: 'CANCELLED',
+      title: `Cancelled: ${studentName(studentId)}, ${cancelledWhen}`,
+      body: 'The student cancelled with enough notice. The slot is open again.',
+    },
+    {
+      forUserId: personIdForStudent(studentId), kind: 'CANCELLED',
+      title: `You cancelled ${cancelledWhen}`,
+      body: `${staffName(slot.supervisorId)} has been told.`,
+    },
+  ]);
   slot.bookedByStudentId = null;
   slot.agenda = null;
+  // Without these a reopened slot kept the last booking's state and link.
+  slot.status = undefined;
+  slot.meetingLink = null;
   schedulePersist();
   return { ok: true };
 }
@@ -1285,6 +1404,22 @@ export function decideMeetingRequest(id: string, decision: 'APPROVED' | 'DECLINE
   if (!m) return { ok: false, error: 'No such request.' };
   m.status = decision;
   m.decidedAt = new Date().toISOString();
+  const approved = decision === 'APPROVED';
+  announce(m.id, null, [
+    {
+      forUserId: personIdForStudent(m.studentId), kind: approved ? 'CONFIRMED' : 'DECLINED',
+      actionRequired: !approved,
+      title: approved ? 'Meeting request accepted' : 'Meeting request not accepted',
+      body: approved
+        ? `${staffName(m.supervisorId)} accepted your request (${m.preferredTimes}). Watch for the time.`
+        : `${staffName(m.supervisorId)} could not meet at those times. Book an open slot instead.`,
+    },
+    {
+      forUserId: m.supervisorId, kind: approved ? 'CONFIRMED' : 'DECLINED',
+      title: `${approved ? 'Accepted' : 'Declined'}: ${studentName(m.studentId)}'s meeting request`,
+      body: `${m.agenda} · the student has been told.`,
+    },
+  ]);
   schedulePersist();
   return { ok: true };
 }
@@ -1598,6 +1733,7 @@ function collectState() {
     enrolments: tables.enrolments,
     deadlines: tables.deadlines,
     extensions: tables.extensions,
+    meetingNotices: tables.meetingNotices,
     students: STUDENTS,
     registeredStaff: REGISTERED_STAFF,
     projects: PROJECTS,
@@ -1637,6 +1773,7 @@ async function hydrateFromPersistence(): Promise<void> {
     replaceArray(tables.enrolments, state.enrolments);
     replaceArray(tables.deadlines, state.deadlines);
     replaceArray(tables.extensions, state.extensions);
+    replaceArray(tables.meetingNotices, state.meetingNotices);
     // Reset codes are deliberately absent: an outstanding code must not
     // survive a restart it was never meant to outlive.
     replaceArray(STUDENTS, state.students);

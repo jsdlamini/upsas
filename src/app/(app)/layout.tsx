@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation';
 import { cookies, headers } from 'next/headers';
 import Link from 'next/link';
+import { MeetingNotices } from '@/components/meeting-notices';
 import type { ReactNode } from 'react';
 import { currentPrincipal, destroySession, COOKIE } from '@/lib/auth/current';
-import { findPerson } from '@/lib/data/store';
+import { findPerson, noticesFor } from '@/lib/data/store';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,6 +71,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const person = findPerson(principal.userId);
   // Set by src/middleware.ts. Falls back to '/' if middleware is bypassed.
   const path = (await headers()).get('x-pathname') ?? '/';
+  // Shown as a count on the booking tab, so the rail says something happened
+  // even when the banners have scrolled away.
+  const unseenMeetings = noticesFor(principal.userId).length;
   const isStudent = Boolean(person?.studentId);
 
   const tabs: Array<[string, string]> = isStudent
@@ -105,6 +109,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
               <Link key={href} href={href} className={on ? 'on' : undefined}
                     aria-current={on ? 'page' : undefined}>
                 {navIcon(href)}{label}
+                {href === '/book' && unseenMeetings > 0 && (
+                  <span className="nav-count" aria-label={`${unseenMeetings} new`}>{unseenMeetings}</span>
+                )}
               </Link>
             );
           })}
@@ -124,7 +131,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </aside>
       <div className="content">
-        <main id="main">{children}</main>
+        <main id="main">
+          <MeetingNotices userId={principal.userId} />
+          {children}
+        </main>
       </div>
     </div>
   );
