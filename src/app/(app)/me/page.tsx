@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation';
 import { shortState } from '@/lib/deadlines/schedule';
 import { currentPrincipal } from '@/lib/auth/current';
 import { can } from '@/lib/rbac/policy';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { evaluateConsultations, computeFinalMark, PROFILE_A, normalisePercentage } from '@/lib/assessment';
 import {
   publishedDeadlines, deadlineStatusFor,
@@ -122,10 +124,10 @@ export default async function MyProject({
                     </td>
                     <td>
                       {status.state === 'MISSED'
-                        ? <span className="chip bad">missed</span>
+                        ? <Badge variant="danger">missed</Badge>
                         : status.state === 'DUE_SOON' || status.state === 'GRACE'
-                          ? <span className="chip warn">{shortState(status)}</span>
-                          : <span className="chip">{shortState(status)}</span>}
+                          ? <Badge variant="warning">{shortState(status)}</Badge>
+                          : <Badge>{shortState(status)}</Badge>}
                     </td>
                   </tr>
                 ))}
@@ -215,11 +217,11 @@ export default async function MyProject({
                   <td className="num mono"><strong>{p.score ?? '—'}</strong></td>
                   <td style={{ fontSize: 11.5 }}>
                     {p.gateMet
-                      ? <span className="chip ok">minimum met</span>
-                      : <span className="chip warn">
+                      ? <Badge variant="success">minimum met</Badge>
+                      : <Badge variant="warning">
                           {p.requiredCount - p.gradedCount} more needed — your average is
                           scaled to {p.complianceFactor} until then
-                        </span>}
+                        </Badge>}
                   </td>
                 </tr>
               ))}
@@ -244,15 +246,15 @@ export default async function MyProject({
                 <td>{c.agenda}</td>
                 <td style={{ fontSize: 11.5 }}>{c.status.replaceAll('_', ' ').toLowerCase()}</td>
                 <td style={{ fontSize: 11.5 }}>
-                  {c.supervisorAttested ? <span className="chip ok">supervisor</span> : <span className="chip">supervisor pending</span>}
+                  {c.supervisorAttested ? <Badge variant="success">supervisor</Badge> : <Badge>supervisor pending</Badge>}
                   {c.studentAttested
-                    ? <span className="chip ok">you</span>
+                    ? <Badge variant="success">you</Badge>
                     : c.status === 'COMPLETED'
                       ? <form action={attest} style={{ display: 'inline' }}>
                           <input type="hidden" name="id" value={c.id} />
-                          <button className="btn" style={{ padding: '2px 10px', fontSize: 11 }}>Confirm</button>
+                          <Button size="sm">Confirm</Button>
                         </form>
-                      : <span className="chip">n/a</span>}
+                      : <Badge>n/a</Badge>}
                 </td>
                 <td className="num mono">
                   {c.rawTotal === null ? '—' : `${normalisePercentage(c.rawTotal, c.rubricMax).toFixed(0)}%`}
