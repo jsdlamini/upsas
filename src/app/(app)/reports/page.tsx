@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { Badge } from '@/components/ui/badge';
 import { currentPrincipal } from '@/lib/auth/current';
 import { reportsFor } from '@/lib/reports';
 
@@ -36,8 +37,8 @@ export default async function Reports() {
                 <td>
                   <strong>{r.title}</strong>
                   <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>{r.purpose}</div>
-                  {r.evidentiary && <span className="chip" style={{ marginTop: 5 }}>evidentiary — archived as PDF/A</span>}
-                  {!r.containsPersonalData && <span className="chip ok" style={{ marginTop: 5 }}>no personal data</span>}
+                  {r.evidentiary && <Badge style={{ marginTop: 5 }}>evidentiary — archived as PDF/A</Badge>}
+                  {!r.containsPersonalData && <Badge variant="success" style={{ marginTop: 5 }}>no personal data</Badge>}
                 </td>
                 <td className="mono" style={{ fontSize: 11 }}>{r.formats.join(' ')}</td>
                 <td className="muted" style={{ fontSize: 11.5 }}>{r.scope.replaceAll('_', ' ').toLowerCase()}</td>

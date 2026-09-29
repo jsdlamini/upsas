@@ -1,4 +1,6 @@
 import { redirect } from 'next/navigation';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { STATUS_LABEL } from '@/lib/enrolment/status';
 import { currentPrincipal } from '@/lib/auth/current';
 import { computeFinalMark, PROFILE_A } from '@/lib/assessment';
@@ -96,11 +98,11 @@ export default async function Dashboard({
                     <td style={{ whiteSpace: 'nowrap' }}>
                       <form action={approveStaff} style={{ display: 'inline' }}>
                         <input type="hidden" name="id" value={r.id} />
-                        <button className="btn" style={{ padding: '3px 10px', fontSize: 12 }}>Approve</button>
+                        <Button style={{ padding: '3px 10px', fontSize: 12 }}>Approve</Button>
                       </form>{' '}
                       <form action={declineStaff} style={{ display: 'inline' }}>
                         <input type="hidden" name="id" value={r.id} />
-                        <button className="btn ghost" style={{ padding: '3px 10px', fontSize: 12 }}>Decline</button>
+                        <Button variant="outline" style={{ padding: '3px 10px', fontSize: 12 }}>Decline</Button>
                       </form>
                     </td>
                   </tr>
@@ -147,9 +149,9 @@ export default async function Dashboard({
                         {/* A supervisor needs to know a student is deferred or
                             carrying credit. They do not need the grounds. */}
                         {enrolmentOf(s.id).status !== 'ACTIVE' && (
-                          <span className="chip warn" style={{ marginLeft: 6 }}>
+                          <Badge variant="warning" style={{ marginLeft: 6 }}>
                             {STATUS_LABEL[enrolmentOf(s.id).status]}
-                          </span>
+                          </Badge>
                         )}
                         <div className="muted mono" style={{ fontSize: 11 }}>
                           {s.studentNumber} · {s.programme} · {s.courseCode}

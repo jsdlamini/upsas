@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 import { redeemResetCode } from '@/lib/data/store';
 import { destroySessionsFor } from '@/lib/auth/current';
 import { PASSWORD_POLICY } from '@/lib/auth/password';
@@ -85,7 +86,7 @@ export default async function Recover({
               <input id="confirm" name="confirm" type="password" autoComplete="new-password" required />
             </p>
             <p style={{ marginTop: 18 }}>
-              <button className="btn" type="submit">Set my password</button>
+              <Button type="submit">Set my password</Button>
               <a href="/login" style={{ marginLeft: 14, fontSize: 13.5 }}>Back to sign in</a>
             </p>
           </form>

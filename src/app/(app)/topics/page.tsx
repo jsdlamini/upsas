@@ -1,4 +1,6 @@
 import { redirect } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { currentPrincipal } from '@/lib/auth/current';
 import { can } from '@/lib/rbac/policy';
 import {
@@ -113,9 +115,9 @@ export default async function Topics({
             Runs preference matching under supervisor and topic capacity.
           </p>
           <form action={runAllocationAction}>
-            <button className="btn" type="submit" disabled={unallocated.length === 0}>
+            <Button type="submit" disabled={unallocated.length === 0}>
               Run allocation
-            </button>
+            </Button>
           </form>
         </div>
       )}
@@ -138,7 +140,7 @@ export default async function Topics({
                   </div>
                   <form action={accept} style={{ display: 'inline' }}>
                     <input type="hidden" name="topicId" value={t.id} />
-                    <button className="btn" style={{ padding: '4px 12px', fontSize: 12 }}>Accept and supervise</button>
+                    <Button style={{ padding: '4px 12px', fontSize: 12 }}>Accept and supervise</Button>
                   </form>
                 </div>
               ))}
@@ -162,7 +164,7 @@ export default async function Topics({
                      style={{ width: 70, padding: 7 }} title="Places" />{' '}
               <label className="muted"><input type="checkbox" name="groupSuitable" defaultChecked /> suits a pair</label>
             </p>
-            <button className="btn" type="submit">Publish topic</button>
+            <Button type="submit">Publish topic</Button>
           </form>
 
           <h2 style={{ fontSize: 15 }}>Or paste a list</h2>
@@ -173,7 +175,7 @@ export default async function Topics({
             </p>
             <textarea name="bulk" rows={4} style={{ width: '100%', padding: 7, fontFamily: 'ui-monospace, monospace', fontSize: 12 }}
                       placeholder="Sentiment analysis of siSwati radio call-ins | Collect and annotate a corpus, then compare classifiers. | 2 | Python" />
-            <p style={{ margin: '8px 0 0' }}><button className="btn" type="submit">Add these</button></p>
+            <p style={{ margin: '8px 0 0' }}><Button type="submit">Add these</Button></p>
           </form>
         </>
       )}
@@ -200,15 +202,15 @@ export default async function Topics({
                   <td>
                     <strong>{t.title}</strong>
                     <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>{t.description}</div>
-                    {t.studentProposed && <span className="chip">student proposal</span>}
+                    {t.studentProposed && <Badge>student proposal</Badge>}
                     {t.groupSuitable
-                      ? <span className="chip">suits a pair</span>
-                      : <span className="chip">individual only</span>}
+                      ? <Badge>suits a pair</Badge>
+                      : <Badge>individual only</Badge>}
                   </td>
                   <td>{sup?.fullName}
                     <div className="muted" style={{ fontSize: 11 }}>{taken} of {CAPACITY} places used</div></td>
                   <td className="muted" style={{ fontSize: 12 }}>{t.prerequisites || '—'}</td>
-                  <td className="num">{t.capacity}{full && <div><span className="chip warn">supervisor full</span></div>}</td>
+                  <td className="num">{t.capacity}{full && <div><Badge variant="warning">supervisor full</Badge></div>}</td>
                   <td className="num mono">{preferencesForTopic(t.id).length}</td>
                 </tr>
               );
@@ -244,7 +246,7 @@ export default async function Topics({
                   </select>
                 </p>
               ))}
-              <button className="btn" type="submit">Save my choices</button>
+              <Button type="submit">Save my choices</Button>
               {myPrefs.length > 0 && (
                 <p className="muted" style={{ margin: '8px 0 0', fontSize: 12 }}>
                   Currently: {myPrefs.map((p, i) => `${i + 1}. ${findTopic(p.topicId)?.title}`).join(' · ')}
@@ -271,7 +273,7 @@ export default async function Topics({
               <textarea name="description" rows={3} required placeholder="The problem, why it matters, and roughly how you would approach it."
                         style={{ width: '100%', padding: 7, fontFamily: 'inherit' }} />
             </p>
-            <button className="btn" type="submit">Send proposal</button>
+            <Button type="submit">Send proposal</Button>
           </form>
         </>
       )}

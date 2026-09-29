@@ -1,4 +1,6 @@
 import { Fragment } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { currentPrincipal } from '@/lib/auth/current';
@@ -249,9 +251,9 @@ export default async function Grading({
                           <td style={{ fontSize: 11.5 }}>
                             {panel.status === 'OK'
                               ? <span className="muted">hidden</span>
-                              : <span className="chip warn" style={{ whiteSpace: 'nowrap' }}>
+                              : <Badge variant="warning" style={{ whiteSpace: 'nowrap' }}>
                                   {panel.status === 'MODERATION_REQUIRED' ? 'moderation' : 'incomplete'}
-                                </span>}
+                                </Badge>}
                           </td>
                         </tr>
                       );
@@ -276,7 +278,7 @@ export default async function Grading({
             <span className="muted"> Enter or ↓ moves down the column.</span>
           </span>
           {/* Still here for anyone with scripts off: the sheet is an ordinary form. */}
-          <button className="btn ghost sm" type="submit" disabled={locked}>Save all now</button>
+          <Button variant="outline" size="sm" type="submit" disabled={locked}>Save all now</Button>
         </div>
       </form>
 
@@ -285,7 +287,7 @@ export default async function Grading({
 
       <form action={submitAll} id="submit-form" style={{ marginTop: 10 }}>
         <input type="hidden" name="component" value={component} />
-        <button className="btn ghost" type="submit" disabled={locked}>Submit sheet</button>
+        <Button variant="outline" type="submit" disabled={locked}>Submit sheet</Button>
         <span className="muted" style={{ marginLeft: 12 }}>
           Submitting is the signature: it locks every row and records {findPerson(principal.userId)?.fullName} and the time.
         </span>

@@ -6,7 +6,7 @@ export default function NotFound() {
         That address does not exist. If you followed a link to a student record, the
         record may be outside the cycle you have a role in.
       </p>
-      <a className="btn" href="/">Back to your dashboard</a>
+      <a className="ui-btn ui-btn-primary" href="/">Back to your dashboard</a>
     </main>
   );
 }
