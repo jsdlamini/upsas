@@ -1256,3 +1256,87 @@ input.mark.saved-flash{ animation:mark-saved 1.4s ease-out }
 }
 @media (max-width: 900px){ .save-toasts{ right:12px; left:12px; bottom:12px; width:auto } }
 @media print{ .save-toasts{ display:none } }
+
+/* ─────────────────────────────────────────────────────────── ui primitives ── */
+/* Reusable shadcn-style components (src/components/ui/*), built on the same
+   design tokens so they keep the offline, no-external-font constraint. */
+.ui-btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:7px;
+  border:1px solid transparent; border-radius:var(--radius); cursor:pointer;
+  font:600 13.5px/1 var(--sans); padding:9px 16px; white-space:nowrap;
+  transition:transform .08s ease, box-shadow .16s ease, background .16s ease,
+             border-color .16s ease, color .16s ease;
+}
+.ui-btn:active:not(:disabled){ transform:translateY(1px) }
+.ui-btn:disabled{ opacity:.55; cursor:not-allowed; box-shadow:none }
+.ui-btn:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
+
+.ui-btn-primary{
+  background:var(--accent); color:#fff; box-shadow:0 1px 2px rgba(15,27,45,.18);
+}
+.ui-btn-primary:hover:not(:disabled){
+  background:#2450B0; box-shadow:0 6px 16px -6px rgba(46,90,200,.55);
+}
+.ui-btn-outline{
+  background:var(--surface); color:var(--accent); border-color:var(--rule);
+}
+.ui-btn-outline:hover:not(:disabled){ background:var(--accent-dim); border-color:var(--accent) }
+.ui-btn-ghost{ background:transparent; color:var(--ink-soft) }
+.ui-btn-ghost:hover:not(:disabled){ background:var(--rule-soft); color:var(--ink) }
+.ui-btn-destructive{ background:var(--rust); color:#fff }
+.ui-btn-destructive:hover:not(:disabled){ background:#9A2C28 }
+
+.ui-btn-sm{ padding:6px 13px; font-size:12px; border-radius:var(--radius-sm) }
+.ui-btn-lg{ padding:12px 22px; font-size:15px }
+.ui-btn-icon{ padding:8px; width:36px; height:36px }
+
+.ui-card{
+  background:var(--surface); border:1px solid var(--rule); border-radius:12px;
+  box-shadow:var(--shadow-sm); overflow:hidden;
+  transition:box-shadow .18s ease, transform .18s ease;
+}
+.ui-card:hover{ box-shadow:var(--shadow) }
+.ui-card-header{ padding:16px 18px 0 }
+.ui-card-title{ font-size:15px; font-weight:700; color:var(--ink); margin:0 }
+.ui-card-body{ padding:14px 18px 18px }
+
+.ui-badge{
+  display:inline-flex; align-items:center; gap:4px; padding:3px 9px;
+  border-radius:999px; font-size:11.5px; font-weight:600;
+  background:var(--rule-soft); color:var(--ink-soft); border:1px solid var(--rule);
+}
+.ui-badge-success{ background:var(--moss-dim); color:var(--moss); border-color:#BFD9CA }
+.ui-badge-warning{ background:var(--ochre-dim); color:var(--ochre); border-color:#E4CFA3 }
+.ui-badge-danger{ background:var(--rust-dim); color:var(--rust); border-color:#E6BDBA }
+.ui-badge-info{ background:var(--accent-dim); color:var(--accent); border-color:#C9D9F3 }
+
+.ui-input, .ui-textarea, .ui-select{
+  width:100%; box-sizing:border-box; font:14px/1.4 var(--sans); color:var(--ink);
+  background:var(--surface); border:1px solid var(--rule); border-radius:var(--radius-sm);
+  padding:9px 11px; transition:border-color .15s ease, box-shadow .15s ease;
+}
+.ui-input:focus, .ui-textarea:focus, .ui-select:focus{
+  outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-dim);
+}
+.ui-textarea{ min-height:96px; resize:vertical }
+.ui-select{ appearance:none; background-image:linear-gradient(45deg,transparent 50%,var(--ink-soft) 50%),linear-gradient(135deg,var(--ink-soft) 50%,transparent 50%); background-position:calc(100% - 18px) 55%,calc(100% - 13px) 55%; background-size:5px 5px; background-repeat:no-repeat; padding-right:32px }
+
+/* entrance animations */
+@keyframes ui-fade-in{ from{opacity:0} to{opacity:1} }
+@keyframes ui-slide-up{ from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none} }
+.ui-enter{ animation:ui-slide-up .28s cubic-bezier(.22,1,.36,1) both }
+
+/* toast (supplements the URL-param toast) */
+.ui-toast-wrap{
+  position:fixed; z-index:120; top:16px; right:16px; display:flex;
+  flex-direction:column; gap:8px; max-width:360px;
+}
+.ui-toast{
+  display:flex; align-items:flex-start; gap:10px; padding:12px 14px;
+  border-radius:10px; background:var(--ink); color:#fff; font-size:13.5px;
+  box-shadow:0 10px 30px -10px rgba(15,27,45,.5);
+  animation:ui-slide-up .28s cubic-bezier(.22,1,.36,1) both;
+}
+.ui-toast-success{ background:var(--moss) }
+.ui-toast-error{ background:var(--rust) }
+.ui-toast-info{ background:var(--accent) }

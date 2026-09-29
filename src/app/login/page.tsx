@@ -15,6 +15,7 @@ import {
   recordAuditPrisma,
   totpSecretForPrisma,
 } from '@/lib/auth/prisma-auth';
+import { Button } from '@/components/ui/button';
 
 /**
  * Short-lived MFA challenges.
@@ -155,7 +156,7 @@ export default async function LoginPage({
   return (
     <div className="auth-split">
       <aside className="auth-brand">
-        <div className="auth-brand-inner">
+        <div className="auth-brand-inner ui-enter">
           <div className="brand-logo">RC</div>
           <p className="inst">University of Eswatini, Kwaluseni</p>
           <p className="unit">Department of Computer Science</p>
@@ -171,7 +172,7 @@ export default async function LoginPage({
         </div>
       </aside>
       <div className="auth-main">
-        <div className="auth-main-inner">
+        <div className="auth-main-inner ui-enter">
           <div className="crest">
             <p className="inst">University of Eswatini, Kwaluseni</p>
             <p className="unit">Department of Computer Science — Research project supervision</p>
@@ -221,7 +222,7 @@ export default async function LoginPage({
             </label>
           </p>
         )}
-        <button className="btn" type="submit">{needsCode ? 'Verify code' : 'Sign in'}</button>
+        <Button type="submit">{needsCode ? 'Verify code' : 'Sign in'}</Button>
         {!needsCode && (
           <a href="/recover" style={{ marginLeft: 14, fontSize: 13.5 }}>Forgotten your password?</a>
         )}

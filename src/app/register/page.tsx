@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { registerStudent, requestStaffAccount, PROGRAMMES, COURSES, CYCLE } from '@/lib/data/store';
+import { Button } from '@/components/ui/button';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,7 +56,7 @@ export default async function RegisterPage({
   return (
     <div className="auth-split">
       <aside className="auth-brand">
-        <div className="auth-brand-inner">
+        <div className="auth-brand-inner ui-enter">
           <div className="brand-logo">RC</div>
           <p className="inst">University of Eswatini, Kwaluseni</p>
           <p className="unit">Department of Computer Science</p>
@@ -73,7 +74,7 @@ export default async function RegisterPage({
         </div>
       </aside>
       <div className="auth-main">
-        <div className="auth-main-inner">
+        <div className="auth-main-inner ui-enter">
           <div className="crest">
             <p className="inst">University of Eswatini, Kwaluseni</p>
             <p className="unit">Department of Computer Science — Research project supervision</p>
@@ -142,7 +143,7 @@ export default async function RegisterPage({
               </label>
             </p>
             <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <button className="btn" type="submit">Create my account</button>
+              <Button type="submit">Create my account</Button>
               <a href="/login" className="muted" style={{ fontSize: 13 }}>Already have an account? Sign in</a>
             </div>
           </form>
@@ -183,7 +184,7 @@ export default async function RegisterPage({
               </label>
             </div>
             <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <button className="btn" type="submit">Request access</button>
+              <Button type="submit">Request access</Button>
               <a href="/login" className="muted" style={{ fontSize: 13 }}>Back to sign in</a>
             </div>
           </form>
