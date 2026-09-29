@@ -1,4 +1,6 @@
 import { redirect } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { currentPrincipal } from '@/lib/auth/current';
 import { can } from '@/lib/rbac/policy';
 import {
@@ -166,7 +168,7 @@ export default async function Book({
                 )}
                 <form action={cancel} style={{ display: 'inline', marginLeft: 10 }}>
                   <input type="hidden" name="slotId" value={s.id} />
-                  <button className="btn ghost" style={{ padding: '2px 9px', fontSize: 11 }}>Cancel</button>
+                  <Button variant="outline" style={{ padding: '2px 9px', fontSize: 11 }}>Cancel</Button>
                 </form>
               </p>
             ))}
@@ -224,7 +226,7 @@ export default async function Book({
                             </form>
                           </td>
                           <td className="muted" style={{ fontSize: 11 }}>{s.venue}</td>
-                          <td><button className="btn" form={`f-${s.id}`} style={{ padding: '5px 12px', fontSize: 12 }}>Book</button></td>
+                          <td><Button form={`f-${s.id}`} style={{ padding: '5px 12px', fontSize: 12 }}>Book</Button></td>
                         </tr>
                       ))}
                     </tbody>
@@ -252,7 +254,7 @@ export default async function Book({
               </label>
             </p>
             <div style={{ gridColumn: '1 / -1' }}>
-              <button className="btn" type="submit">Send request</button>
+              <Button type="submit">Send request</Button>
             </div>
           </form>
         </div>
@@ -288,7 +290,7 @@ export default async function Book({
           <option value="ONLINE">Online</option>
         </select>{' '}
         <input name="venue" defaultValue="CS-204" style={{ padding: 7, width: 110 }} />{' '}
-        <button className="btn" type="submit">Publish slots</button>
+        <Button type="submit">Publish slots</Button>
         <p className="muted" style={{ margin: '8px 0 0', fontSize: 12 }}>
           Duplicate times are ignored rather than doubled up.
         </p>
@@ -315,12 +317,12 @@ export default async function Book({
                         <form action={decideMeeting} style={{ display: 'inline' }}>
                           <input type="hidden" name="id" value={r.id} />
                           <input type="hidden" name="decision" value="APPROVED" />
-                          <button className="btn" style={{ padding: '3px 10px', fontSize: 12 }}>Approve</button>
+                          <Button style={{ padding: '3px 10px', fontSize: 12 }}>Approve</Button>
                         </form>{' '}
                         <form action={decideMeeting} style={{ display: 'inline' }}>
                           <input type="hidden" name="id" value={r.id} />
                           <input type="hidden" name="decision" value="DECLINED" />
-                          <button className="btn ghost" style={{ padding: '3px 10px', fontSize: 12 }}>Decline</button>
+                          <Button variant="outline" style={{ padding: '3px 10px', fontSize: 12 }}>Decline</Button>
                         </form>
                       </td>
                     </tr>
@@ -356,15 +358,15 @@ export default async function Book({
                       <>
                         <form action={confirm} style={{ display: 'inline' }}>
                           <input type="hidden" name="slotId" value={s.id} />
-                          <button className="btn" style={{ padding: '3px 10px', fontSize: 12 }}>Confirm</button>
+                          <Button style={{ padding: '3px 10px', fontSize: 12 }}>Confirm</Button>
                         </form>{' '}
                         <form action={decline} style={{ display: 'inline' }}>
                           <input type="hidden" name="slotId" value={s.id} />
-                          <button className="btn ghost" style={{ padding: '3px 10px', fontSize: 12 }}>Decline</button>
+                          <Button variant="outline" style={{ padding: '3px 10px', fontSize: 12 }}>Decline</Button>
                         </form>
                       </>
                     ) : s.bookedByStudentId ? (
-                      <span className="chip ok">confirmed</span>
+                      <Badge variant="success">confirmed</Badge>
                     ) : null}
                   </td>
                 </tr>

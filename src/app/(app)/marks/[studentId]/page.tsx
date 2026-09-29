@@ -1,4 +1,5 @@
 import { redirect, notFound } from 'next/navigation';
+import { Badge } from '@/components/ui/badge';
 import { currentPrincipal } from '@/lib/auth/current';
 import { computeFinalMark, aggregatePanel, PROFILE_A, PROFILE_B, normalisePercentage } from '@/lib/assessment';
 import {
@@ -133,7 +134,7 @@ export default async function MarkSheet({ params }: { params: Promise<{ studentI
                   <td className="num mono">{total ?? '—'}</td>
                   <td className="num mono">{total === null ? '—' : `${normalisePercentage(total, s.rubricMax).toFixed(1)}%`}</td>
                   <td style={{ fontSize: 11.5 }}>
-                    {counted ? 'Counted' : <span className="chip warn">{s.submitted ? 'blank — excluded' : 'not submitted'}</span>}
+                    {counted ? 'Counted' : <Badge variant="warning">{s.submitted ? 'blank — excluded' : 'not submitted'}</Badge>}
                   </td>
                 </tr>
               );

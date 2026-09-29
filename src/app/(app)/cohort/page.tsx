@@ -1,4 +1,6 @@
 import { redirect } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { revalidatePath } from 'next/cache';
 import { currentPrincipal } from '@/lib/auth/current';
 import { can } from '@/lib/rbac/policy';
@@ -228,8 +230,8 @@ export default async function Cohort({
                   <strong>{student.surname}, {student.otherNames}</strong>{' '}
                   <span className="mono muted" style={{ fontSize: 12 }}>{student.studentNumber}</span>{' '}
                   {enrolment.status === 'ACTIVE'
-                    ? <span className="chip ok">Active</span>
-                    : <span className="chip warn">{describe(enrolment)}</span>}
+                    ? <Badge variant="success">Active</Badge>
+                    : <Badge variant="warning">{describe(enrolment)}</Badge>}
                 </summary>
                 <form action={changeEnrolment} className="box">
                   <input type="hidden" name="studentId" value={student.id} />
@@ -286,7 +288,7 @@ export default async function Cohort({
                              placeholder="BoE 2025-07-11 item 4.2" defaultValue={carried?.ref ?? ''} />
                     </p>
                   </div>
-                  <button className="btn" type="submit">Save status</button>
+                  <Button type="submit">Save status</Button>
                 </form>
               </details>
             );
@@ -326,11 +328,11 @@ export default async function Cohort({
                     </td>
                     <td>{showDate(deadline.dueAt)}</td>
                     <td className="num">{deadline.graceMinutes} min</td>
-                    <td>{deadline.published ? <span className="chip ok">published</span> : <span className="chip">draft</span>}</td>
+                    <td>{deadline.published ? <Badge variant="success">published</Badge> : <Badge>draft</Badge>}</td>
                     <td>
                       <form action={dropDeadline}>
                         <input type="hidden" name="key" value={deadline.key} />
-                        <button className="btn ghost sm" type="submit">Remove</button>
+                        <Button variant="outline" size="sm" type="submit">Remove</Button>
                       </form>
                     </td>
                   </tr>
@@ -370,7 +372,7 @@ export default async function Cohort({
               <label className="field-label" htmlFor="dl-note">Note (optional)</label>
               <input id="dl-note" name="note" type="text" style={{ width: '100%' }} />
             </p>
-            <button className="btn" type="submit">Save deadline</button>
+            <Button type="submit">Save deadline</Button>
             <span className="muted" style={{ marginLeft: 12, fontSize: 12.5 }}>
               An existing reference is amended rather than duplicated.
             </span>
@@ -413,15 +415,15 @@ export default async function Cohort({
                         <td>{showDate(extension.newDueAt)}</td>
                         <td>
                           {extension.kind === 'ACCOMMODATION'
-                            ? <span className="chip">accommodation</span>
-                            : <span className="chip">extension</span>}
+                            ? <Badge>accommodation</Badge>
+                            : <Badge>extension</Badge>}
                         </td>
                         <td className="muted" style={{ fontSize: 12.5 }}>{extension.reason}</td>
                         <td>
                           <form action={dropExtension}>
                             <input type="hidden" name="studentId" value={student.id} />
                             <input type="hidden" name="deadlineKey" value={deadline.key} />
-                            <button className="btn ghost sm" type="submit">Withdraw</button>
+                            <Button variant="outline" size="sm" type="submit">Withdraw</Button>
                           </form>
                         </td>
                       </tr>
@@ -468,7 +470,7 @@ export default async function Cohort({
               <label className="field-label" htmlFor="ex-reason">Grounds, kept to this screen</label>
               <textarea id="ex-reason" name="reason" rows={2} style={{ width: '100%' }} required />
             </p>
-            <button className="btn" type="submit">Record extension</button>
+            <Button type="submit">Record extension</Button>
           </form>
         </>
       )}
@@ -520,13 +522,13 @@ export default async function Cohort({
                           <input type="email" name="email" defaultValue={emailOf(person.id) ?? ''}
                                  placeholder="none — no emails sent" style={{ flex: 1, minWidth: 0 }}
                                  aria-label={`Email address for ${person.fullName}`} />
-                          <button className="btn ghost sm" type="submit">Save</button>
+                          <Button variant="outline" size="sm" type="submit">Save</Button>
                         </form>
                       </td>
                       <td>
                         {person.status === 'PENDING_APPROVAL'
-                          ? <span className="chip warn">awaiting approval</span>
-                          : <span className="chip ok">{(person.status ?? 'ACTIVE').toLowerCase()}</span>}
+                          ? <Badge variant="warning">awaiting approval</Badge>
+                          : <Badge variant="success">{(person.status ?? 'ACTIVE').toLowerCase()}</Badge>}
                       </td>
                       <td className="muted" style={{ fontSize: 12.5 }}>
                         {outstanding ? `expires ${showDate(outstanding.expiresAt)}` : '—'}
@@ -534,9 +536,9 @@ export default async function Cohort({
                       <td>
                         <form action={issueCode}>
                           <input type="hidden" name="userId" value={person.id} />
-                          <button className="btn ghost sm" type="submit">
+                          <Button variant="outline" size="sm" type="submit">
                             {outstanding ? 'Reissue' : 'Issue code'}
-                          </button>
+                          </Button>
                         </form>
                       </td>
                     </tr>

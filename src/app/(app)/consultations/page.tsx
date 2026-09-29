@@ -1,4 +1,6 @@
 import { redirect } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { revalidatePath } from 'next/cache';
 import { currentPrincipal } from '@/lib/auth/current';
 import { can } from '@/lib/rbac/policy';
@@ -103,8 +105,8 @@ export default async function Consultations({
                   <td className="num mono">{p.engagementBonus}</td>
                   <td className="num mono"><strong>{p.score ?? '—'}</strong></td>
                   <td>{p.gateMet
-                    ? <span className="chip ok">met</span>
-                    : <span className="chip warn">{p.requiredCount - p.gradedCount} short</span>}</td>
+                    ? <Badge variant="success">met</Badge>
+                    : <Badge variant="warning">{p.requiredCount - p.gradedCount} short</Badge>}</td>
                 </tr>
               ))}
               <tr style={{ background: '#F4F6F2', fontWeight: 700 }}>
@@ -142,12 +144,12 @@ export default async function Consultations({
                   <td>{c.agenda}</td>
                   <td style={{ fontSize: 11.5 }}>{c.status.replaceAll('_', ' ').toLowerCase()}</td>
                   <td style={{ fontSize: 11.5 }}>
-                    {c.supervisorAttested ? <span className="chip ok">supervisor</span>
+                    {c.supervisorAttested ? <Badge variant="success">supervisor</Badge>
                       : <form action={attest} style={{ display: 'inline' }}>
                           <input type="hidden" name="id" value={c.id} />
-                          <button className="btn ghost" style={{ padding: '2px 8px', fontSize: 11 }}>attest</button>
+                          <Button variant="outline" style={{ padding: '2px 8px', fontSize: 11 }}>attest</Button>
                         </form>}
-                    {c.studentAttested ? <span className="chip ok">student</span> : <span className="chip warn">student pending</span>}
+                    {c.studentAttested ? <Badge variant="success">student</Badge> : <Badge variant="warning">student pending</Badge>}
                   </td>
                   <td className="num">
                     {c.status === 'COMPLETED' ? (
@@ -156,7 +158,7 @@ export default async function Consultations({
                         <input type="hidden" name="studentId" value={selected.id} />
                         <input className="mark" name="rawTotal" type="number" min={0} max={100}
                                defaultValue={c.rawTotal ?? ''} style={{ width: 58 }} />
-                        <button className="btn ghost" style={{ padding: '3px 8px', fontSize: 11, marginLeft: 4 }}>save</button>
+                        <Button variant="outline" style={{ padding: '3px 8px', fontSize: 11, marginLeft: 4 }}>save</Button>
                       </form>
                     ) : <span className="muted">—</span>}
                     {c.rawTotal !== null && (
@@ -166,7 +168,7 @@ export default async function Consultations({
                     )}
                   </td>
                   <td className="num" style={{ fontSize: 11.5 }}>
-                    {counts ? <span className="chip ok">yes</span> : <span className="chip">no</span>}
+                    {counts ? <Badge variant="success">yes</Badge> : <Badge>no</Badge>}
                   </td>
                 </tr>
               );
@@ -184,7 +186,7 @@ export default async function Consultations({
             <option value="SEM1">Semester 1</option>
           </select>{' '}
           <input name="agenda" placeholder="What was reviewed" style={{ padding: 6, width: 320 }} />{' '}
-          <button className="btn" type="submit">Add session</button>
+          <Button type="submit">Add session</Button>
         </p>
         <p className="muted" style={{ margin: '8px 0 0', fontSize: 12 }}>
           A new session starts unattested and ungraded, so it does not count until both parties

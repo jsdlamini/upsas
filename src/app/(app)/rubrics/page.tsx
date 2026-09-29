@@ -1,4 +1,6 @@
 import { redirect } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { revalidatePath } from 'next/cache';
 import { currentPrincipal } from '@/lib/auth/current';
 import { can } from '@/lib/rbac/policy';
@@ -223,13 +225,13 @@ export default async function Rubrics({
           <div className="actionbar" style={{ position: 'static', marginTop: 14 }}>
             <form action={apply}>
               <input type="hidden" name="component" value={component} />
-              <button className="btn" type="submit">
+              <Button type="submit">
                 {plan.plan.mode === 'fork' ? `Publish version ${plan.plan.next.version}` : 'Save changes'}
-              </button>
+              </Button>
             </form>
             <form action={discard}>
               <input type="hidden" name="component" value={component} />
-              <button className="btn ghost" type="submit">Keep editing</button>
+              <Button variant="outline" type="submit">Keep editing</Button>
             </form>
             <span className="hint">Recorded against {findPerson(principal.userId)?.fullName} with your reason.</span>
           </div>
@@ -337,7 +339,7 @@ export default async function Rubrics({
         </p>
 
         <div className="actionbar">
-          <button className="btn" type="submit">Review this change</button>
+          <Button type="submit">Review this change</Button>
           <span className="hint">
             Nothing is written until you have seen what the change does to marks already entered.
           </span>
@@ -363,8 +365,8 @@ export default async function Rubrics({
                 <td>
                   <strong>v{version.version}</strong>{' '}
                   {version.supersededBy === null
-                    ? <span className="chip ok">in force</span>
-                    : <span className="chip">superseded</span>}
+                    ? <Badge variant="success">in force</Badge>
+                    : <Badge>superseded</Badge>}
                 </td>
                 <td className="num">{version.max}</td>
                 <td className="num">{version.criteria.length}</td>

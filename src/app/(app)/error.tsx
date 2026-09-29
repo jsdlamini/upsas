@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { Button } from '@/components/ui/button';
 
 /**
  * A rendering failure inside the app shell. The message is deliberately not
@@ -21,7 +22,7 @@ export default function AppError({
         marks are only written by an explicit save.
       </p>
       <div className="box">
-        <button className="btn" onClick={reset}>Try again</button>
+        <Button onClick={reset}>Try again</Button>
         {error.digest && (
           <p className="muted" style={{ fontSize: 12.5 }}>
             Quote reference <span className="mono">{error.digest}</span> when reporting this.

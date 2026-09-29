@@ -1,4 +1,6 @@
 import { redirect } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { currentPrincipal } from '@/lib/auth/current';
 import { can } from '@/lib/rbac/policy';
 import { computeFinalMark, aggregatePanel, PROFILE_A } from '@/lib/assessment';
@@ -122,7 +124,7 @@ export default async function Publish({
                          style={{ width: 100, padding: 6 }} required />{' '}
                   <input name="rationale" placeholder="Why — recorded against your name" required
                          style={{ width: 420, padding: 6 }} />{' '}
-                  <button className="btn" type="submit">Record moderation</button>
+                  <Button type="submit">Record moderation</Button>
                 </form>
               </div>
             );
@@ -162,17 +164,17 @@ export default async function Publish({
                   </td>
                   <td>
                     {published
-                      ? <><span className="chip ok">released {published.publishedAt.slice(0, 10)}</span>
+                      ? <><Badge variant="success">released {published.publishedAt.slice(0, 10)}</Badge>
                           <div className="muted" style={{ fontSize: 11 }}>
                             by {findPerson(published.publishedBy)?.fullName}
                           </div></>
                       : snap.blocked
                         ? <span className="muted" style={{ fontSize: 12 }}>blocked</span>
                         : !sod.allow
-                          ? <span className="chip bad" title={sod.reason}>separation of duty</span>
+                          ? <Badge variant="danger" title={sod.reason}>separation of duty</Badge>
                           : <form action={release}>
                               <input type="hidden" name="studentId" value={student.id} />
-                              <button className="btn" style={{ padding: '5px 12px', fontSize: 12 }}>Release</button>
+                              <Button style={{ padding: '5px 12px', fontSize: 12 }}>Release</Button>
                             </form>}
                   </td>
                 </tr>
