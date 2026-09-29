@@ -5,7 +5,16 @@ import { createSession, COOKIE, currentPrincipal } from '@/lib/auth/current';
 import { verifyTotp } from '@/lib/auth/totp';
 import { checkLoginRate } from '@/lib/auth/rate-limit';
 import { randomBytes } from 'node:crypto';
-import { CYCLE, passwordHashFor, findPersonByUsername } from '@/lib/data/store';
+import { CYCLE, passwordHashFor, findPersonByUsername, allPeople } from '@/lib/data/store';
+import {
+  authPrismaAvailable,
+  ensureUsersSynced,
+  findUserPrisma,
+  recordFailurePrisma,
+  recordSuccessPrisma,
+  recordAuditPrisma,
+  totpSecretForPrisma,
+} from '@/lib/auth/prisma-auth';
 
 /**
  * Short-lived MFA challenges.
@@ -75,6 +84,19 @@ async function signIn(formData: FormData) {
   }
 
   const person = findPersonByUsername(username);
+  let totpSecret = person?.totpSecret ?? '';
+  let usePrisma = false;
+  try {
+    usePrisma = await authPrismaAvailable();
+    if (usePrisma) {
+      await ensureUsersSynced(allPeople(), passwordHashFor);
+      totpSecret = await totpSecretForPrisma(username);
+    }
+  } catch {
+    usePrisma = false;
+  }
+
+  // In-memory record is the fallback when Postgres is unreachable.
   const record: UserRecord | null = person
     ? {
         id: person.id, username: person.username, status: person.status ?? 'ACTIVE',
@@ -83,16 +105,26 @@ async function signIn(formData: FormData) {
       }
     : null;
 
+  const deps = usePrisma
+    ? {
+        findUser: (u: string) => findUserPrisma(u),
+        recordFailure: recordFailurePrisma,
+        recordSuccess: recordSuccessPrisma,
+        audit: recordAuditPrisma,
+      }
+    : {
+        findUser: async () => record,
+        recordFailure: async () => {},
+        recordSuccess: async () => {},
+        audit: async (e: { action: string; actorId: string | null; entityId: string; detail: Record<string, unknown> }) => {
+          console.log('[audit]', e.action, e.entityId, JSON.stringify(e.detail));
+        },
+      };
+
   const outcome = await login(
     { username, password, cycleId: CYCLE, now: new Date(),
-      mfaVerified: firstFactorDone && verifyTotp(person?.totpSecret ?? '', code) },
-    {
-      findUser: async () => record,
-      recordFailure: async () => {},
-      recordSuccess: async () => {},
-      // Every outcome lands in the audit chain; console stands in for the writer.
-      audit: async (e) => { console.log('[audit]', e.action, e.entityId, JSON.stringify(e.detail)); },
-    },
+      mfaVerified: firstFactorDone && verifyTotp(totpSecret, code) },
+    deps,
   );
 
   if (outcome.status === 'MFA_REQUIRED') {
