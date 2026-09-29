@@ -133,15 +133,17 @@ model TotpCredential {
 }
 
 model AuthSession {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash String   @unique
-  issuedAt  DateTime @default(now())
-  expiresAt DateTime
-  revokedAt DateTime?
-  ip        String?
-  userAgent String?
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash    String   @unique
+  issuedAt     DateTime @default(now())
+  lastSeenAt   DateTime @default(now())
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  mfaSatisfied Boolean  @default(false)
+  ip           String?
+  userAgent    String?
 }
 
 enum RoleCode {
