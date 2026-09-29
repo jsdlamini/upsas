@@ -202,12 +202,12 @@ export default async function LoginPage({
           <>
             <p style={{ margin: '0 0 10px' }}>
               <label>Username
-                <input name="username" defaultValue={u ?? ''} autoFocus required />
+                <input name="username" defaultValue={u ?? ''} autoComplete="username" autoFocus required />
               </label>
             </p>
             <p style={{ margin: '0 0 10px' }}>
               <label>Password
-                <input name="password" type="password" required />
+                <input name="password" type="password" autoComplete="current-password" required />
               </label>
             </p>
           </>
@@ -217,7 +217,7 @@ export default async function LoginPage({
         {needsCode && (
           <p style={{ margin: '0 0 10px' }}>
             <label>Authenticator code
-              <input name="code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoFocus
+              <input name="code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="one-time-code" autoFocus
                      className="mono" style={{ width: 150, letterSpacing: 5, fontSize: 16 }} />
             </label>
           </p>
