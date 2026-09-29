@@ -1,10 +1,11 @@
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { login, type UserRecord } from '@/lib/auth/login';
 import { createSession, COOKIE, currentPrincipal } from '@/lib/auth/current';
-import { verifyTotp, currentTotpCode } from '@/lib/auth/totp';
+import { verifyTotp } from '@/lib/auth/totp';
+import { checkLoginRate } from '@/lib/auth/rate-limit';
 import { randomBytes } from 'node:crypto';
-import { CYCLE, DEMO_PASSWORD, PEOPLE, studentAccounts, passwordHashFor, findPersonByUsername } from '@/lib/data/store';
+import { CYCLE, passwordHashFor, findPersonByUsername } from '@/lib/data/store';
 
 /**
  * Short-lived MFA challenges.
@@ -30,6 +31,7 @@ const MESSAGES: Record<string, string> = {
   MFA_REQUIRED: 'Password accepted. Now enter the six-digit code from your authenticator — you do not need to retype your password.',
   CHALLENGE_EXPIRED: 'That sign-in attempt expired. Start again.',
   MFA_ENROLMENT_REQUIRED: 'This role requires a second factor and none is enrolled. See a coordinator to enrol.',
+  RATE_LIMITED: 'Too many sign-in attempts. Wait a few minutes, then try again.',
 };
 
 /**
@@ -62,8 +64,14 @@ async function signIn(formData: FormData) {
       redirect(`/login?e=CHALLENGE_EXPIRED${carry}`);
     }
     username = challenge.username;
-    password = DEMO_PASSWORD;
+    password = '';
     firstFactorDone = true;
+  }
+
+  const ip = (await headers()).get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+  const rateKey = username || ip;
+  if (!checkLoginRate(rateKey).allowed || !checkLoginRate(`ip:${ip}`).allowed) {
+    redirect(`/login?e=RATE_LIMITED${carry}`);
   }
 
   const person = findPersonByUsername(username);
@@ -111,8 +119,6 @@ export default async function LoginPage({
   const next = safeNext(rawNext);
   if (await currentPrincipal()) redirect(next ?? '/');
   const needsCode = e === 'MFA_REQUIRED' && Boolean(challenge);
-  const coordinatorSecret = findPersonByUsername('coordinator')?.totpSecret ?? '';
-  const coordinatorCode = coordinatorSecret ? currentTotpCode(coordinatorSecret) : null;
 
   return (
     <div className="auth-split">
@@ -163,12 +169,12 @@ export default async function LoginPage({
           <>
             <p style={{ margin: '0 0 10px' }}>
               <label>Username
-                <input name="username" defaultValue={u ?? 'coordinator'} autoFocus required />
+                <input name="username" defaultValue={u ?? ''} autoFocus required />
               </label>
             </p>
             <p style={{ margin: '0 0 10px' }}>
               <label>Password
-                <input name="password" type="password" defaultValue={DEMO_PASSWORD} required />
+                <input name="password" type="password" required />
               </label>
             </p>
           </>
@@ -179,7 +185,6 @@ export default async function LoginPage({
           <p style={{ margin: '0 0 10px' }}>
             <label>Authenticator code
               <input name="code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoFocus
-                     defaultValue={coordinatorCode ?? undefined}
                      className="mono" style={{ width: 150, letterSpacing: 5, fontSize: 16 }} />
             </label>
           </p>
@@ -207,43 +212,6 @@ export default async function LoginPage({
               <span>Request supervisor, assessor or coordinator access for approval.</span>
             </a>
           </div>
-        </div>
-      )}
-
-      {!needsCode && (
-        <div className="box demo-box">
-          <strong>Demo access</strong>
-          <p className="muted" style={{ margin: '6px 0' }}>
-            For evaluation only — not for real students. Password for every account:
-            <span className="mono">{DEMO_PASSWORD}</span>
-          </p>
-          <div className="table-wrap">
-            <table className="list">
-              <thead><tr><th>Username</th><th>Who</th><th>Roles</th></tr></thead>
-              <tbody>
-                {PEOPLE.map((p) => (
-                  <tr key={p.id}>
-                    <td className="mono">{p.username}</td>
-                    <td>{p.fullName}</td>
-                    <td className="muted">{p.grants.map((g) => g.role).join(', ')}</td>
-                  </tr>
-                ))}
-                {studentAccounts().slice(0, 4).map((p) => (
-                  <tr key={p.id}>
-                    <td className="mono">{p.username}</td>
-                    <td>{p.fullName} <span className="muted">(student)</span></td>
-                    <td className="muted">STUDENT</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="muted" style={{ margin: '8px 0 0', fontSize: 12 }}>
-            <span className="mono">coordinator</span> holds a privileged role, so after the password it
-            asks for a six-digit TOTP code. Current code for quick testing: <span className="mono">{coordinatorCode ?? '—'}</span>.
-            (Secret for an authenticator app: <span className="mono">{coordinatorSecret}</span>.)
-            Every other account signs in with the password alone.
-          </p>
         </div>
       )}
         </div>

@@ -75,7 +75,9 @@ export async function login(req: LoginRequest, deps: LoginDeps): Promise<LoginOu
     return { status: 'LOCKED', until: user.lockedUntil };
   }
 
-  const passwordOk = await verifyPassword(user.passwordHash, req.password);
+  // The MFA challenge (second factor) proves the first factor already passed,
+  // so it does not re-verify the password, which the client no longer holds.
+  const passwordOk = req.mfaVerified === true || (await verifyPassword(user.passwordHash, req.password));
   if (!passwordOk) {
     const attempts = user.failedAttempts + 1;
     const lockUntil = attempts >= LOCKOUT.maxFailedAttempts
