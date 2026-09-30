@@ -10,6 +10,7 @@ import {
   authPrismaAvailable,
   ensureUsersSynced,
   findUserPrisma,
+  syncOneUserToPrisma,
   recordFailurePrisma,
   recordSuccessPrisma,
   recordAuditPrisma,
@@ -108,7 +109,30 @@ async function signIn(formData: FormData) {
 
   const deps = usePrisma
     ? {
-        findUser: (u: string) => findUserPrisma(u),
+        findUser: async (u: string) => {
+          let prismaUser = await findUserPrisma(u);
+          if (!prismaUser) {
+            // A student may have registered after the initial sync — sync them
+            // on demand so the Prisma-backed auth can find them.
+            const p = findPersonByUsername(u);
+            if (p) {
+              try {
+                await syncOneUserToPrisma(p, await passwordHashFor(p.username));
+                prismaUser = await findUserPrisma(u);
+              } catch { /* fall through to in-memory */ }
+            }
+          }
+          if (prismaUser) return prismaUser;
+          // Last resort: in-memory record (lockout/audit are best-effort here).
+          const p = findPersonByUsername(u);
+          return p
+            ? {
+                id: p.id, username: p.username, status: p.status ?? 'ACTIVE',
+                passwordHash: await passwordHashFor(p.username), failedAttempts: 0, lockedUntil: null,
+                totpConfirmed: p.totpConfirmed, grants: p.grants,
+              }
+            : null;
+        },
         recordFailure: recordFailurePrisma,
         recordSuccess: recordSuccessPrisma,
         audit: recordAuditPrisma,

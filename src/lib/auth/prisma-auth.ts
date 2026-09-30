@@ -24,64 +24,76 @@ export async function authPrismaAvailable(): Promise<boolean> {
 }
 
 /** Upsert the in-memory people into Prisma identity tables. Idempotent. */
+async function upsertUser(p: Person, hash: string): Promise<void> {
+  const email = p.email || `${p.username}@localhost`;
+  const status: AccountStatus = (p.status as AccountStatus) || 'ACTIVE';
+
+  await prisma.user.upsert({
+    where: { username: p.username },
+    create: {
+      id: p.id,
+      username: p.username,
+      email,
+      fullName: p.fullName,
+      surname: p.surname,
+      status,
+      credential: { create: { hash } },
+      ...(p.totpConfirmed && p.totpSecret
+        ? { totp: { create: { secretEnc: p.totpSecret, confirmedAt: new Date() } } }
+        : {}),
+    },
+    update: {
+      email,
+      fullName: p.fullName,
+      surname: p.surname,
+      status,
+      credential: { upsert: { create: { hash }, update: { hash } } },
+      ...(p.totpConfirmed && p.totpSecret
+        ? {
+            totp: {
+              upsert: {
+                create: { secretEnc: p.totpSecret, confirmedAt: new Date() },
+                update: { secretEnc: p.totpSecret, confirmedAt: new Date() },
+              },
+            },
+          }
+        : {}),
+    },
+  });
+
+  await prisma.roleAssignment.deleteMany({ where: { userId: p.id } });
+  for (const g of p.grants) {
+    await prisma.roleAssignment.create({
+      data: {
+        userId: p.id,
+        role: g.role as RoleCode,
+        cycleId: g.cycleId,
+        grantedBy: 'seed',
+        grantedAt: new Date(g.grantedAt),
+        revokedAt: g.revokedAt ? new Date(g.revokedAt) : null,
+      },
+    });
+  }
+}
+
 export async function syncUsersToPrisma(
   people: Person[],
   hashFor: (username: string) => Promise<string>,
 ): Promise<void> {
   for (const p of people) {
-    const hash = await hashFor(p.username);
-    const email = p.email || `${p.username}@localhost`;
-    const status: AccountStatus = (p.status as AccountStatus) || 'ACTIVE';
-
-    await prisma.user.upsert({
-      where: { username: p.username },
-      create: {
-        id: p.id,
-        username: p.username,
-        email,
-        fullName: p.fullName,
-        surname: p.surname,
-        status,
-        credential: { create: { hash } },
-        ...(p.totpConfirmed && p.totpSecret
-          ? { totp: { create: { secretEnc: p.totpSecret, confirmedAt: new Date() } } }
-          : {}),
-      },
-      update: {
-        email,
-        fullName: p.fullName,
-        surname: p.surname,
-        status,
-        credential: {
-          upsert: { create: { hash }, update: { hash } },
-        },
-        ...(p.totpConfirmed && p.totpSecret
-          ? {
-              totp: {
-                upsert: {
-                  create: { secretEnc: p.totpSecret, confirmedAt: new Date() },
-                  update: { secretEnc: p.totpSecret, confirmedAt: new Date() },
-                },
-              },
-            }
-          : {}),
-      },
-    });
-
-    await prisma.roleAssignment.deleteMany({ where: { userId: p.id } });
-    for (const g of p.grants) {
-      await prisma.roleAssignment.create({
-        data: {
-          userId: p.id,
-          role: g.role as RoleCode,
-          cycleId: g.cycleId,
-          grantedBy: 'seed',
-          grantedAt: new Date(g.grantedAt),
-          revokedAt: g.revokedAt ? new Date(g.revokedAt) : null,
-        },
-      });
+    try {
+      await upsertUser(p, await hashFor(p.username));
+    } catch (error) {
+      // Skip a single bad record (e.g. a duplicate email) rather than aborting
+      // the whole sync.
+      console.error('[prisma-auth] sync skip', p.username, error instanceof Error ? error.message : String(error));
     }
   }
+}
+
+/** Sync a single person on demand (e.g. a student who registered after the initial sync). */
+export async function syncOneUserToPrisma(person: Person, hash: string): Promise<void> {
+  await upsertUser(person, hash);
 }
 
 export async function findUserPrisma(username: string): Promise<UserRecord | null> {
@@ -126,20 +138,25 @@ export async function ensureUsersSynced(
 }
 
 export async function recordFailurePrisma(userId: string, lockUntil: string | null): Promise<void> {
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      failedAttempts: { increment: 1 },
-      lockedUntil: lockUntil ? new Date(lockUntil) : null,
-    },
-  });
+  try {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { failedAttempts: { increment: 1 }, lockedUntil: lockUntil ? new Date(lockUntil) : null },
+    });
+  } catch {
+    /* best-effort */
+  }
 }
 
 export async function recordSuccessPrisma(userId: string, at: string): Promise<void> {
-  await prisma.user.update({
-    where: { id: userId },
-    data: { lastLoginAt: new Date(at), failedAttempts: 0, lockedUntil: null },
-  });
+  try {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { lastLoginAt: new Date(at), failedAttempts: 0, lockedUntil: null },
+    });
+  } catch {
+    /* best-effort */
+  }
 }
 
 export async function recordAuditPrisma(event: {
