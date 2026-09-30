@@ -38,7 +38,8 @@ async function requestStaffAction(formData: FormData) {
   );
   const r = requestStaffAccount({
     username: String(formData.get('username') ?? ''),
-    fullName: String(formData.get('fullName') ?? ''),
+    surname: String(formData.get('surname') ?? ''),
+    otherNames: String(formData.get('otherNames') ?? ''),
     email: String(formData.get('email') ?? ''),
     requestedRoles,
     justification: String(formData.get('justification') ?? ''),
@@ -151,8 +152,13 @@ export default async function RegisterPage({
         ) : (
           <form action={requestStaffAction} className="box form-grid">
             <p>
-              <label>Full name
-                <input name="fullName" autoFocus required />
+              <label>Surname
+                <input name="surname" autoFocus required />
+              </label>
+            </p>
+            <p>
+              <label>Given names
+                <input name="otherNames" required />
               </label>
             </p>
             <p>
