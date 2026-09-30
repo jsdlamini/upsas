@@ -121,7 +121,8 @@ export default async function RegisterPage({
             </p>
             <p>
               <label>Course
-                <select name="courseCode" defaultValue={COURSES[2]}>
+                <select name="courseCode" required defaultValue="">
+                  <option value="" disabled>Select your course…</option>
                   {COURSES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </label>
