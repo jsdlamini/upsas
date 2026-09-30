@@ -1439,7 +1439,7 @@ export function updateStudentCourseCode(
 }
 
 export function requestStaffAccount(input: {
-  username: string; fullName: string; email: string;
+  username: string; surname: string; otherNames: string; email: string;
   requestedRoles: Array<RoleGrant['role']>; justification: string;
 }): { ok: true } | { ok: false; error: string } {
   const username = input.username.trim().toLowerCase();
@@ -1447,13 +1447,14 @@ export function requestStaffAccount(input: {
     return { ok: false, error: 'Username must be 3–32 letters, digits, dots, dashes or underscores.' };
   }
   if (findPersonByUsername(username)) return { ok: false, error: 'That username is taken.' };
-  if (!input.fullName.trim()) return { ok: false, error: 'Enter your full name.' };
+  if (!input.surname.trim() || !input.otherNames.trim()) return { ok: false, error: 'Enter your surname and given names.' };
   if (input.requestedRoles.length === 0) return { ok: false, error: 'Pick at least one role.' };
   if (input.justification.trim().length < 10) {
     return { ok: false, error: 'Explain why you need access in at least a sentence.' };
   }
+  const fullName = `${input.otherNames.trim()} ${input.surname.trim()}`;
   REGISTERED_STAFF.push({
-    id: `staff-${username}`, username, fullName: input.fullName.trim(), surname: input.fullName.trim(),
+    id: `staff-${username}`, username, fullName, surname: input.surname.trim(),
     grants: [], totpConfirmed: false, status: 'PENDING_APPROVAL',
     email: input.email.trim(), requestedRoles: input.requestedRoles,
   });

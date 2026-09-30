@@ -70,7 +70,7 @@ test('a registered account gets its own password hash, not the demo hash', async
 
 test('staff registration is held pending, then activated by a coordinator', () => {
   const r = requestStaffAccount({
-    username: 'newsupervisor', fullName: 'Dr New Supervisor', email: 'n@example.ac.sz',
+    username: 'newsupervisor', surname: 'Supervisor', otherNames: 'Dr New', email: 'n@example.ac.sz',
     requestedRoles: ['SUPERVISOR', 'ASSESSOR'], justification: 'Supervising CSC 400 students this cycle.',
   });
   assert.ok(r.ok);
@@ -88,7 +88,7 @@ test('staff registration is held pending, then activated by a coordinator', () =
 
 test('staff registration rejects a taken username', () => {
   const r = requestStaffAccount({
-    username: 'coordinator', fullName: 'Impostor', email: 'x@example.ac.sz',
+    username: 'coordinator', surname: 'Impostor', otherNames: 'Test', email: 'x@example.ac.sz',
     requestedRoles: ['SUPERVISOR'], justification: 'Just testing a duplicate.',
   });
   assert.equal(r.ok, false);
@@ -96,7 +96,7 @@ test('staff registration rejects a taken username', () => {
 
 test('declining a staff request deactivates it', () => {
   requestStaffAccount({
-    username: 'declineduser', fullName: 'Dr Declined', email: 'd@example.ac.sz',
+    username: 'declineduser', surname: 'Declined', otherNames: 'Dr', email: 'd@example.ac.sz',
     requestedRoles: ['ASSESSOR'], justification: 'For the decline test.',
   });
   const pending = pendingStaffRequests();
