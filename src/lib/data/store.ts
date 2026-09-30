@@ -1817,6 +1817,42 @@ export async function redeemResetCode(
   return { ok: true, userId: person.id };
 }
 
+/**
+ * User-side password reset: email a one-time code to the account's address.
+ *
+ * Always returns void so the response can't be used to enumerate accounts.
+ */
+export async function requestResetCode(username: string): Promise<void> {
+  const person = findPersonByUsername(username.trim());
+  if (!person) return;
+
+  const email = emailOf(person.id);
+  if (!email) return;
+
+  const now = new Date();
+  revokeOutstanding(resetTickets, person.id, now);
+  const { ticket, code } = issueTicket(person.id, 'self-service', now);
+  resetTickets.push(ticket);
+  schedulePersist();
+
+  const site = process.env.NEXT_PUBLIC_SITE_URL || 'https://research.idealsoftwaresolutions.com';
+  const recoverUrl = `${site}/recover?u=${encodeURIComponent(person.username)}`;
+
+  await sendEmail({
+    to: email,
+    subject: 'Your password reset code',
+    body: `Use this code to reset your UNESWA Research Chain password:\n\n${code}\n\nOpen ${recoverUrl} and enter it with your username to choose a new password. It expires in 30 minutes and works once. If you did not ask for this, ignore this message.`,
+    html: `
+      <div style="font-family: Inter, -apple-system, sans-serif; color: #0f172a; line-height: 1.6">
+        <h2 style="margin: 0 0 12px">Reset your password</h2>
+        <p>Use this code to reset your password:</p>
+        <p style="font-size: 24px; letter-spacing: 3px; font-weight: 700; margin: 16px 0">${code}</p>
+        <p><a href="${recoverUrl}" style="color:#1e40af;font-weight:600">Open the reset page</a> and enter it with your username.</p>
+        <p style="color:#64748b;font-size:13px">The code expires in 30 minutes and works once. If you didn't request this, you can ignore it.</p>
+      </div>`,
+  });
+}
+
 /* --------------------------------------------------------- persistence */
 
 function collectState() {
