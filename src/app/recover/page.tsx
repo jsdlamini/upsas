@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { redeemResetCode } from '@/lib/data/store';
+import { redeemResetCode, requestResetCode } from '@/lib/data/store';
 import { destroySessionsFor } from '@/lib/auth/current';
 import { PASSWORD_POLICY } from '@/lib/auth/password';
 
@@ -26,10 +26,18 @@ async function recover(formData: FormData) {
   redirect('/login?toast=' + encodeURIComponent('Password changed. Sign in with your new password.'));
 }
 
+async function requestReset(formData: FormData) {
+  'use server';
+  const username = String(formData.get('username') ?? '');
+  await requestResetCode(username);
+  const carry = username.trim() ? `&u=${encodeURIComponent(username.trim())}` : '';
+  redirect(`/recover?sent=1${carry}`);
+}
+
 export default async function Recover({
   searchParams,
-}: { searchParams: Promise<{ e?: string }> }) {
-  const { e } = await searchParams;
+}: { searchParams: Promise<{ e?: string; u?: string; sent?: string }> }) {
+  const { e, u, sent } = await searchParams;
 
   return (
     <div className="auth-split">
@@ -61,11 +69,25 @@ export default async function Recover({
           </div>
 
           {e && <div className="notice bad" role="alert">{e}</div>}
+          {sent && <div className="notice" role="status">If that account has an email on file, a reset code has been sent. Check your inbox.</div>}
+
+          <form action={requestReset}>
+            <p>
+              <label htmlFor="req-username">Username or student number</label>
+              <input id="req-username" name="username" type="text" autoComplete="username" defaultValue={u ?? ''} required />
+            </p>
+            <p style={{ marginTop: 12 }}>
+              <Button type="submit" variant="outline">Email me a reset code</Button>
+            </p>
+          </form>
+
+          <hr style={{ margin: '22px 0', border: 0, borderTop: '1px solid var(--rule)' }} />
+          <p className="muted" style={{ fontSize: 12.5, marginBottom: 14 }}>Already have a code? Reset your password below.</p>
 
           <form action={recover}>
             <p>
               <label htmlFor="username">Username or student number</label>
-              <input id="username" name="username" type="text" autoComplete="username" required />
+              <input id="username" name="username" type="text" autoComplete="username" defaultValue={u ?? ''} required />
             </p>
             <p>
               <label htmlFor="code">Reset code</label>
