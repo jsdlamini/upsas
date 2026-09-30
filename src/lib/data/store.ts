@@ -1423,6 +1423,21 @@ export async function registerStudent(input: {
   return { ok: true, username: number };
 }
 
+/** A student may correct their course code (e.g. CSC 400 vs CSC 499). */
+export function updateStudentCourseCode(
+  studentId: string,
+  courseCode: string,
+): { ok: true } | { ok: false; error: string } {
+  if (!(COURSES as readonly string[]).includes(courseCode)) {
+    return { ok: false, error: 'That course code is not recognised.' };
+  }
+  const student = STUDENTS.find((s) => s.id === studentId);
+  if (!student) return { ok: false, error: 'Student record not found.' };
+  student.courseCode = courseCode;
+  schedulePersist();
+  return { ok: true };
+}
+
 export function requestStaffAccount(input: {
   username: string; fullName: string; email: string;
   requestedRoles: Array<RoleGrant['role']>; justification: string;

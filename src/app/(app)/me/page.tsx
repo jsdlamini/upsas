@@ -9,6 +9,7 @@ import {
   publishedDeadlines, deadlineStatusFor,
   findPerson, findStudent, projectOf, consultationsOf, toConsultationRecords,
   attestConsultation, publicationOf, findStudentByNumber, docMarkOf, toAssessorEntries,
+  updateStudentCourseCode, COURSES,
 } from '@/lib/data/store';
 
 export const dynamic = 'force-dynamic';
@@ -28,6 +29,20 @@ async function attest(formData: FormData) {
   }
   attestConsultation(id, 'STUDENT');
   redirect('/me?saved=1');
+}
+
+async function updateCourse(formData: FormData) {
+  'use server';
+  const principal = await currentPrincipal();
+  if (!principal) redirect('/login');
+  const person = findPerson(principal.userId);
+  const student = person?.studentId
+    ? findStudent(person.studentId)
+    : findStudentByNumber(person?.username ?? '');
+  if (!student) redirect('/me');
+  const courseCode = String(formData.get('courseCode') ?? '');
+  const result = updateStudentCourseCode(student.id, courseCode);
+  redirect(`/me?toast=${encodeURIComponent(result.ok ? 'Course code updated.' : result.error)}`);
 }
 
 function snapshotFor(studentId: string) {
@@ -92,6 +107,19 @@ export default async function MyProject({
 
       {saved && <div className="notice">Confirmed.</div>}
       {e && <div className="notice bad">{e}</div>}
+
+      <div className="box" style={{ borderLeftColor: 'var(--accent)' }}>
+        <strong>Course code</strong>
+        <p className="muted" style={{ margin: '6px 0 10px' }}>
+          Your project is recorded under <strong>{student.courseCode}</strong>. If that's the wrong course, correct it here.
+        </p>
+        <form action={updateCourse} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <select name="courseCode" defaultValue={student.courseCode}>
+            {COURSES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <Button type="submit" variant="outline" size="sm">Save course</Button>
+        </form>
+      </div>
 
       {myDeadlines.length > 0 && (
         <>
