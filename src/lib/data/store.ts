@@ -1420,6 +1420,24 @@ export async function registerStudent(input: {
   });
   tables.passwords[number] = await hashPassword(input.password);
   schedulePersist();
+
+  // Confirmation email (best-effort).
+  if (input.email.trim()) {
+    const site = process.env.NEXT_PUBLIC_SITE_URL || 'https://research.idealsoftwaresolutions.com';
+    void sendEmail({
+      to: input.email.trim().toLowerCase(),
+      subject: 'Your Research Chain account is ready',
+      body: `Hi ${input.otherNames},\n\nYour account on the UNESWA Research Chain is ready. Sign in at ${site}/login with your student number ${number} and the password you chose.\n\nOnce signed in: check your course code, browse and rank topics, and book supervision sessions.\n\nIf you didn't register, you can ignore this message.`,
+      html: `
+        <div style="font-family: Inter, -apple-system, sans-serif; color: #0f172a; line-height: 1.6">
+          <h2 style="margin: 0 0 12px">Your account is ready</h2>
+          <p>Hi ${input.otherNames},</p>
+          <p>Your account on the UNESWA Research Chain is ready.</p>
+          <p><a href="${site}/login" style="color:#1e40af;font-weight:600">Sign in</a> with your student number <strong>${number}</strong> and the password you chose.</p>
+          <p style="color:#64748b;font-size:13px">Once signed in: check your course code, browse and rank topics, and book supervision sessions.</p>
+        </div>`,
+    });
+  }
   return { ok: true, username: number };
 }
 
@@ -1459,6 +1477,23 @@ export function requestStaffAccount(input: {
     email: input.email.trim(), requestedRoles: input.requestedRoles,
   });
   schedulePersist();
+
+  // Confirmation email (best-effort).
+  if (input.email.trim()) {
+    const site = process.env.NEXT_PUBLIC_SITE_URL || 'https://research.idealsoftwaresolutions.com';
+    void sendEmail({
+      to: input.email.trim(),
+      subject: 'Your Research Chain access request was received',
+      body: `Hi ${fullName},\n\nYour access request has been received and is waiting for a coordinator to approve it. You'll be able to sign in once approved.\n\nIf you didn't request this, you can ignore this message.`,
+      html: `
+        <div style="font-family: Inter, -apple-system, sans-serif; color: #0f172a; line-height: 1.6">
+          <h2 style="margin: 0 0 12px">Access request received</h2>
+          <p>Hi ${fullName},</p>
+          <p>Your access request has been received and is waiting for a coordinator to approve it. You'll be able to sign in once approved.</p>
+          <p style="color:#64748b;font-size:13px">If you didn't request this, you can ignore this message.</p>
+        </div>`,
+    });
+  }
   return { ok: true };
 }
 
