@@ -35,15 +35,15 @@ export type SendOutcome = 'sent' | 'stubbed' | 'failed';
  */
 export async function sendEmail(email: OutgoingEmail): Promise<SendOutcome> {
   const key = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM_EMAIL || process.env.RESEND_FROM || "UNESWA Research Chain <onboarding@resend.dev>";
+  const from = process.env.RESEND_FROM_EMAIL || process.env.RESEND_FROM || "UNESWA Research Chain <onboarding@research.idealsoftwaresolutions.com>";
   if (!key || !email.to) {
     console.log("[email:stub]", email.to || "(no recipient)", "|", email.subject);
     return "stubbed";
   }
 
-  // Testing switch. Resend's shared onboarding@resend.dev sender will only
-  // deliver to the address that owns the Resend account, so until a domain is
-  // verified every message is redirected there, labelled with who it was for.
+  // Testing switch. A shared sender will only deliver to the address that
+  // owns the Resend account, so until a domain is verified every message is
+  // redirected there, labelled with who it was for.
   const redirect = process.env.EMAIL_REDIRECT_TO?.trim();
   const to = redirect || email.to;
   const subject = redirect ? `[for ${email.to}] ${email.subject}` : email.subject;
