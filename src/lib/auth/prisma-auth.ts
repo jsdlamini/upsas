@@ -80,12 +80,15 @@ export async function syncUsersToPrisma(
   people: Person[],
   hashFor: (username: string) => Promise<string>,
 ): Promise<void> {
+  const seen = new Set<string>();
   for (const p of people) {
+    // PEOPLE (seeded staff) come first in allPeople(); skip a later
+    // registered-staff duplicate so the seeded role set wins.
+    if (seen.has(p.username)) continue;
+    seen.add(p.username);
     try {
       await upsertUser(p, await hashFor(p.username));
     } catch (error) {
-      // Skip a single bad record (e.g. a duplicate email) rather than aborting
-      // the whole sync.
       console.error('[prisma-auth] sync skip', p.username, error instanceof Error ? error.message : String(error));
     }
   }
