@@ -242,7 +242,7 @@ export default async function LoginPage({
           <p style={{ margin: '0 0 10px' }}>
             <label>Authenticator code
               <input name="code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="one-time-code" autoFocus
-                     className="mono" style={{ width: 150, letterSpacing: 5, fontSize: 16 }} />
+                     className="mono" style={{ width: 150, letterSpacing: 5, fontSize: 16, display: 'block', marginTop: 8 }} />
             </label>
           </p>
         )}
