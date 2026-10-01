@@ -46,6 +46,8 @@ export interface LoginRequest {
   readonly now: Date;
   /** Present only after a TOTP challenge has been verified. */
   readonly mfaVerified?: boolean;
+  /** True on the second factor step — the first factor already passed a short-lived challenge. */
+  readonly passwordVerified?: boolean;
 }
 
 export interface LoginDeps {
@@ -75,9 +77,9 @@ export async function login(req: LoginRequest, deps: LoginDeps): Promise<LoginOu
     return { status: 'LOCKED', until: user.lockedUntil };
   }
 
-  // The MFA challenge (second factor) proves the first factor already passed,
-  // so it does not re-verify the password, which the client no longer holds.
-  const passwordOk = req.mfaVerified === true || (await verifyPassword(user.passwordHash, req.password));
+  // The MFA challenge proves the first factor already passed, so skip the
+  // password check on that step (the client no longer holds the password).
+  const passwordOk = req.passwordVerified === true || (await verifyPassword(user.passwordHash, req.password));
   if (!passwordOk) {
     const attempts = user.failedAttempts + 1;
     const lockUntil = attempts >= LOCKOUT.maxFailedAttempts
