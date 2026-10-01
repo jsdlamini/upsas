@@ -88,6 +88,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     tabs.push(['/cohort', 'Cohort register']);
     tabs.push(['/rubrics', 'Assessment forms']);
   }
+  if (principal.permissions.includes('user.approve')) tabs.push(['/people', 'People']);
   tabs.push(['/reports', 'Reports']);
 
   return (
@@ -112,11 +113,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         <div className="foot">
           <span className="avatar" aria-hidden="true">{initials(person?.fullName)}</span>
           <div className="who-line">
-            <div className="who">{person?.fullName}</div>
+            <div className="who"><a href="/account" style={{ color: 'inherit', textDecoration: 'none' }}>{person?.fullName}</a></div>
             <div className="roles">
               {principal.roles.join(', ').toLowerCase()}
               {principal.mfaSatisfied && ' · 2FA'}
             </div>
+            <a href="/account" className="link" style={{ fontSize: 11 }}>Edit my details</a>
             <form action={signOut}>
               <button className="link" type="submit">Sign out</button>
             </form>

@@ -1,5 +1,6 @@
 import { hashPassword, checkPassword } from '../auth/password';
 import type { RoleGrant } from '../auth/roles';
+import type { RoleCode } from '../rbac/policy';
 import type { AssessorEntry, ConsultationRecord } from '../assessment/types';
 import { loadPersistedState, savePersistedState, persistenceEnabled, type SaveOutcome } from '../persistence';
 import { groupCommit } from '../group-commit';
@@ -385,6 +386,12 @@ export interface ModerationRow {
   moderatedAt: string;
 }
 
+interface ProfileOverride {
+  fullName?: string;
+  surname?: string;
+  email?: string;
+}
+
 interface Tables {
   consultations: Consultation[]; sheets: Sheet[]; docMarks: DocMark[];
   publications: Publication[]; moderations: ModerationRow[];
@@ -399,13 +406,18 @@ interface Tables {
   meetingNotices: MeetingNotice[];
   /** Addresses a coordinator set, keyed by account id. Wins over the rest. */
   contactEmails: Record<string, string>;
+  /** Coordinator-edited role set, keyed by person id. Wins over base grants. */
+  roleOverrides: Record<string, RoleCode[]>;
+  /** Coordinator- or self-edited profile fields, keyed by person id. */
+  profileOverrides: Record<string, ProfileOverride>;
   seeded: boolean;
 }
 const globalForData = globalThis as unknown as { __upsasData?: Tables };
 const tables: Tables = (globalForData.__upsasData ??= {
   consultations: [], sheets: [], docMarks: [], publications: [], moderations: [],
   topics: [], preferences: [], slots: [], meetingRequests: [], signatures: [], deliverables: [], passwords: {},
-  enrolments: [], deadlines: [], extensions: [], resetTickets: [], meetingNotices: [], contactEmails: {}, seeded: false,
+  enrolments: [], deadlines: [], extensions: [], resetTickets: [], meetingNotices: [], contactEmails: {},
+  roleOverrides: {}, profileOverrides: {}, seeded: false,
 });
 const consultations = tables.consultations;
 const sheets = tables.sheets;
@@ -425,6 +437,8 @@ const resetTickets = tables.resetTickets;
 // Older persisted snapshots predate this table.
 tables.meetingNotices ??= [];
 tables.contactEmails ??= {};
+tables.roleOverrides ??= {};
+tables.profileOverrides ??= {};
 const meetingNotices = tables.meetingNotices;
 
 // Captain's seeded coordinator PIN (6456) — separate from the shared demo
@@ -646,7 +660,23 @@ function seedSchedule(): void {
 
 /* --------------------------------------------------------------- accessors */
 
-export const allPeople = (): Person[] => [...PEOPLE, ...studentAccounts(), ...REGISTERED_STAFF];
+export const allPeople = (): Person[] => {
+  const base = [...PEOPLE, ...studentAccounts(), ...REGISTERED_STAFF];
+  return base.map((p) => {
+    const roles = tables.roleOverrides[p.id];
+    const prof = tables.profileOverrides[p.id];
+    if (!roles && !prof) return p;
+    return {
+      ...p,
+      grants: roles ? roles.map((r) => grant(r)) : p.grants,
+      ...(prof ? {
+        fullName: prof.fullName !== undefined ? prof.fullName : p.fullName,
+        surname: prof.surname !== undefined ? prof.surname : p.surname,
+        email: prof.email !== undefined ? prof.email : p.email,
+      } : {}),
+    };
+  });
+};
 export const findPerson = (id: string) => allPeople().find((p) => p.id === id) ?? null;
 export const findPersonByUsername = (u: string) => allPeople().find((p) => p.username === u) ?? null;
 export const findPersonByIdentifier = (identifier: string) => {
@@ -1535,6 +1565,50 @@ export function declineStaffAccount(id: string): { ok: true } | { ok: false; err
   return { ok: true };
 }
 
+/** Replace a person's roles (staff or student). Empty restores their base grants. */
+export function setPersonRoles(id: string, roles: RoleCode[]): { ok: true } | { ok: false; error: string } {
+  const person = allPeople().find((p) => p.id === id);
+  if (!person) return { ok: false, error: 'No such person.' };
+  if (roles.length === 0) delete tables.roleOverrides[id];
+  else tables.roleOverrides[id] = roles;
+  schedulePersist();
+  return { ok: true };
+}
+
+/** Edit a person's name and email. Students' names also live on the student record. */
+export function updatePersonProfile(
+  id: string,
+  patch: { fullName?: string; surname?: string; email?: string },
+): { ok: true } | { ok: false; error: string } {
+  const person = allPeople().find((p) => p.id === id);
+  if (!person) return { ok: false, error: 'No such person.' };
+
+  if (person.studentId) {
+    const st = STUDENTS.find((s) => s.id === person.studentId);
+    if (st) {
+      if (patch.fullName !== undefined) {
+        const [surname, ...rest] = patch.fullName.split(',').map((x) => x.trim());
+        if (surname) st.surname = surname;
+        if (rest.length) st.otherNames = rest.join(' ');
+      }
+      if (patch.surname !== undefined) st.surname = patch.surname;
+      if (patch.email !== undefined) st.email = patch.email;
+    }
+  } else {
+    const staff = PEOPLE.find((p) => p.id === id) ?? REGISTERED_STAFF.find((p) => p.id === id);
+    if (staff) {
+      if (patch.fullName !== undefined) staff.fullName = patch.fullName;
+      if (patch.surname !== undefined) staff.surname = patch.surname;
+      if (patch.email !== undefined) staff.email = patch.email;
+    }
+  }
+
+  const existing = tables.profileOverrides[id] ?? {};
+  tables.profileOverrides[id] = { ...existing, ...patch };
+  schedulePersist();
+  return { ok: true };
+}
+
 /* --------------------------------------------------- meeting requests */
 
 export function requestMeeting(input: {
@@ -1945,6 +2019,8 @@ function collectState() {
     extensions: tables.extensions,
     meetingNotices: tables.meetingNotices,
     contactEmails: tables.contactEmails,
+    roleOverrides: tables.roleOverrides,
+    profileOverrides: tables.profileOverrides,
     students: STUDENTS,
     registeredStaff: REGISTERED_STAFF,
     projects: PROJECTS,
@@ -2023,6 +2099,14 @@ async function hydrateFromPersistence(): Promise<void> {
     if (state.contactEmails && typeof state.contactEmails === 'object') {
       for (const k of Object.keys(tables.contactEmails)) delete tables.contactEmails[k];
       Object.assign(tables.contactEmails, state.contactEmails as Record<string, string>);
+    }
+    if (state.roleOverrides && typeof state.roleOverrides === 'object') {
+      for (const k of Object.keys(tables.roleOverrides)) delete tables.roleOverrides[k];
+      Object.assign(tables.roleOverrides, state.roleOverrides as Record<string, RoleCode[]>);
+    }
+    if (state.profileOverrides && typeof state.profileOverrides === 'object') {
+      for (const k of Object.keys(tables.profileOverrides)) delete tables.profileOverrides[k];
+      Object.assign(tables.profileOverrides, state.profileOverrides as Record<string, ProfileOverride>);
     }
     // Reset codes are deliberately absent: an outstanding code must not
     // survive a restart it was never meant to outlive.
