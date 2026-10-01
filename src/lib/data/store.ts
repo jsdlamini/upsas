@@ -216,6 +216,10 @@ export const PEOPLE: Person[] = (globalForPeople.__upsasPeople ??= [
     // Demo TOTP secret (base32). Add it to an authenticator app to generate
     // the six-digit code the coordinator is challenged for.
     totpSecret: 'IOTL7XO7EZ2BFO5ZD5V7X427T7I4LIJH' },
+  { id: 'u-johnsjdsd', username: 'johnsjdsd', fullName: 'John S. Dlamini', surname: 'Dlamini',
+    email: 'johnsjdsd@gmail.com',
+    grants: [grant('COORDINATOR'), grant('ADMINISTRATOR'), grant('SUPERVISOR'), grant('ASSESSOR'), grant('MODERATOR')],
+    totpConfirmed: true, totpSecret: 'KDZT4KOOBBSPQ23E5RFOYDGWMFOLQGQV' },
 ]);
 
 /** Staff accounts requested through the registration screen, awaiting a coordinator. */
@@ -417,6 +421,10 @@ const resetTickets = tables.resetTickets;
 tables.meetingNotices ??= [];
 tables.contactEmails ??= {};
 const meetingNotices = tables.meetingNotices;
+
+// Captain's seeded coordinator PIN (6456) — separate from the shared demo
+// password so johnsjdsd has its own login.
+tables.passwords['johnsjdsd'] ??= '$argon2id$v=19$m=19456,t=2,p=1$lta8DQqqxZoyzrh91zBC4g$kktDRsYAD+lNXwH7MBzOsdD8BjTex12MR0UuzPcYShw';
 
 function seedConsultations(): void {
   const plan: Record<string, [number[], number[]]> = {
