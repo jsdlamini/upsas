@@ -34,8 +34,10 @@ services:
       # a Docker deployment even when .env was filled in.
       APP_URL: ${APP_URL:-http://localhost:3000}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
-      RESEND_FROM: ${RESEND_FROM:-UPSAS <onboarding@resend.dev>}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-ResearchChains <invites@idealsoftwaresolutions.com>}
+      RESEND_FROM: ${RESEND_FROM:-ResearchChains <invites@idealsoftwaresolutions.com>}
       EMAIL_REDIRECT_TO: ${EMAIL_REDIRECT_TO:-}
+      DISABLE_MFA: ${DISABLE_MFA:-}
       TZ: Africa/Mbabane
     volumes:
       - uploads:/var/lib/upsas/uploads
