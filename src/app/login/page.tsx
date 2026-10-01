@@ -148,6 +148,7 @@ async function signIn(formData: FormData) {
 
   const outcome = await login(
     { username, password, cycleId: CYCLE, now: new Date(),
+      passwordVerified: firstFactorDone,
       mfaVerified: firstFactorDone && verifyTotp(totpSecret, code) },
     deps,
   );
