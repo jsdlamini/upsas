@@ -48,7 +48,7 @@
 }
 
 *{ box-sizing:border-box }
-html{ color-scheme:light dark }
+html{ color-scheme:light }
 html,body{ height:100% }
 body{
   margin:0; background:var(--canvas); color:var(--ink);
@@ -328,6 +328,32 @@ a{ transition:color .12s ease }
 
 .slot-days{ display:flex; flex-direction:column; gap:14px }
 .slot-day-head{ font:600 13.5px/1 var(--serif); color:var(--ink); margin:0 0 6px 2px }
+
+/* Consultation calendar: a day grid of selectable slot cards. */
+.calendar-days{ display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:14px }
+.calendar-day{ background:var(--surface); border:1px solid var(--rule); border-radius:12px; overflow:hidden;
+  transition:border-color .18s ease, box-shadow .18s ease }
+.calendar-day:focus-within{ border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-dim) }
+.calendar-day-head{ display:flex; justify-content:space-between; align-items:baseline; gap:8px;
+  padding:10px 12px; border-bottom:1px solid var(--rule);
+  font:600 13.5px/1.2 var(--serif); color:var(--ink) }
+.calendar-day-count{ font:600 11px/1 var(--sans); color:var(--muted); background:var(--rule-soft);
+  border-radius:999px; padding:4px 9px; white-space:nowrap }
+.calendar-slots{ padding:8px; display:flex; flex-direction:column; gap:8px }
+.slot-card{ display:flex; gap:10px; padding:10px; border:1px solid var(--rule); border-radius:10px;
+  background:var(--canvas); transition:transform .15s ease, border-color .15s ease }
+.slot-card:hover{ border-color:var(--accent); transform:translateY(-1px) }
+.slot-time{ min-width:86px; display:flex; flex-direction:column; gap:6px; align-items:flex-start }
+.slot-time strong{ font:700 15px/1 var(--mono); color:var(--ink); letter-spacing:.2px }
+.slot-body{ flex:1; display:flex; flex-direction:column; gap:7px; min-width:0 }
+.slot-body input{ width:100%; padding:7px 9px; border:1px solid var(--rule); border-radius:7px;
+  background:var(--surface); color:var(--ink); font-size:13px }
+.slot-body input:focus{ border-color:var(--accent); outline:none }
+.slot-actions{ display:flex; gap:8px; align-items:center; flex-wrap:wrap }
+.slot-actions select{ padding:6px 8px; border:1px solid var(--rule); border-radius:7px;
+  background:var(--surface); color:var(--ink); font-size:12.5px }
+.slot-actions input{ flex:1; min-width:150px; padding:7px 9px; border:1px solid var(--rule); border-radius:7px;
+  background:var(--surface); color:var(--ink); font-size:12.5px }
 
 /* ─────────────────────────────────────────────────────── responsive */
 
@@ -632,58 +658,59 @@ form[data-dirty="1"] .actionbar .dirty{ display:inline-block }
 
 /* Every colour was already a token, so the dark scheme is a second set of
    values rather than a second stylesheet. */
-@media (prefers-color-scheme: dark){
-  :root{
-    --ink:        #E8EDF4;
-    --ink-soft:   #B7C2D0;
-    --muted:      #93A1B2;
-    --canvas:     #0C131C;
-    --surface:    #141D29;
-    --rule:       #26313F;
-    --rule-soft:  #1D2734;
-    --rail:       #0A111A;
-    --rail-line:  #1F2B3B;
+[data-theme="dark"]{
+  --ink:        #E8EDF4;
+  --ink-soft:   #B7C2D0;
+  --muted:      #93A1B2;
+  --canvas:     #0C131C;
+  --surface:    #141D29;
+  --rule:       #26313F;
+  --rule-soft:  #1D2734;
+  --rail:       #0A111A;
+  --rail-line:  #1F2B3B;
 
-    --accent:     #7CA2EA;
-    --accent-dim: #1B2942;
-    --moss:       #6FCB9F;
-    --moss-dim:   #14291F;
-    --ochre:      #E0B25C;
-    --ochre-dim:  #2C2413;
-    --rust:       #EE8983;
-    --rust-dim:   #2E1817;
-    --seal:       #E8EDF4;
+  --accent:     #7CA2EA;
+  --accent-dim: #1B2942;
+  --moss:       #6FCB9F;
+  --moss-dim:   #14291F;
+  --ochre:      #E0B25C;
+  --ochre-dim:  #2C2413;
+  --rust:       #EE8983;
+  --rust-dim:   #2E1817;
+  --seal:       #E8EDF4;
 
-    --field-line: #3B495B;
-    --placeholder:#8492A4;
+  --field-line: #3B495B;
+  --placeholder:#8492A4;
 
-    --shadow-sm:  0 1px 2px rgba(0,0,0,.4);
-    --shadow:     0 1px 3px rgba(0,0,0,.45), 0 4px 16px rgba(0,0,0,.35);
-  }
-  table.list thead th, table.grid thead th{ background:#1A2532; color:var(--ink-soft) }
-  table.list tbody tr:nth-child(even) td, table.grid tbody tr:nth-child(even) td{ background:#17212E }
-  table.list tbody tr:hover td, table.grid tbody tr:hover td{ background:#1C2836 }
-  table.list tbody tr:nth-child(even):hover td{ background:#1C2836 }
-  td.total{ background:#1B2635 }
-  table.grid tbody tr:hover td.total{ background:#22303F }
-  td.sess{ background:#1A2532 }
-  tr.band.solo td{ background:#1A2532; color:var(--ink-soft) }
-  tr.band td{ color:#BFD2F2 }
-  input[type="text"], input[type="password"], input[type="number"], input[type="date"],
-  input[type="email"], select, textarea, input:not([type]){ background:#0F1823; color:var(--ink) }
-  input.mark:focus{ background:#132033 }
-  input.mark:disabled{ background:#131C27; color:var(--muted) }
-  .btn:disabled{ background:#1E2835; border-color:#2A3746; color:#6F7D8D }
-  .btn.ghost{ background:var(--surface) }
-  .chip{ background:#1A2532 }
-  .steps span, .journey span, .page-context .cycle-chip{ background:var(--surface) }
-  .role-check{ background:#0F1823 }
-  .mark-cell{ background:#101A26 }
-  .auth-brand{ background:linear-gradient(180deg, #080E16 0%, #10202F 100%) }
-  .toast{ background:#1D2836 }
-  .skeleton i{ background:#1D2734 }
-  .nav-toggle-btn{ background:#16212F }
+  --shadow-sm:  0 1px 2px rgba(0,0,0,.4);
+  --shadow:     0 1px 3px rgba(0,0,0,.45), 0 4px 16px rgba(0,0,0,.35);
+
+  color-scheme: dark;
 }
+
+[data-theme="dark"] table.list thead th, [data-theme="dark"] table.grid thead th{ background:#1A2532; color:var(--ink-soft) }
+[data-theme="dark"] table.list tbody tr:nth-child(even) td, [data-theme="dark"] table.grid tbody tr:nth-child(even) td{ background:#17212E }
+[data-theme="dark"] table.list tbody tr:hover td, [data-theme="dark"] table.grid tbody tr:hover td{ background:#1C2836 }
+[data-theme="dark"] table.list tbody tr:nth-child(even):hover td{ background:#1C2836 }
+[data-theme="dark"] td.total{ background:#1B2635 }
+[data-theme="dark"] table.grid tbody tr:hover td.total{ background:#22303F }
+[data-theme="dark"] td.sess{ background:#1A2532 }
+[data-theme="dark"] tr.band.solo td{ background:#1A2532; color:var(--ink-soft) }
+[data-theme="dark"] tr.band td{ color:#BFD2F2 }
+[data-theme="dark"] input[type="text"], [data-theme="dark"] input[type="password"], [data-theme="dark"] input[type="number"], [data-theme="dark"] input[type="date"],
+[data-theme="dark"] input[type="email"], [data-theme="dark"] select, [data-theme="dark"] textarea, [data-theme="dark"] input:not([type]){ background:#0F1823; color:var(--ink) }
+[data-theme="dark"] input.mark:focus{ background:#132033 }
+[data-theme="dark"] input.mark:disabled{ background:#131C27; color:var(--muted) }
+[data-theme="dark"] .btn:disabled{ background:#1E2835; border-color:#2A3746; color:#6F7D8D }
+[data-theme="dark"] .btn.ghost{ background:var(--surface) }
+[data-theme="dark"] .chip{ background:#1A2532 }
+[data-theme="dark"] .steps span, [data-theme="dark"] .journey span, [data-theme="dark"] .page-context .cycle-chip{ background:var(--surface) }
+[data-theme="dark"] .role-check{ background:#0F1823 }
+[data-theme="dark"] .mark-cell{ background:#101A26 }
+[data-theme="dark"] .auth-brand{ background:linear-gradient(180deg, #080E16 0%, #10202F 100%) }
+[data-theme="dark"] .toast{ background:#1D2836 }
+[data-theme="dark"] .skeleton i{ background:#1D2734 }
+[data-theme="dark"] .nav-toggle-btn{ background:#16212F }
 
 /* ─────────────────────────────────────────────────────────── 9. print */
 
@@ -719,6 +746,15 @@ form[data-dirty="1"] .actionbar .dirty{ display:inline-block }
   padding:10px 16px; font-weight:600; text-decoration:none;
 }
 
+/* Manual light/dark switch, fixed so it is reachable on the login page too. */
+.theme-toggle{ position:fixed; top:12px; right:12px; z-index:120;
+  display:inline-flex; align-items:center; gap:6px;
+  background:var(--surface); color:var(--ink-soft); border:1px solid var(--rule);
+  border-radius:999px; padding:6px 12px; font:600 12px/1 var(--sans); cursor:pointer;
+  box-shadow:var(--shadow-sm); transition:border-color .15s ease, color .15s ease }
+.theme-toggle:hover{ border-color:var(--accent); color:var(--accent) }
+.theme-toggle svg{ flex:0 0 auto }
+
 /* ═══════════════════════════════════════════════════════════════════════════
    11. Colour as wayfinding
    ═══════════════════════════════════════════════════════════════════════════
@@ -750,15 +786,13 @@ form[data-dirty="1"] .actionbar .dirty{ display:inline-block }
 [data-section="publish"]      { --section:#9B3D76 }   /* moderation and release */
 [data-section="reports"]      { --section:#2C4A6B }   /* the archive */
 
-@media (prefers-color-scheme: dark){
-  [data-section="home"]         { --section:#63B3E0 }
-  [data-section="topics"]       { --section:#A996F0 }
-  [data-section="book"]         { --section:#5CC5CE }
-  [data-section="consultations"]{ --section:#6FCB9F }
-  [data-section="grading"]      { --section:#7CA2EA }
-  [data-section="publish"]      { --section:#E28BBF }
-  [data-section="reports"]      { --section:#9DB6D4 }
-}
+[data-theme="dark"] [data-section="home"]         { --section:#63B3E0 }
+[data-theme="dark"] [data-section="topics"]       { --section:#A996F0 }
+[data-theme="dark"] [data-section="book"]         { --section:#5CC5CE }
+[data-theme="dark"] [data-section="consultations"]{ --section:#6FCB9F }
+[data-theme="dark"] [data-section="grading"]      { --section:#7CA2EA }
+[data-theme="dark"] [data-section="publish"]      { --section:#E28BBF }
+[data-theme="dark"] [data-section="reports"]      { --section:#9DB6D4 }
 
 /* The page sits on a faint wash of its own hue. Enough to tell two screens
    apart at a glance from across a desk; not enough to tint a mark. */

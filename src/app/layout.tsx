@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import './globals.css';
 import { ensureHydrated } from '@/lib/data/store';
 import { Toasts } from '@/components/toasts';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 import type { Metadata, Viewport } from 'next';
 
@@ -37,8 +38,16 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   await ensureHydrated();
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Set the theme before first paint, so there is no flash of the wrong
+            scheme. Saved choice wins; otherwise the OS preference. */}
+        <script dangerouslySetInnerHTML={{ __html:
+          "(function(){try{var t=localStorage.getItem('upsas-theme');if(t!=='dark'&&t!=='light'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='light'}})()",
+        }} />
+      </head>
       <body>
+        <ThemeToggle />
         {children}
         <Toasts />
       </body>

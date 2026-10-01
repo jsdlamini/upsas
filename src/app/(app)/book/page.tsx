@@ -20,6 +20,9 @@ const when = (iso: string) =>
 const dayLabel = (iso: string) =>
   new Date(iso).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Africa/Mbabane' });
 
+const timeOf = (iso: string) =>
+  new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Mbabane' });
+
 function groupByDay<T extends { startsAt: string }>(slots: T[]): Array<[string, T[]]> {
   const map = new Map<string, T[]>();
   for (const s of slots) {
@@ -199,40 +202,39 @@ export default async function Book({
             </p>
           </div>
         ) : (
-          <div className="slot-days">
-            {groupByDay(open).slice(0, 4).map(([day, daySlots]) => (
-              <div className="slot-day" key={day}>
-                <div className="slot-day-head">{day}</div>
-                <div className="table-wrap">
-                  <table className="list" style={{ marginTop: 0 }}>
-                    <thead><tr><th style={{ width: '22%' }}>When</th><th style={{ width: '18%' }}>Where</th>
-                      <th>What you want to cover</th><th>Mode + link</th><th style={{ width: '12%' }}></th></tr></thead>
-                    <tbody>
-                      {daySlots.map((s) => (
-                        <tr key={s.id}>
-                          <td className="mono">{when(s.startsAt).split(' ').slice(1).join(' ')}</td>
-                          <td className="muted">{s.mode === 'ONLINE' ? 'Online' : s.venue}</td>
-                          <td>
-                            <form action={book} id={`f-${s.id}`}>
-                              <input type="hidden" name="slotId" value={s.id} />
-                              <input name="agenda" placeholder="e.g. Chapter 3 draft and methodology"
-                                     style={{ width: '100%', padding: 6 }} />
-                              <select name="mode" style={{ padding: 5, marginTop: 4, width: '100%' }}>
-                                <option value="IN_PERSON">In person</option>
-                                <option value="ONLINE">Virtual</option>
-                              </select>
-                              <input name="meetingLink" placeholder="Meeting link (if virtual)"
-                                     style={{ width: '100%', padding: 6, marginTop: 4 }} />
-                            </form>
-                          </td>
-                          <td className="muted" style={{ fontSize: 11 }}>{s.venue}</td>
-                          <td><Button form={`f-${s.id}`} style={{ padding: '5px 12px', fontSize: 12 }}>Book</Button></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+          <div className="calendar-days">
+            {groupByDay(open).slice(0, 5).map(([day, daySlots]) => (
+              <section className="calendar-day" key={day}>
+                <header className="calendar-day-head">
+                  <span>{day}</span>
+                  <span className="calendar-day-count">{daySlots.length} open</span>
+                </header>
+                <div className="calendar-slots">
+                  {daySlots.map((s) => (
+                    <form action={book} className="slot-card" key={s.id}>
+                      <input type="hidden" name="slotId" value={s.id} />
+                      <div className="slot-time">
+                        <strong>{timeOf(s.startsAt)}</strong>
+                        <span className={`chip ${s.mode === 'ONLINE' ? 'ok' : 'warn'}`}>
+                          {s.mode === 'ONLINE' ? 'virtual' : 'in person'}
+                        </span>
+                      </div>
+                      <div className="slot-body">
+                        <span className="muted" style={{ fontSize: 12 }}>{s.mode === 'ONLINE' ? 'Online' : s.venue}</span>
+                        <input name="agenda" placeholder="What do you want to cover? e.g. Chapter 3 draft" />
+                        <div className="slot-actions">
+                          <select name="mode" defaultValue={s.mode}>
+                            <option value="IN_PERSON">In person</option>
+                            <option value="ONLINE">Virtual</option>
+                          </select>
+                          <input name="meetingLink" placeholder="Meeting link (if virtual)" />
+                          <Button style={{ padding: '6px 14px', fontSize: 12 }}>Book</Button>
+                        </div>
+                      </div>
+                    </form>
+                  ))}
                 </div>
-              </div>
+              </section>
             ))}
           </div>
         )}
