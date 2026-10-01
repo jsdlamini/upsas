@@ -32,7 +32,10 @@ const CYCLE_SCOPED_ONLY: readonly RoleCode[] = [
 ];
 
 /** Roles that require a second factor before any session becomes usable. */
-export const MFA_REQUIRED_ROLES: readonly RoleCode[] = ['COORDINATOR', 'ADMINISTRATOR'];
+// Roles that require a second factor before any session becomes usable. Set
+// DISABLE_MFA=1 in the environment to turn this off (e.g. during rollout).
+export const MFA_REQUIRED_ROLES: readonly RoleCode[] =
+  process.env.DISABLE_MFA === "1" ? [] : ['COORDINATOR', 'ADMINISTRATOR'];
 
 export function resolveRoles(
   grants: readonly RoleGrant[],
