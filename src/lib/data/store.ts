@@ -202,7 +202,10 @@ const grant = (role: RoleGrant['role'], cycleId: string | null = CYCLE): RoleGra
 
 const globalForPeople = globalThis as unknown as { __upsasPeople?: Person[]; __upsasStaff?: Person[] };
 
-export const PEOPLE: Person[] = (globalForPeople.__upsasPeople ??= [
+// Demo staff seeded for the proof-of-concept. They have no email address, so
+// production (DISABLE_DEMO=1) omits them once real staff register; the test
+// suite keeps them as fixtures.
+const DEMO_STAFF: Person[] = [
   { id: 'u-mahlalela', username: 'tmahlalela', fullName: 'Dr T. Mahlalela', surname: 'Mahlalela',
     grants: [grant('SUPERVISOR'), grant('ASSESSOR'), grant('MODERATOR')], totpConfirmed: false },
   { id: 'u-nkosi', username: 'bnkosi', fullName: 'Mr B. Nkosi', surname: 'Nkosi',
@@ -213,9 +216,11 @@ export const PEOPLE: Person[] = (globalForPeople.__upsasPeople ??= [
     grants: [grant('ASSESSOR')], totpConfirmed: false },
   { id: 'u-coord', username: 'coordinator', fullName: 'J. Dlamini', surname: 'Dlamini',
     grants: [grant('COORDINATOR'), grant('ASSESSOR')], totpConfirmed: true,
-    // Demo TOTP secret (base32). Add it to an authenticator app to generate
-    // the six-digit code the coordinator is challenged for.
     totpSecret: 'IOTL7XO7EZ2BFO5ZD5V7X427T7I4LIJH' },
+];
+
+export const PEOPLE: Person[] = (globalForPeople.__upsasPeople ??= [
+  ...(process.env.DISABLE_DEMO === '1' ? [] : DEMO_STAFF),
   { id: 'u-johnsjdsd', username: 'johnsjdsd', fullName: 'John S. Dlamini', surname: 'Dlamini',
     email: 'johnsjdsd@gmail.com',
     grants: [grant('COORDINATOR'), grant('ADMINISTRATOR'), grant('SUPERVISOR'), grant('ASSESSOR'), grant('MODERATOR')],
@@ -347,7 +352,7 @@ export const RUBRICS = {
   get p2(): Instrument { return activeInstrument('p2'); },
 };
 
-export const SESSIONS: SessionSlot[] = [
+export const SESSIONS: SessionSlot[] = process.env.DISABLE_DEMO === '1' ? [] : [
   { serial: 1, component: 'p2', studentIds: ['s1', 's2'], joint: true, scheduledFor: '2026-09-14T09:00:00Z', venue: 'CS-112' },
   { serial: 2, component: 'p2', studentIds: ['s3', 's4'], joint: false, scheduledFor: '2026-09-14T09:40:00Z', venue: 'CS-112' },
   { serial: 3, component: 'p2', studentIds: ['s5', 's6'], joint: false, scheduledFor: '2026-09-14T10:20:00Z', venue: 'CS-112' },
