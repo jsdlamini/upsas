@@ -5,7 +5,7 @@ import { createSession, COOKIE, currentPrincipal } from '@/lib/auth/current';
 import { verifyTotp } from '@/lib/auth/totp';
 import { checkLoginRate } from '@/lib/auth/rate-limit';
 import { randomBytes } from 'node:crypto';
-import { CYCLE, passwordHashFor, findPersonByUsername, allPeople } from '@/lib/data/store';
+import { CYCLE, passwordHashFor, findPersonByIdentifier, allPeople } from '@/lib/data/store';
 import {
   authPrismaAvailable,
   ensureUsersSynced,
@@ -85,7 +85,7 @@ async function signIn(formData: FormData) {
     redirect(`/login?e=RATE_LIMITED${carry}`);
   }
 
-  const person = findPersonByUsername(username);
+  const person = findPersonByIdentifier(username);
   let totpSecret = person?.totpSecret ?? '';
   let usePrisma = false;
   try {
@@ -114,7 +114,7 @@ async function signIn(formData: FormData) {
           if (!prismaUser) {
             // A student may have registered after the initial sync — sync them
             // on demand so the Prisma-backed auth can find them.
-            const p = findPersonByUsername(u);
+            const p = findPersonByIdentifier(u);
             if (p) {
               try {
                 await syncOneUserToPrisma(p, await passwordHashFor(p.username));
@@ -124,7 +124,7 @@ async function signIn(formData: FormData) {
           }
           if (prismaUser) return prismaUser;
           // Last resort: in-memory record (lockout/audit are best-effort here).
-          const p = findPersonByUsername(u);
+          const p = findPersonByIdentifier(u);
           return p
             ? {
                 id: p.id, username: p.username, status: p.status ?? 'ACTIVE',

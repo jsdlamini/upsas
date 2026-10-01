@@ -644,6 +644,12 @@ function seedSchedule(): void {
 export const allPeople = (): Person[] => [...PEOPLE, ...studentAccounts(), ...REGISTERED_STAFF];
 export const findPerson = (id: string) => allPeople().find((p) => p.id === id) ?? null;
 export const findPersonByUsername = (u: string) => allPeople().find((p) => p.username === u) ?? null;
+export const findPersonByIdentifier = (identifier: string) => {
+  const value = identifier.trim().toLowerCase();
+  return allPeople().find(
+    (p) => p.username === value || (p.email ? p.email.toLowerCase() === value : false),
+  ) ?? null;
+};
 export const findStudent = (id: string) => STUDENTS.find((s) => s.id === id) ?? null;
 export const findStudentByNumber = (n: string) => STUDENTS.find((s) => s.studentNumber === n) ?? null;
 export const findProject = (id: string) => PROJECTS.find((p) => p.id === id) ?? null;

@@ -99,9 +99,10 @@ export async function syncOneUserToPrisma(person: Person, hash: string): Promise
   await upsertUser(person, hash);
 }
 
-export async function findUserPrisma(username: string): Promise<UserRecord | null> {
-  const user = await prisma.user.findUnique({
-    where: { username },
+export async function findUserPrisma(identifier: string): Promise<UserRecord | null> {
+  const value = identifier.trim().toLowerCase();
+  const user = await prisma.user.findFirst({
+    where: { OR: [{ username: value }, { email: value }] },
     include: { credential: true, totp: true, roles: true },
   });
   if (!user) return null;
@@ -123,8 +124,9 @@ export async function findUserPrisma(username: string): Promise<UserRecord | nul
   };
 }
 
-export async function totpSecretForPrisma(username: string): Promise<string> {
-  const user = await prisma.user.findUnique({ where: { username }, include: { totp: true } });
+export async function totpSecretForPrisma(identifier: string): Promise<string> {
+  const value = identifier.trim().toLowerCase();
+  const user = await prisma.user.findFirst({ where: { OR: [{ username: value }, { email: value }] }, include: { totp: true } });
   return user?.totp?.secretEnc ?? '';
 }
 
