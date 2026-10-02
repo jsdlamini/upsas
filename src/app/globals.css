@@ -406,6 +406,8 @@ a{ transition:color .12s ease }
   border-radius:12px; background:var(--accent); color:#fff; font:700 15px var(--sans);
   letter-spacing:.04em; margin-bottom:20px
 }
+.brand-logo-img{ width:46px; height:46px; object-fit:cover; border-radius:12px; margin-bottom:20px; display:block }
+.rail .brand .rail-logo{ width:30px; height:30px; object-fit:cover; border-radius:8px; vertical-align:middle }
 
 @media (max-width: 900px){
   .auth-split{ grid-template-columns:1fr }

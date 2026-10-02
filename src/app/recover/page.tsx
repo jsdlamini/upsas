@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { redeemResetCode, requestResetCode } from '@/lib/data/store';
-import { getInstitution, monogramText } from '@/lib/institution';
+import { getInstitution, monogramText, logoUrl } from '@/lib/institution';
 import { destroySessionsFor } from '@/lib/auth/current';
 import { PASSWORD_POLICY } from '@/lib/auth/password';
 
@@ -41,12 +41,13 @@ export default async function Recover({
   const { e, u, sent } = await searchParams;
   const inst = getInstitution();
   const mono = monogramText();
+  const logo = logoUrl();
 
   return (
     <div className="auth-split">
       <div className="auth-brand">
         <div className="auth-brand-inner">
-          <span className="brand-logo">{mono}</span>
+          {logo ? <img src={logo} alt="" className="brand-logo-img" /> : <span className="brand-logo">{mono}</span>}
           <p className="inst">{inst.name}</p>
           <p className="unit">{inst.department}</p>
           <h2>Locked out</h2>

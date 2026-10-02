@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { registerStudent, requestStaffAccount, PROGRAMMES, COURSES, CYCLE } from '@/lib/data/store';
-import { getInstitution, monogramText } from '@/lib/institution';
+import { getInstitution, monogramText, logoUrl } from '@/lib/institution';
 import { Button } from '@/components/ui/button';
 
 export const dynamic = 'force-dynamic';
@@ -55,13 +55,14 @@ export default async function RegisterPage({
   const { kind, e } = await searchParams;
   const inst = getInstitution();
   const mono = monogramText();
+  const logo = logoUrl();
   const isStaff = kind === 'staff';
 
   return (
     <div className="auth-split">
       <aside className="auth-brand">
         <div className="auth-brand-inner ui-enter">
-          <div className="brand-logo">{mono}</div>
+          {logo ? <img src={logo} alt="" className="brand-logo-img" /> : <div className="brand-logo">{mono}</div>}
           <p className="inst">{[inst.name, inst.location].filter(Boolean).join(', ')}</p>
           <p className="unit">{inst.department}</p>
           <h2>Create your account</h2>

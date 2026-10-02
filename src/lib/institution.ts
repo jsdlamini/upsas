@@ -1,6 +1,7 @@
 import {
   getStoredInstitution, setStoredInstitution, type InstitutionProfile,
 } from './data/store';
+import { logoFileExists } from './logo-storage';
 
 /**
  * Institution identity and branding, read from the persisted working-state
@@ -69,5 +70,5 @@ export function logoUrl(): string | null {
   const logo = getInstitution().logo;
   if (!logo) return null;
   if (logo.kind === 'url') return logo.url;
-  return '/api/institution/logo';
+  return logoFileExists(logo.fileId) ? '/api/institution/logo' : null;
 }

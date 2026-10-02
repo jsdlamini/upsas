@@ -6,7 +6,7 @@ import { verifyTotp } from '@/lib/auth/totp';
 import { checkLoginRate } from '@/lib/auth/rate-limit';
 import { randomBytes } from 'node:crypto';
 import { CYCLE, passwordHashFor, findPersonByIdentifier, allPeople } from '@/lib/data/store';
-import { getInstitution, monogramText } from '@/lib/institution';
+import { getInstitution, monogramText, logoUrl } from '@/lib/institution';
 import {
   authPrismaAvailable,
   ensureUsersSynced,
@@ -180,12 +180,13 @@ export default async function LoginPage({
   const needsCode = e === 'MFA_REQUIRED' && Boolean(challenge);
   const inst = getInstitution();
   const mono = monogramText();
+  const logo = logoUrl();
 
   return (
     <div className="auth-split">
       <aside className="auth-brand">
         <div className="auth-brand-inner ui-enter">
-          <div className="brand-logo">{mono}</div>
+          {logo ? <img src={logo} alt="" className="brand-logo-img" /> : <div className="brand-logo">{mono}</div>}
           <p className="inst">{[inst.name, inst.location].filter(Boolean).join(', ')}</p>
           <p className="unit">{inst.department}</p>
           <h2>Research project supervision &amp; assessment</h2>
