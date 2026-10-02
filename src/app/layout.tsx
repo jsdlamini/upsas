@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
 import './globals.css';
+import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import { ensureHydrated } from '@/lib/data/store';
-import { getInstitution } from '@/lib/institution';
+import { getInstitution, isConfigured } from '@/lib/institution';
 import { Toasts } from '@/components/toasts';
 import { ThemeToggle } from '@/components/theme-toggle';
 
@@ -42,6 +44,12 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   // before any page reads it, so a restart never loses data.
   await ensureHydrated();
   const inst = getInstitution();
+
+  // Force the one-time setup wizard until an institution profile is saved.
+  const pathname = (await headers()).get('x-pathname') ?? '';
+  if (!isConfigured() && pathname !== '/setup' && !pathname.startsWith('/api/')) {
+    redirect('/setup');
+  }
 
   return (
     <html lang="en" suppressHydrationWarning style={{ '--accent': inst.accentColor } as React.CSSProperties}>

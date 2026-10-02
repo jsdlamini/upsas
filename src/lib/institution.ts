@@ -3,6 +3,8 @@ import {
 } from './data/store';
 import { logoFileExists } from './logo-storage';
 
+export type { InstitutionProfile } from './data/store';
+
 /**
  * Institution identity and branding, read from the persisted working-state
  * snapshot. Every value here is neutral — no institution is baked in, so a

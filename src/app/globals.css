@@ -292,6 +292,14 @@ a{ transition:color .12s ease }
 .form-grid input, .form-grid select, .form-grid textarea{ width:100% }
 
 .field-label{ display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:6px }
+.field{ display:block; margin-bottom:14px }
+.field input, .field select, .field textarea{ width:100% }
+.setup-page{ min-height:100vh; display:flex; align-items:center; justify-content:center;
+  padding:40px 20px; background:var(--canvas) }
+.setup-card{ width:100%; max-width:560px; background:var(--surface); border:1px solid var(--rule);
+  border-radius:16px; padding:32px; box-shadow:var(--shadow) }
+.setup-card h1{ font:700 22px/1.2 var(--serif); margin:0 0 6px }
+.setup-form{ display:flex; flex-direction:column; margin-top:20px }
 .role-checks{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px }
 .role-check{ display:flex; align-items:center; gap:6px; font-size:13px; font-weight:500;
   color:var(--ink); background:var(--canvas); border:1px solid var(--rule);
