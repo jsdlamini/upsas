@@ -81,15 +81,15 @@ export default async function Setup({
         <form action={save} className="setup-form">
           <label className="field">
             <span className="field-label">Institution name</span>
-            <Input name="name" defaultValue={inst.name} placeholder="e.g. University of Eswatini" required />
+            <Input name="name" defaultValue={inst.name} placeholder="e.g. National University" required />
           </label>
           <label className="field">
             <span className="field-label">Location / campus</span>
-            <Input name="location" defaultValue={inst.location} placeholder="e.g. Kwaluseni" />
+            <Input name="location" defaultValue={inst.location} placeholder="e.g. Main campus" />
           </label>
           <label className="field">
             <span className="field-label">Department / school</span>
-            <Input name="department" defaultValue={inst.department} placeholder="e.g. Department of Computer Science" required />
+            <Input name="department" defaultValue={inst.department} placeholder="e.g. Department of Computing" required />
           </label>
           <label className="field">
             <span className="field-label">Product name</span>
