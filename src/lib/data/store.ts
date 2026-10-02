@@ -1944,7 +1944,7 @@ export function outstandingResetFor(userId: string): ResetTicket | null {
 export async function redeemResetCode(
   username: string, code: string, newPassword: string,
 ): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
-  const person = findPersonByUsername(username.trim());
+  const person = findPersonByIdentifier(username.trim());
   const result = redeem(resetTickets, username, person?.id ?? null, code, new Date());
   if (!result.ok) return { ok: false, error: result.reason };
   if (!person) return { ok: false, error: result.ok ? 'Unknown account.' : '' };
@@ -1967,7 +1967,7 @@ export async function redeemResetCode(
  * Always returns void so the response can't be used to enumerate accounts.
  */
 export async function requestResetCode(username: string): Promise<void> {
-  const person = findPersonByUsername(username.trim());
+  const person = findPersonByIdentifier(username.trim());
   if (!person) return;
 
   const email = emailOf(person.id);

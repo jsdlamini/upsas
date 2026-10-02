@@ -73,7 +73,7 @@ export default async function Recover({
 
           <form action={requestReset}>
             <p>
-              <label htmlFor="req-username">Username or student number</label>
+              <label htmlFor="req-username">Username, student number or email</label>
               <input id="req-username" name="username" type="text" autoComplete="username" defaultValue={u ?? ''} required />
             </p>
             <p style={{ marginTop: 12 }}>
@@ -86,7 +86,7 @@ export default async function Recover({
 
           <form action={recover}>
             <p>
-              <label htmlFor="username">Username or student number</label>
+              <label htmlFor="username">Username, student number or email</label>
               <input id="username" name="username" type="text" autoComplete="username" defaultValue={u ?? ''} required />
             </p>
             <p>
