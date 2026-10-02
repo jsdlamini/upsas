@@ -23,6 +23,8 @@ and deferred to a later phase.
 - After setup, every user-facing surface (auth pages, rail, emails, iCal,
   PDF, page title) shows the configured identity.
 - A coordinator/admin can edit the profile later from a settings page.
+- Email transport is provider-selectable (Resend, SMTP, or none), with a
+  written setup guide and a test-email action to verify it.
 
 ## 2. Locked decisions
 
@@ -33,6 +35,7 @@ and deferred to a later phase.
 | First-run behaviour | Force the setup wizard until configured |
 | Logo | Both: uploaded file (default) or pasted URL |
 | Defaults | Neutral placeholders only — **no** UNESWA values anywhere |
+| Email | Provider-selectable: Resend, SMTP (any provider / self-hosted), or none; guide + test-email |
 
 ## 3. Data model
 
@@ -133,13 +136,69 @@ hardcoded institution literal as a fallback.
 - **Neither**: the monogram mark renders (text, in the configured letters).
 - The logo replaces the monogram in the rail brand and the auth brand block.
 
-## 7. Setup wizard and settings page
+## 7. Email provider
+
+Institutions are **not** forced to use Resend. Email transport is chosen at
+setup and switchable later.
+
+### Data model
+
+A separate `email` record in the `working-state` snapshot:
+
+```ts
+interface EmailSettings {
+  provider: 'resend' | 'smtp' | 'none';
+  fromName: string;   // e.g. "Research Chain"
+  fromEmail: string;  // e.g. "no-reply@institution.edu"
+  smtpHost: string;
+  smtpPort: number;   // 587 (STARTTLS) or 465 (TLS)
+  smtpSecure: boolean;
+  smtpUser: string;
+  smtpPass: string;
+}
+```
+
+- Default provider is `none` (emails log to the server console) until the
+  wizard records a choice — a fresh install sends no mail until configured.
+- **Secrets note**: the SMTP password is stored in the snapshot so a
+  non-technical coordinator can self-serve; the Resend API key stays an
+  environment variable (`RESEND_API_KEY`). The guide recommends a dedicated,
+  low-privilege SMTP account.
+
+### Provider abstraction
+
+`sendEmail` in `src/lib/notifications.ts` dispatches to the configured
+provider:
+
+- `resend` — the existing `fetch` to `https://api.resend.com/emails` using
+  `RESEND_API_KEY`.
+- `smtp` — a `nodemailer` transport with `host/port/secure/user/pass`; `from`
+  = `fromName <fromEmail>`.
+- `none` — logs `[email:stub]` and returns `stubbed`.
+
+A new `src/lib/email-config.ts` exposes `getEmailSettings()`,
+`saveEmailSettings(patch)`, and `testEmail(to): Promise<SendOutcome>` (a
+one-off message through the configured provider, reporting the result).
+
+### Setup guide and verification
+
+- The `/setup` wizard and `/settings` page gain an **Email** section: provider
+  (Resend / SMTP / None), from name/email, SMTP host/port/secure/user/pass,
+  and a **"Send test email"** button that calls `testEmail()` and shows the
+  outcome.
+- A `docs/email-setup.md` guide covers, per provider: Resend (create the API
+  key, verify the sending domain), SMTP via Gmail/Outlook app passwords, and
+  self-hosted Postfix — plus how to run the test email and what `sent /
+  failed / stubbed` mean.
+
+## 8. Setup wizard and settings page
 
 ### `/setup`
 
 - Reachable only when `!isConfigured()`; redirects away once configured.
 - One form: name, location, department, product name, monogram, accent colour
-  (colour input), logo (file upload and URL field).
+  (colour input), logo (file upload and URL field), and an **Email** section
+  (provider, from name/email, SMTP fields, test-email button).
 - On save: `saveInstitution(...)` then redirect to `/`.
 
 ### Force setup
@@ -160,31 +219,33 @@ The current UNESWA deployment already has a `working-state` snapshot without an
 `institution` key, so it will be treated as **not configured** and the setup
 wizard will run once. No UNESWA values are seeded automatically.
 
-## 8. Error handling
+## 9. Error handling
 
 - Malformed/invalid record → `getInstitution()` returns neutral defaults.
 - Logo file missing on disk → `logoUrl()` returns null → monogram renders.
 - Save failures surface a visible error on the form; the record is not left
   half-written.
 
-## 9. Testing
+## 10. Testing
 
 - Unit: `getInstitution` returns defaults when unset; `isConfigured` flips
   after save; validation rejects bad colour/URL.
+- Email: `sendEmail` dispatches to the configured provider; `testEmail` reports
+  the provider outcome; SMTP settings validation rejects a missing host.
 - Branding: a render test asserts a page shows the configured `name`, not a
   literal "University of Eswatini".
 - Colour injection: the `<html>` style carries the configured accent.
 - Logo route: serves the uploaded bytes; 404 when absent.
 - Full suite stays green (currently 140 tests).
 
-## 10. Out of scope (Phase 2+)
+## 11. Out of scope (Phase 2+)
 
 - Academic cycle, courses, programmes, student-number pattern, deadlines.
 - Per-section colour theming beyond the primary accent.
 - Multi-tenant (shared) operation — each institution runs its own instance.
 - LICENSE / README / packaging polish.
 
-## 11. Risks
+## 12. Risks
 
 - **Root-layout redirect must not lock out `/setup` or static assets** — the
   guard whitelists `/setup` and `/api/*` and asset paths.

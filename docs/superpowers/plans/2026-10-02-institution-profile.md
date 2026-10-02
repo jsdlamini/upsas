@@ -17,6 +17,7 @@
 - Test runner is `tsx --test tests/*.test.ts` (run with `npm test`); keep all 140 existing tests green.
 - Logo file lives under `process.env.UPLOADS_DIR ?? '/var/lib/upsas/uploads'`, subdir `logo/`.
 - Server actions and server components only; no client-side framework beyond the existing theme toggle.
+- Email transport is provider-selectable (`resend` / `smtp` / `none`) via `nodemailer` (add it to `package.json`); the Resend API key stays an env var, SMTP credentials live in the snapshot.
 
 ## Review Focus
 
@@ -25,6 +26,8 @@
 3. `logo.url` not parseable as http(s) → rejected (or treated as absent).
 4. `logo.kind === 'file'` but the file is missing on disk → `logoUrl()` returns null and the monogram renders.
 5. The force-setup guard must not redirect `/setup`, `/api/*`, or static asset paths.
+6. `saveEmailSettings` with `provider: 'smtp'` and a blank `smtpHost` → rejected.
+7. `testEmail` with an unreachable SMTP host or bad credentials → returns `failed` (not a thrown error).
 
 ---
 
@@ -324,7 +327,7 @@ Expected: FAIL until `resetInstitutionForTests` exists and the guard/save flow i
 
 - [ ] **Step 3: Create `src/app/setup/page.tsx`**
 
-A server component reading `getInstitution()` as the form defaults, with a server action `save(formData)` that builds the patch (name, location, department, productName, monogram, accentColor, and a logo: an uploaded `File` via `saveLogoFile`, or a pasted URL), calls `saveInstitution`, and `redirect('/')`. On any `{ ok:false, error }`, redirect back to `/setup?e=<error>`. Render the neutral fields (name, location, department, product name, monogram, accent colour picker, logo file input + URL input).
+A server component reading `getInstitution()` and `getEmailSettings()` as the form defaults, with a server action `save(formData)` that builds the patch (name, location, department, productName, monogram, accentColor, logo (uploaded `File` via `saveLogoFile`, or a pasted URL), plus the email fields: provider, fromName, fromEmail, smtpHost, smtpPort, smtpSecure, smtpUser, smtpPass), calls `saveInstitution` and `saveEmailSettings`, and `redirect('/')`. On any `{ ok:false, error }`, redirect back to `/setup?e=<error>`. Render the neutral fields, the accent colour picker, the logo inputs, and the email section (provider select, SMTP fields, a **Send test email** action).
 
 - [ ] **Step 4: Add the force-setup guard in `src/app/layout.tsx`**
 
@@ -344,6 +347,94 @@ Expected: PASS and typecheck clean.
 ```bash
 git add -A
 git commit -m "feat(institution): first-run setup wizard, force guard, and settings page"
+```
+
+### Task 5: Email provider abstraction, settings, and setup guide
+
+**Files:**
+- Modify: `src/lib/notifications.ts` (dispatch), `src/lib/data/store.ts` (email record + accessors), `package.json` (add `nodemailer`)
+- Create: `src/lib/email-config.ts`, `docs/email-setup.md`
+- Test: `tests/email.test.ts`
+
+**Interfaces:**
+- Consumes: the existing `OutgoingEmail` / `SendOutcome` from `notifications.ts`.
+- Produces (from `src/lib/email-config.ts`):
+  ```ts
+  export type EmailProvider = 'resend' | 'smtp' | 'none';
+  export interface EmailSettings {
+    provider: EmailProvider;
+    fromName: string;
+    fromEmail: string;
+    smtpHost: string;
+    smtpPort: number;
+    smtpSecure: boolean;
+    smtpUser: string;
+    smtpPass: string;
+  }
+  export function getEmailSettings(): EmailSettings;
+  export function saveEmailSettings(patch: Partial<EmailSettings>): { ok: true } | { ok: false; error: string };
+  export function testEmail(to: string): Promise<SendOutcome>;
+  ```
+
+- [ ] **Step 1: Write the failing test**
+
+In `tests/email.test.ts` (import `beforeEach` from `node:test`, `resetInstitutionForTests` from the store, and `getEmailSettings`, `saveEmailSettings` from `../src/lib/email-config`):
+
+```ts
+import test, { beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import { getEmailSettings, saveEmailSettings } from '../src/lib/email-config';
+
+beforeEach(() => { /* reset via store helper below */ });
+
+test('default provider is none until configured', () => {
+  assert.equal(getEmailSettings().provider, 'none');
+});
+
+test('smtp requires a host; resend requires nothing extra', () => {
+  assert.equal(saveEmailSettings({ provider: 'smtp', smtpHost: '' }).ok, false);
+  assert.equal(saveEmailSettings({ provider: 'resend', fromName: 'A', fromEmail: 'a@b.c' }).ok, true);
+  assert.equal(getEmailSettings().provider, 'resend');
+});
+```
+
+(Add a `resetEmailForTests()` to `src/lib/data/store.ts` mirroring `resetInstitutionForTests`, and call it in the `beforeEach`.)
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npm test`
+Expected: FAIL (`../src/lib/email-config` not found).
+
+- [ ] **Step 3: Add the `email` record to `src/lib/data/store.ts`**
+
+Add `email: EmailSettings | null` to `Tables`, `null` in the initializer, include `email: tables.email` in `collectState()`, load it in `hydrateFromPersistence()` (object type-guard like `institution`), and export `getStoredEmailSettings()`, `setStoredEmailSettings(v)`, and `resetEmailForTests()`. Define and re-export `EmailSettings` + `EmailProvider` types here so `email-config.ts` imports them one-way.
+
+- [ ] **Step 4: Implement `src/lib/email-config.ts`**
+
+`getEmailSettings()` returns the stored record or a default `{ provider: 'none', fromName: '', fromEmail: '', smtpHost: '', smtpPort: 587, smtpSecure: true, smtpUser: '', smtpPass: '' }`. `saveEmailSettings(patch)` merges, validates (smtp needs `smtpHost`; smtp port is 1–65535), writes via `setStoredEmailSettings`, and returns `{ ok:true }` / `{ ok:false, error }`. `testEmail(to)` builds a `{ to, subject: 'Test email', body: '…' }` and returns the result of `sendEmail`.
+
+- [ ] **Step 5: Refactor `sendEmail` in `src/lib/notifications.ts` to dispatch**
+
+Read `getEmailSettings()`. For `resend`, keep the existing `fetch` to `https://api.resend.com/emails` (using `RESEND_API_KEY` and `fromName <fromEmail>`). For `smtp`, create a `nodemailer` transport with `{ host, port, secure, auth: { user, pass } }` and `sendMail({ from: "fromName <fromEmail>", to, subject, text, html })`, returning `sent` / `failed`. For `none`, return `stubbed` after the existing `[email:stub]` log. Never throw — always return a `SendOutcome`.
+
+- [ ] **Step 6: Add `nodemailer` to `package.json`**
+
+Run: `npm install nodemailer @types/nodemailer`.
+
+- [ ] **Step 7: Run test to verify it passes**
+
+Run: `npm test` and `npx tsc --noEmit`
+Expected: PASS and typecheck clean.
+
+- [ ] **Step 8: Write `docs/email-setup.md`**
+
+A guide with three sections — Resend (create API key, verify sending domain, set `RESEND_API_KEY`), SMTP (Gmail/Outlook app password, or self-hosted Postfix: host/port/secure/user/pass), and None (console logging) — plus how to use the **Send test email** button and what `sent` / `failed` / `stubbed` mean.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add -A
+git commit -m "feat(email): provider-selectable transport (Resend/SMTP/none) with test and guide"
 ```
 
 ---
