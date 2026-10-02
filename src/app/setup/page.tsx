@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getInstitution, isConfigured, saveInstitution, type InstitutionProfile } from '@/lib/institution';
 import { saveLogoFile } from '@/lib/logo-storage';
+import { getEmailSettings, saveEmailSettings, type EmailProvider } from '@/lib/email-config';
+import { testEmail } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,16 +34,38 @@ async function save(formData: FormData) {
 
   const res = saveInstitution(patch);
   if (!res.ok) redirect(`/setup?e=${encodeURIComponent(res.error)}`);
+
+  const emailRes = saveEmailSettings({
+    provider: String(formData.get('emailProvider') ?? 'none') as EmailProvider,
+    fromName: String(formData.get('fromName') ?? '').trim(),
+    fromEmail: String(formData.get('fromEmail') ?? '').trim(),
+    smtpHost: String(formData.get('smtpHost') ?? '').trim(),
+    smtpPort: Number(formData.get('smtpPort') ?? 587),
+    smtpSecure: formData.get('smtpSecure') === 'on',
+    smtpUser: String(formData.get('smtpUser') ?? '').trim(),
+    smtpPass: String(formData.get('smtpPass') ?? ''),
+  });
+  if (!emailRes.ok) redirect(`/setup?e=${encodeURIComponent(emailRes.error)}`);
+
   revalidatePath('/', 'layout');
   redirect('/');
 }
 
+async function sendTest(formData: FormData) {
+  'use server';
+  const to = String(formData.get('testTo') ?? '').trim();
+  const outcome = await testEmail(to);
+  const msg = outcome === 'sent' ? 'Test email sent — check the inbox.' : `Test email ${outcome}.`;
+  redirect(`/setup?${outcome === 'sent' ? 'ok=' : 'e='}${encodeURIComponent(msg)}`);
+}
+
 export default async function Setup({
   searchParams,
-}: { searchParams: Promise<{ e?: string }> }) {
-  const { e } = await searchParams;
+}: { searchParams: Promise<{ e?: string; ok?: string }> }) {
+  const { e, ok } = await searchParams;
   if (isConfigured()) redirect('/');
   const inst = getInstitution();
+  const email = getEmailSettings();
 
   return (
     <main className="setup-page">
@@ -52,6 +76,7 @@ export default async function Setup({
         </p>
 
         {e && <div className="notice bad">{e}</div>}
+        {ok && <div className="notice">{ok}</div>}
 
         <form action={save} className="setup-form">
           <label className="field">
@@ -84,8 +109,59 @@ export default async function Setup({
             <span className="muted" style={{ display: 'block', margin: '6px 0' }}>…or paste a URL</span>
             <Input name="logoUrl" type="url" placeholder="https://…/logo.png" />
           </div>
+
+          <hr style={{ margin: '8px 0 18px', border: 0, borderTop: '1px solid var(--rule)' }} />
+          <h2 style={{ fontSize: 16, margin: '0 0 4px' }}>Email</h2>
+          <p className="muted" style={{ fontSize: 12.5, margin: '0 0 14px' }}>
+            Resend, any SMTP server, or none. Full guide in <code>docs/email-setup.md</code>.
+          </p>
+          <div className="field">
+            <span className="field-label">Provider</span>
+            <select name="emailProvider" defaultValue={email.provider}>
+              <option value="none">None (no email)</option>
+              <option value="resend">Resend</option>
+              <option value="smtp">SMTP</option>
+            </select>
+          </div>
+          <label className="field">
+            <span className="field-label">From name</span>
+            <Input name="fromName" defaultValue={email.fromName || inst.productName || 'Research Chain'} />
+          </label>
+          <label className="field">
+            <span className="field-label">From email</span>
+            <Input name="fromEmail" type="email" defaultValue={email.fromEmail} placeholder="no-reply@your-institution.edu" />
+          </label>
+          <label className="field">
+            <span className="field-label">SMTP host</span>
+            <Input name="smtpHost" defaultValue={email.smtpHost} placeholder="smtp.example.com" />
+          </label>
+          <label className="field">
+            <span className="field-label">SMTP port</span>
+            <Input name="smtpPort" type="number" defaultValue={email.smtpPort} />
+          </label>
+          <label className="field" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input type="checkbox" name="smtpSecure" defaultChecked={email.smtpSecure} />
+            <span style={{ fontSize: 13 }}>Use TLS (secure)</span>
+          </label>
+          <label className="field">
+            <span className="field-label">SMTP user</span>
+            <Input name="smtpUser" defaultValue={email.smtpUser} autoComplete="off" />
+          </label>
+          <label className="field">
+            <span className="field-label">SMTP password</span>
+            <Input name="smtpPass" type="password" defaultValue={email.smtpPass} autoComplete="off" />
+          </label>
+
           <div>
             <Button type="submit">Save and continue</Button>
+          </div>
+        </form>
+
+        <form action={sendTest} style={{ marginTop: 18, borderTop: '1px solid var(--rule)', paddingTop: 16 }}>
+          <span className="field-label">Send a test email to</span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Input name="testTo" type="email" placeholder="you@example.com" required />
+            <Button variant="outline" type="submit">Send test</Button>
           </div>
         </form>
       </div>
