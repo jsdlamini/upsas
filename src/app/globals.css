@@ -1048,7 +1048,7 @@ tr.band td{
    element, placed by CSS, so there is only ever one count to keep right.
    ═════════════════════════════════════════════════════════════════════════ */
 
-.bell-wrap{ position:fixed; top:14px; right:18px; z-index:80 }
+.bell-wrap{ position:fixed; top:14px; right:18px; z-index:130 }
 .bell{ position:relative }
 .bell > summary{
   list-style:none; cursor:pointer; position:relative;
