@@ -12,6 +12,232 @@ core plus the deployment shell**, not the finished application. Read
 
 See [RUNNING.md](RUNNING.md) for local setup in VS Code.
 
+## Deployment
+
+The system is a single-server web app: a Next.js process, a Postgres database,
+and a ClamAV scanner, packaged as one `docker compose` stack. Identity, branding
+and email are all configured **in the app** (not in code) by the first-run setup
+wizard — no fork is needed to adopt it at another institution.
+
+### 1. Prerequisites
+
+- A Linux server (Ubuntu/Debian preferred) with Docker Engine and the Compose
+  plugin installed.
+- A domain name (e.g. `research.your-institution.edu`) with DNS pointing at the
+  server.
+
+### 2. Prepare the environment
+
+```bash
+git clone <this-repo> && cd <this-repo>
+cp .env.example .env
+openssl rand -base64 48   # generate SESSION_SECRET and TOTP_ENC_KEY below
+```
+
+Edit `.env` — the required values are `POSTGRES_PASSWORD`, `SESSION_SECRET` and
+`TOTP_ENC_KEY`. Everything else has a safe default.
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | password yes | Database credentials |
+| `SESSION_SECRET` | yes | Signs the session cookie |
+| `TOTP_ENC_KEY` | yes | Encrypts stored TOTP secrets |
+| `APP_URL` | recommended | Public URL used in email links (e.g. `https://research.your-institution.edu`) |
+| `RESEND_API_KEY` | no | Resend API key (the email provider is chosen in-app; see below) |
+| `EMAIL_REDIRECT_TO` | no | Testing: route every email to one inbox |
+| `DISABLE_MFA` | no | Set `1` to turn off the second factor during rollout |
+| `DISABLE_DEMO` | no | Set `1` to hide the demo seed accounts |
+| `TZ` | no | Server time zone (`Africa/Mbabane` by default) |
+
+### 3. Start the stack
+
+The compose file expects a shared Docker network named `docker_webnet` for the
+reverse proxy. Create it once, then start:
+
+```bash
+docker network create docker_webnet
+docker compose up -d --build
+```
+
+Check it is up:
+
+```bash
+docker compose ps           # app, db, clamav all "healthy"
+curl -s http://localhost:3000/api/health
+```
+
+### 4. First-run setup
+
+On the first visit the app blocks every page with a **setup wizard** at `/setup`.
+Fill in the institution name, department, monogram, accent colour, logo, and the
+email provider, then save. You can change any of it later under **Settings →
+Institution** (coordinator only).
+
+### 5. Email provider
+
+Email is provider-selectable (not tied to Resend):
+
+- **Resend** — hosted API. Set `RESEND_API_KEY` in `.env`, verify your sending
+  domain in the Resend dashboard, then pick Resend in the app.
+- **SMTP** — any provider or a self-hosted server (Postfix/Exim). Fill in host,
+  port, TLS, user and password in the app.
+- **None** — emails are written to the server log only.
+
+Full walk-through (Gmail app passwords, Office 365, Postfix): see
+[`docs/email-setup.md`](docs/email-setup.md). Use the **Send test email** button to
+verify the provider before relying on it.
+
+### 6. Put nginx in front of it
+
+The app listens on port **3000** inside the stack. nginx terminates TLS and
+proxies to it. Two common setups follow.
+
+#### 6a. Docker `nginx-proxy` (shared host, several apps)
+
+Run the popular `nginx-proxy` container on the same `docker_webnet` network and
+let it route by hostname. It resolves `upsas-app-1` over the shared network, so
+the app does not need to publish port 3000 to the host (set `ports: []` on the
+`app` service).
+
+```yaml
+# nginx-proxy/docker-compose.yml
+services:
+  nginx-proxy:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    networks: [docker_webnet]
+    volumes:
+      - ./conf.d:/etc/nginx/conf.d:ro
+      - ./ssl:/etc/nginx/ssl:ro
+
+networks:
+  docker_webnet:
+    external: true
+```
+
+`conf.d/research.conf`:
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name research.your-institution.edu;
+
+    ssl_certificate     /etc/nginx/ssl/fullchain.pem;
+    ssl_certificate_key /etc/nginx/ssl/privkey.pem;
+
+    client_max_body_size 50M;
+
+    location / {
+        proxy_pass http://upsas-app-1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_read_timeout 300s;
+    }
+}
+
+server {
+    listen 80;
+    server_name research.your-institution.edu;
+    return 301 https://$host$request_uri;
+}
+```
+
+#### 6b. Standalone nginx on the host (single app, no shared proxy)
+
+Keep `ports: ["3000:3000"]` on the `app` service and point a host nginx at
+`127.0.0.1:3000`. Install nginx, then add `/etc/nginx/sites-available/research`:
+
+```nginx
+server {
+    listen 80;
+    server_name research.your-institution.edu;
+
+    client_max_body_size 50M;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300s;
+    }
+}
+```
+
+```bash
+sudo ln -s /etc/nginx/sites-available/research /etc/nginx/sites-enabled/research
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### 7. HTTPS with Let's Encrypt
+
+For either nginx setup, obtain a certificate with Certbot:
+
+```bash
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d research.your-institution.edu
+```
+
+Certbot rewrites the server block to listen on 443 with automatic renewal. For
+the Docker `nginx-proxy` setup, point the `ssl_certificate` paths at the Certbot
+output (or run certbot on the host and mount the live certificates into the
+container).
+
+### 8. Optional: Cloudflare in front
+
+You may put Cloudflare in front of nginx for DDoS protection and caching. Keep
+**Full (strict)** TLS mode and disable the "Under Attack" / bot-challenge modes
+for normal use — an aggressive security level shows visitors a challenge page
+instead of the app.
+
+### 9. Non-Docker (systemd) deployment
+
+For a bare-metal install without Docker:
+
+```bash
+npm ci && npm run build
+# create a dedicated user and a systemd unit that runs: npm start
+# app listens on 127.0.0.1:3000; nginx proxies to it as in 6b
+# Postgres and ClamAV are installed natively and referenced via DATABASE_URL
+```
+
+A minimal unit (`/etc/systemd/system/research.service`):
+
+```ini
+[Unit]
+Description=Research supervision system
+After=network.target postgresql.service
+
+[Service]
+User=research
+WorkingDirectory=/opt/research
+EnvironmentFile=/opt/research/.env
+ExecStart=/usr/bin/npm start
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### 10. Backups and updates
+
+```bash
+# Database dump
+cd <this-repo> && docker compose exec db pg_dump -U upsas upsas > backups/db-$(date +%F).sql
+
+# Update to the latest release
+cd <this-repo> && git pull origin main && docker compose up -d --build app
+```
+
+The working state (topics, marks, bookings, registrations) is snapshotted into
+Postgres, and uploaded files live in the `uploads` volume — back both up.
+
 ## What is built and verified
 
 | Area | State |
@@ -451,14 +677,10 @@ decline or cancellation reaches both sides. A reply goes to the other person in
 the meeting rather than to a no-reply address. The button opens the exact row
 where the meeting can be acted on, signing the reader in first if necessary.
 
-Mail is sent through [Resend](https://resend.com). Set in `.env`:
-
-| Variable | Purpose |
-|---|---|
-| `RESEND_API_KEY` | Empty means emails are written to the server log instead of sent |
-| `RESEND_FROM` | The sender. `onboarding@resend.dev` only delivers to the Resend account owner's own address; verify a domain in Resend to reach students and staff |
-| `EMAIL_REDIRECT_TO` | Testing: send everything to one inbox, subject prefixed with the intended recipient |
-| `APP_URL` | Public address of the deployment, used for links in emails |
+Mail is sent through the provider chosen in **Settings → Institution → Email** —
+Resend, any SMTP server, or none. See [`docs/email-setup.md`](docs/email-setup.md)
+for the full guide. Resend still reads `RESEND_API_KEY` from the environment; the
+other providers are configured in-app.
 
 Only people with an address on file are emailed. Students give one at
 registration; a coordinator can set or correct anyone's under
