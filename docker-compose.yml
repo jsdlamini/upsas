@@ -42,7 +42,7 @@ services:
     volumes:
       - uploads:/var/lib/upsas/uploads
     ports: ["3000:3000"]
-    networks: [internal, edge]
+    networks: [internal, docker_webnet]
 
   # Local signature updates only; drop this service for a fully air-gapped site.
   clamav:
@@ -58,4 +58,5 @@ volumes:
 
 networks:
   internal: { internal: true }
-  edge: {}
+  docker_webnet:
+    external: true
