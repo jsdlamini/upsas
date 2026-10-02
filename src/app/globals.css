@@ -746,8 +746,9 @@ form[data-dirty="1"] .actionbar .dirty{ display:inline-block }
   padding:10px 16px; font-weight:600; text-decoration:none;
 }
 
-/* Manual light/dark switch, fixed so it is reachable on the login page too. */
-.theme-toggle{ position:fixed; top:12px; right:12px; z-index:120;
+/* Manual light/dark switch, fixed so it is reachable on the login page too.
+   Sits to the left of the notification bell so the two never overlap. */
+.theme-toggle{ position:fixed; top:14px; right:70px; z-index:120;
   display:inline-flex; align-items:center; gap:6px;
   background:var(--surface); color:var(--ink-soft); border:1px solid var(--rule);
   border-radius:999px; padding:6px 12px; font:600 12px/1 var(--sans); cursor:pointer;
