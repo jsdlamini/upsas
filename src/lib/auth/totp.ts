@@ -1,4 +1,5 @@
 import { Secret, TOTP } from "otpauth";
+import { getInstitution } from "../institution";
 
 /**
  * Offline TOTP (RFC 6238) — no SMS, no push, no external service. Secrets are
@@ -12,8 +13,8 @@ export function generateTotpSecret(): string {
 export function verifyTotp(secretBase32: string, token: string, window = 1): boolean {
   try {
     const totp = new TOTP({
-      issuer: "UNESWA Research Chain",
-      label: "UNESWA Research Chain",
+      issuer: getInstitution().productName,
+      label: getInstitution().productName,
       algorithm: "SHA1",
       digits: 6,
       period: 30,
@@ -27,7 +28,7 @@ export function verifyTotp(secretBase32: string, token: string, window = 1): boo
 
 export function totpUri(secretBase32: string, username: string): string {
   const totp = new TOTP({
-    issuer: "UNESWA Research Chain",
+    issuer: getInstitution().productName,
     label: username,
     algorithm: "SHA1",
     digits: 6,
@@ -41,8 +42,8 @@ export function totpUri(secretBase32: string, username: string): string {
 export function currentTotpCode(secretBase32: string): string | null {
   try {
     const totp = new TOTP({
-      issuer: "UNESWA Research Chain",
-      label: "UNESWA Research Chain",
+      issuer: getInstitution().productName,
+      label: getInstitution().productName,
       algorithm: "SHA1",
       digits: 6,
       period: 30,

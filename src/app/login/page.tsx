@@ -6,6 +6,7 @@ import { verifyTotp } from '@/lib/auth/totp';
 import { checkLoginRate } from '@/lib/auth/rate-limit';
 import { randomBytes } from 'node:crypto';
 import { CYCLE, passwordHashFor, findPersonByIdentifier, allPeople } from '@/lib/data/store';
+import { getInstitution, monogramText } from '@/lib/institution';
 import {
   authPrismaAvailable,
   ensureUsersSynced,
@@ -177,14 +178,16 @@ export default async function LoginPage({
   const next = safeNext(rawNext);
   if (await currentPrincipal()) redirect(next ?? '/');
   const needsCode = e === 'MFA_REQUIRED' && Boolean(challenge);
+  const inst = getInstitution();
+  const mono = monogramText();
 
   return (
     <div className="auth-split">
       <aside className="auth-brand">
         <div className="auth-brand-inner ui-enter">
-          <div className="brand-logo">RC</div>
-          <p className="inst">University of Eswatini, Kwaluseni</p>
-          <p className="unit">Department of Computer Science</p>
+          <div className="brand-logo">{mono}</div>
+          <p className="inst">{[inst.name, inst.location].filter(Boolean).join(', ')}</p>
+          <p className="unit">{inst.department}</p>
           <h2>Research project supervision &amp; assessment</h2>
           <p className="tagline">One system of record for topics, consultations, presentations and final marks — from allocation to release.</p>
           <ul className="brand-points">
@@ -199,8 +202,8 @@ export default async function LoginPage({
       <div className="auth-main">
         <div className="auth-main-inner ui-enter">
           <div className="crest">
-            <p className="inst">University of Eswatini, Kwaluseni</p>
-            <p className="unit">Department of Computer Science — Research project supervision</p>
+            <p className="inst">{[inst.name, inst.location].filter(Boolean).join(', ')}</p>
+            <p className="unit">{inst.department} — Research project supervision</p>
           </div>
           <h1 className="page">{needsCode ? 'One more step' : 'Sign in'}</h1>
       <p className="lede">

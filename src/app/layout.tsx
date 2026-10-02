@@ -1,24 +1,29 @@
 import type { ReactNode } from 'react';
 import './globals.css';
 import { ensureHydrated } from '@/lib/data/store';
+import { getInstitution } from '@/lib/institution';
 import { Toasts } from '@/components/toasts';
 import { ThemeToggle } from '@/components/theme-toggle';
 
 import type { Metadata, Viewport } from 'next';
 
-export const metadata: Metadata = {
-  // One name for the product, used everywhere: repository, README and browser tab.
-  title: {
-    default: 'UPSAS — UNESWA Research Chain',
-    template: '%s · UPSAS',
-  },
-  applicationName: 'UPSAS',
-  description:
-    'Research project supervision, topics, consultations and assessment — Department of Computer Science, University of Eswatini',
-  // An internal assessment system holding student marks should not be indexed,
-  // even if it is briefly reachable from outside the campus network.
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const inst = getInstitution();
+  const product = inst.productName || 'Research Chain';
+  return {
+    title: {
+      default: product,
+      template: `%s · ${product}`,
+    },
+    applicationName: product,
+    description:
+      `${product} — research project supervision, topics, consultations and assessment` +
+      (inst.department ? ` — ${inst.department}` : ''),
+    // An internal assessment system holding student marks should not be indexed,
+    // even if it is briefly reachable from outside the campus network.
+    robots: { index: false, follow: false },
+  };
+}
 
 export const viewport: Viewport = {
   width: 'device-width',

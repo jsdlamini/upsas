@@ -465,6 +465,9 @@ export function setStoredInstitution(v: InstitutionProfile): void {
 export function resetInstitutionForTests(): void {
   tables.institution = null;
 }
+export function institutionProduct(): string {
+  return tables.institution?.productName || 'Research Chain';
+}
 
 // Captain's seeded coordinator PIN (6456) — separate from the shared demo
 // password so johnsjdsd has its own login.
@@ -1500,13 +1503,13 @@ export async function registerStudent(input: {
     const site = process.env.NEXT_PUBLIC_SITE_URL || 'https://research.idealsoftwaresolutions.com';
     void sendEmail({
       to: input.email.trim().toLowerCase(),
-      subject: 'Your Research Chain account is ready',
-      body: `Hi ${input.otherNames},\n\nYour account on the UNESWA Research Chain is ready. Sign in at ${site}/login with your student number ${number} and the password you chose.\n\nOnce signed in: check your course code, browse and rank topics, and book supervision sessions.\n\nIf you didn't register, you can ignore this message.`,
+      subject: `Your ${institutionProduct()} account is ready`,
+      body: `Hi ${input.otherNames},\n\nYour account on the ${institutionProduct()} is ready. Sign in at ${site}/login with your student number ${number} and the password you chose.\n\nOnce signed in: check your course code, browse and rank topics, and book supervision sessions.\n\nIf you didn't register, you can ignore this message.`,
       html: `
         <div style="font-family: Inter, -apple-system, sans-serif; color: #0f172a; line-height: 1.6">
           <h2 style="margin: 0 0 12px">Your account is ready</h2>
           <p>Hi ${input.otherNames},</p>
-          <p>Your account on the UNESWA Research Chain is ready.</p>
+          <p>Your account on the ${institutionProduct()} is ready.</p>
           <p><a href="${site}/login" style="color:#1e40af;font-weight:600">Sign in</a> with your student number <strong>${number}</strong> and the password you chose.</p>
           <p style="color:#64748b;font-size:13px">Once signed in: check your course code, browse and rank topics, and book supervision sessions.</p>
         </div>`,
@@ -1557,7 +1560,7 @@ export function requestStaffAccount(input: {
     const site = process.env.NEXT_PUBLIC_SITE_URL || 'https://research.idealsoftwaresolutions.com';
     void sendEmail({
       to: input.email.trim(),
-      subject: 'Your Research Chain access request was received',
+      subject: `Your ${institutionProduct()} access request was received`,
       body: `Hi ${fullName},\n\nYour access request has been received and is waiting for a coordinator to approve it. You'll be able to sign in once approved.\n\nIf you didn't request this, you can ignore this message.`,
       html: `
         <div style="font-family: Inter, -apple-system, sans-serif; color: #0f172a; line-height: 1.6">
@@ -2010,7 +2013,7 @@ export async function requestResetCode(username: string): Promise<void> {
   await sendEmail({
     to: email,
     subject: 'Your password reset code',
-    body: `Use this code to reset your UNESWA Research Chain password:\n\n${code}\n\nOpen ${recoverUrl} and enter it with your username to choose a new password. It expires in 30 minutes and works once. If you did not ask for this, ignore this message.`,
+    body: `Use this code to reset your ${institutionProduct()} password:\n\n${code}\n\nOpen ${recoverUrl} and enter it with your username to choose a new password. It expires in 30 minutes and works once. If you did not ask for this, ignore this message.`,
     html: `
       <div style="font-family: Inter, -apple-system, sans-serif; color: #0f172a; line-height: 1.6">
         <h2 style="margin: 0 0 12px">Reset your password</h2>

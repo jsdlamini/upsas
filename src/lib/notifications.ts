@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { getInstitution } from "./institution";
 
 /**
  * Provider-agnostic notifications: in-app rows (Postgres) plus email via a
@@ -35,7 +36,8 @@ export type SendOutcome = 'sent' | 'stubbed' | 'failed';
  */
 export async function sendEmail(email: OutgoingEmail): Promise<SendOutcome> {
   const key = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM_EMAIL || process.env.RESEND_FROM || "UNESWA Research Chain <onboarding@research.idealsoftwaresolutions.com>";
+  const product = getInstitution().productName || 'Research Chain';
+  const from = process.env.RESEND_FROM_EMAIL || process.env.RESEND_FROM || `${product} <no-reply@localhost>`;
   if (!key || !email.to) {
     console.log("[email:stub]", email.to || "(no recipient)", "|", email.subject);
     return "stubbed";

@@ -1,5 +1,7 @@
 /** Minimal RFC 5545 iCalendar generator (no external dependency). */
 
+import { getInstitution } from './institution';
+
 export interface ICalEvent {
   uid: string;
   summary: string;
@@ -20,12 +22,14 @@ function esc(text: string): string {
   return text.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
 }
 
-export function buildIcal(events: ICalEvent[], name = "UNESWA Research Chain consultations"): string {
+export function buildIcal(events: ICalEvent[], name?: string): string {
+  const product = getInstitution().productName || 'Research Chain';
+  const calName = name ?? `${product} consultations`;
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//UNESWA Research Chain//Consultations//EN",
-    `X-WR-CALNAME:${esc(name)}`,
+    `PRODID:-//${product}//Consultations//EN`,
+    `X-WR-CALNAME:${esc(calName)}`,
   ];
   for (const e of events) {
     lines.push(
