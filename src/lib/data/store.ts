@@ -392,6 +392,17 @@ interface ProfileOverride {
   email?: string;
 }
 
+export interface InstitutionProfile {
+  name: string;
+  location: string;
+  department: string;
+  productName: string;
+  monogram: string;
+  accentColor: string;
+  logo: { kind: 'url'; url: string } | { kind: 'file'; fileId: string } | null;
+  configuredAt: string | null;
+}
+
 interface Tables {
   consultations: Consultation[]; sheets: Sheet[]; docMarks: DocMark[];
   publications: Publication[]; moderations: ModerationRow[];
@@ -410,6 +421,8 @@ interface Tables {
   roleOverrides: Record<string, RoleCode[]>;
   /** Coordinator- or self-edited profile fields, keyed by person id. */
   profileOverrides: Record<string, ProfileOverride>;
+  /** The institution's identity and branding; null until the setup wizard runs. */
+  institution: InstitutionProfile | null;
   seeded: boolean;
 }
 const globalForData = globalThis as unknown as { __upsasData?: Tables };
@@ -417,7 +430,7 @@ const tables: Tables = (globalForData.__upsasData ??= {
   consultations: [], sheets: [], docMarks: [], publications: [], moderations: [],
   topics: [], preferences: [], slots: [], meetingRequests: [], signatures: [], deliverables: [], passwords: {},
   enrolments: [], deadlines: [], extensions: [], resetTickets: [], meetingNotices: [], contactEmails: {},
-  roleOverrides: {}, profileOverrides: {}, seeded: false,
+  roleOverrides: {}, profileOverrides: {}, institution: null, seeded: false,
 });
 const consultations = tables.consultations;
 const sheets = tables.sheets;
@@ -440,6 +453,18 @@ tables.contactEmails ??= {};
 tables.roleOverrides ??= {};
 tables.profileOverrides ??= {};
 const meetingNotices = tables.meetingNotices;
+
+/** Institution profile accessors (back `src/lib/institution.ts`). */
+export function getStoredInstitution(): InstitutionProfile | null {
+  return tables.institution;
+}
+export function setStoredInstitution(v: InstitutionProfile): void {
+  tables.institution = v;
+  schedulePersist();
+}
+export function resetInstitutionForTests(): void {
+  tables.institution = null;
+}
 
 // Captain's seeded coordinator PIN (6456) — separate from the shared demo
 // password so johnsjdsd has its own login.
@@ -2021,6 +2046,7 @@ function collectState() {
     contactEmails: tables.contactEmails,
     roleOverrides: tables.roleOverrides,
     profileOverrides: tables.profileOverrides,
+    institution: tables.institution,
     students: STUDENTS,
     registeredStaff: REGISTERED_STAFF,
     projects: PROJECTS,
@@ -2108,6 +2134,9 @@ async function hydrateFromPersistence(): Promise<void> {
       for (const k of Object.keys(tables.profileOverrides)) delete tables.profileOverrides[k];
       Object.assign(tables.profileOverrides, state.profileOverrides as Record<string, ProfileOverride>);
     }
+    tables.institution = (state.institution && typeof state.institution === 'object')
+      ? state.institution as InstitutionProfile
+      : null;
     // Reset codes are deliberately absent: an outstanding code must not
     // survive a restart it was never meant to outlive.
     replaceArray(STUDENTS, state.students);
