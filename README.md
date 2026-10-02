@@ -247,7 +247,6 @@ Postgres, and uploaded files live in the `uploads` volume — back both up.
 | Database schema | Complete Prisma schema, 30 models covering the whole domain |
 | Rubrics | P1 (40) and P2 (80) transcribed verbatim, now versioned and editable by the coordinator — 14 passing tests; consultation and documentation seeded PROVISIONAL |
 | Docker stack | Multi-stage build, compose with Postgres and local ClamAV, internal network |
-| Screens | Three rendered reference designs plus eleven application screenshots in `mockups/` |
 | Interface | Responsive to 360px, WCAG AA contrast, dark mode, print stylesheet, keyboard grading |
 | Application | Ten working screens across student, supervisor and coordinator roles |
 
@@ -332,23 +331,9 @@ personal data under the Act.
 
 ## Screens
 
-![Supervisee dashboard](mockups/app-01-dashboard.png)
-![Cohort grading sheet](mockups/app-02-grading.png)
-
-`mockups/` holds the rendered reference designs alongside screenshots of the running
-application. The three reference designs are HTML, so they open in any browser and can
-be marked up directly.
-
-- `01-cohort-grading` — the assessor's session list. One sheet per assessor
-  covering the whole cohort, mirroring the paper form: session numbers in the
-  gutter, criteria with their maxima in the header, computed totals the assessor
-  never types. Per-row save state including an offline queue, and a blank row
-  shown explicitly as excluded rather than zero.
-- `02-mark-breakdown` — the audit view of a computed mark, showing the working
-  line by line, the full panel including the excluded blank sheet, and the
-  provenance of the snapshot.
-- `03-supervisor-dashboard` — supervisees with consultation counts against the
-  requirement and the risk flags that follow from them.
+Screenshots are not committed: every screen renders the institution's own
+branding and data, so a captured image would bake in one institution's identity.
+Run the app and capture your own.
 
 ## What to build next, in order
 
