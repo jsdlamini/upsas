@@ -7,7 +7,7 @@ import { NotificationBell } from '@/components/notification-bell';
 import type { ReactNode } from 'react';
 import { currentPrincipal, destroySession, COOKIE } from '@/lib/auth/current';
 import { findPerson, noticesFor, persistenceHealth } from '@/lib/data/store';
-import { getInstitution, monogramText } from '@/lib/institution';
+import { getInstitution, monogramText, logoUrl } from '@/lib/institution';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,6 +72,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const person = findPerson(principal.userId);
   const inst = getInstitution();
   const mono = monogramText();
+  const logo = logoUrl();
   // Set by src/middleware.ts. Falls back to '/' if middleware is bypassed.
   const path = (await headers()).get('x-pathname') ?? '/';
   // Shown as a count on the booking tab, so the rail says something happened
@@ -102,7 +103,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             shell opens on the same connections the rest of the app is built for. */}
         <input className="nav-toggle" type="checkbox" id="nav-toggle" aria-label="Show navigation" />
         <div className="brand">
-          <span className="mark"><span className="logo">{mono}</span> {inst.name}</span>
+          <span className="mark">{logo ? <img src={logo} alt="" className="rail-logo" /> : <span className="logo">{mono}</span>} {inst.name}</span>
           <span className="sub">{inst.department}<br />Research project supervision</span>
           <NotificationBell userId={principal.userId} />
           <label className="nav-toggle-btn" htmlFor="nav-toggle">Menu</label>

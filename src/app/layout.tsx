@@ -41,9 +41,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   // Load the persisted working state (topics, bookings, marks, registrations)
   // before any page reads it, so a restart never loses data.
   await ensureHydrated();
+  const inst = getInstitution();
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning style={{ '--accent': inst.accentColor } as React.CSSProperties}>
       <head>
         {/* Set the theme before first paint, so there is no flash of the wrong
             scheme. Saved choice wins; otherwise the OS preference. */}
