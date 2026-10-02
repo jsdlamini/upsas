@@ -91,6 +91,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   if (principal.permissions.includes('config.edit')) {
     tabs.push(['/cohort', 'Cohort register']);
     tabs.push(['/rubrics', 'Assessment forms']);
+    tabs.push(['/settings', 'Institution']);
   }
   if (principal.permissions.includes('user.approve')) tabs.push(['/people', 'People']);
   tabs.push(['/reports', 'Reports']);
