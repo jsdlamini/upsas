@@ -85,7 +85,7 @@ export function assertValidConfig(cfg: AssessmentConfig): void {
   }
 }
 
-/** PROVISIONAL — confirm against the official UNESWA scheme before go-live. */
+/** PROVISIONAL — confirm against the institution's official grading scheme before go-live. */
 export const PROVISIONAL_GRADE_BANDS: readonly GradeBand[] = [
   { grade: 'A', min: 80 },
   { grade: 'B', min: 70 },

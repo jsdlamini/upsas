@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { redeemResetCode, requestResetCode } from '@/lib/data/store';
+import { getInstitution, monogramText } from '@/lib/institution';
 import { destroySessionsFor } from '@/lib/auth/current';
 import { PASSWORD_POLICY } from '@/lib/auth/password';
 
@@ -38,14 +39,16 @@ export default async function Recover({
   searchParams,
 }: { searchParams: Promise<{ e?: string; u?: string; sent?: string }> }) {
   const { e, u, sent } = await searchParams;
+  const inst = getInstitution();
+  const mono = monogramText();
 
   return (
     <div className="auth-split">
       <div className="auth-brand">
         <div className="auth-brand-inner">
-          <span className="brand-logo">RC</span>
-          <p className="inst">University of Eswatini</p>
-          <p className="unit">Department of Computer Science</p>
+          <span className="brand-logo">{mono}</span>
+          <p className="inst">{inst.name}</p>
+          <p className="unit">{inst.department}</p>
           <h2>Locked out</h2>
           <p className="tagline">
             Sign-in here is local to the department, so there is no external account to
@@ -64,7 +67,7 @@ export default async function Recover({
       <div className="auth-main">
         <div className="auth-main-inner">
           <div className="crest">
-            <p className="inst">University of Eswatini</p>
+            <p className="inst">{inst.name}</p>
             <p className="unit">Reset your password</p>
           </div>
 

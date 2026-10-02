@@ -12,6 +12,7 @@
  */
 
 import { toneOf, type MeetingNotice } from './notices';
+import { getInstitution } from '../institution';
 
 export interface RenderedEmail {
   subject: string;
@@ -48,6 +49,10 @@ export function renderNoticeEmail(
   notice: MeetingNotice, recipientName: string, openUrl: string,
 ): RenderedEmail {
   const tone = TONES[toneOf(notice.kind)];
+  const inst = getInstitution();
+  const brand = inst.productName || 'Research Chain';
+  const brandFoot = `${brand} · Research project supervision` +
+    (inst.department || inst.name ? `, ${[inst.department, inst.name].filter(Boolean).join(', ')}` : '') + '.';
   // "Hello Sipho" for a student; "Hello Dr Mahlalela" rather than "Hello Dr" for staff.
   const words = recipientName.trim().split(/\s+/);
   const titled = /^(dr|prof|professor|mr|mrs|ms)\.?$/i.test(words[0] ?? '');
@@ -65,8 +70,8 @@ export function renderNoticeEmail(
     `${button}: ${openUrl}`,
     '',
     '—',
-    'UPSAS · Research project supervision, Department of Computer Science, University of Eswatini.',
-    'You receive this because a consultation you are part of changed. The same notice is in the bell in UPSAS.',
+    brandFoot,
+    `You receive this because a consultation you are part of changed. The same notice is in the bell in ${brand}.`,
   ].join('\n');
 
   const html = `<!doctype html>
@@ -98,8 +103,8 @@ export function renderNoticeEmail(
       </p>
     </td></tr>
     <tr><td style="padding:18px 24px 22px;font-size:12px;line-height:1.5;color:#5A6679;border-top:1px solid #E6EBF1;">
-      UPSAS · Research project supervision, Department of Computer Science, University of Eswatini.<br>
-      You receive this because a consultation you are part of changed. The same notice is in the bell in UPSAS.
+      ${brandFoot}<br>
+      You receive this because a consultation you are part of changed. The same notice is in the bell in ${brand}.
     </td></tr>
   </table>
 </td></tr>

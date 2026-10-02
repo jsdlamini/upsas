@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { registerStudent, requestStaffAccount, PROGRAMMES, COURSES, CYCLE } from '@/lib/data/store';
+import { getInstitution, monogramText } from '@/lib/institution';
 import { Button } from '@/components/ui/button';
 
 export const dynamic = 'force-dynamic';
@@ -52,15 +53,17 @@ export default async function RegisterPage({
   searchParams,
 }: { searchParams: Promise<{ kind?: string; e?: string }> }) {
   const { kind, e } = await searchParams;
+  const inst = getInstitution();
+  const mono = monogramText();
   const isStaff = kind === 'staff';
 
   return (
     <div className="auth-split">
       <aside className="auth-brand">
         <div className="auth-brand-inner ui-enter">
-          <div className="brand-logo">RC</div>
-          <p className="inst">University of Eswatini, Kwaluseni</p>
-          <p className="unit">Department of Computer Science</p>
+          <div className="brand-logo">{mono}</div>
+          <p className="inst">{[inst.name, inst.location].filter(Boolean).join(', ')}</p>
+          <p className="unit">{inst.department}</p>
           <h2>Create your account</h2>
           <p className="tagline">
             Students self-register and start straight away. Staff accounts are held for a
@@ -77,8 +80,8 @@ export default async function RegisterPage({
       <div className="auth-main">
         <div className="auth-main-inner ui-enter">
           <div className="crest">
-            <p className="inst">University of Eswatini, Kwaluseni</p>
-            <p className="unit">Department of Computer Science — Research project supervision</p>
+            <p className="inst">{[inst.name, inst.location].filter(Boolean).join(', ')}</p>
+            <p className="unit">{inst.department} — Research project supervision</p>
           </div>
 
           <h1 className="page">Create your account</h1>
