@@ -1,5 +1,6 @@
 import { prisma } from "./prisma";
 import { getInstitution } from "./institution";
+import { getEmailSettings, type EmailSettings } from "./email-config";
 
 /**
  * Provider-agnostic notifications: in-app rows (Postgres) plus email via a
@@ -31,25 +32,40 @@ export interface OutgoingEmail {
 export type SendOutcome = 'sent' | 'stubbed' | 'failed';
 
 /**
- * Send via Resend (https://resend.com). Falls back to a console log when no
- * API key is configured, so the demo runs without outbound mail.
+ * Send through the configured provider (Resend, SMTP, or none). Never throws.
  */
 export async function sendEmail(email: OutgoingEmail): Promise<SendOutcome> {
-  const key = process.env.RESEND_API_KEY;
-  const product = getInstitution().productName || 'Research Chain';
-  const from = process.env.RESEND_FROM_EMAIL || process.env.RESEND_FROM || `${product} <no-reply@localhost>`;
-  if (!key || !email.to) {
-    console.log("[email:stub]", email.to || "(no recipient)", "|", email.subject);
+  if (!email.to) {
+    console.log("[email:stub]", "(no recipient)", "|", email.subject);
     return "stubbed";
   }
 
-  // Testing switch. A shared sender will only deliver to the address that
-  // owns the Resend account, so until a domain is verified every message is
-  // redirected there, labelled with who it was for.
+  const settings = getEmailSettings();
+  const product = getInstitution().productName || 'Research Chain';
+  const fromName = settings.fromName || product;
+  const fromEmail = settings.fromEmail || 'no-reply@localhost';
+  const from = `${fromName} <${fromEmail}>`;
+
+  // Testing switch: route every message to one inbox, labelled with its real
+  // recipient, so a shared sender can be exercised without real addresses.
   const redirect = process.env.EMAIL_REDIRECT_TO?.trim();
   const to = redirect || email.to;
   const subject = redirect ? `[for ${email.to}] ${email.subject}` : email.subject;
 
+  if (settings.provider === 'none') {
+    console.log("[email:stub]", to, "|", subject);
+    return "stubbed";
+  }
+  if (settings.provider === 'resend') return sendViaResend({ ...email, to, subject }, from);
+  return sendViaSmtp({ ...email, to, subject }, from, settings);
+}
+
+async function sendViaResend(email: OutgoingEmail, from: string): Promise<SendOutcome> {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) {
+    console.log("[email:stub]", email.to, "|", email.subject, "(no RESEND_API_KEY)");
+    return "stubbed";
+  }
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -59,25 +75,56 @@ export async function sendEmail(email: OutgoingEmail): Promise<SendOutcome> {
       },
       body: JSON.stringify({
         from,
-        to: [to],
-        subject,
+        to: [email.to],
+        subject: email.subject,
         text: email.body,
         ...(email.html ? { html: email.html } : {}),
         ...(email.replyTo ? { reply_to: email.replyTo } : {}),
       }),
     });
     if (!res.ok) {
-      // Resend explains itself in the body; the usual one is the shared test
-      // sender refusing a recipient other than the account owner.
       const detail = await res.text().catch(() => "");
-      console.log("[email:failed]", to, "|", subject, "|", res.status, detail.slice(0, 300));
+      console.log("[email:failed]", email.to, "|", email.subject, "|", res.status, detail.slice(0, 300));
       return "failed";
     }
     return "sent";
   } catch (error) {
-    console.log("[email:failed]", to, "|", subject, "|", error instanceof Error ? error.message : String(error));
+    console.log("[email:failed]", email.to, "|", email.subject, "|", error instanceof Error ? error.message : String(error));
     return "failed";
   }
+}
+
+async function sendViaSmtp(email: OutgoingEmail, from: string, settings: EmailSettings): Promise<SendOutcome> {
+  try {
+    const nodemailer = await import('nodemailer');
+    const transport = nodemailer.createTransport({
+      host: settings.smtpHost,
+      port: settings.smtpPort,
+      secure: settings.smtpSecure,
+      auth: settings.smtpUser ? { user: settings.smtpUser, pass: settings.smtpPass } : undefined,
+    });
+    await transport.sendMail({
+      from,
+      to: email.to,
+      subject: email.subject,
+      text: email.body,
+      ...(email.html ? { html: email.html } : {}),
+      ...(email.replyTo ? { replyTo: email.replyTo } : {}),
+    });
+    return "sent";
+  } catch (error) {
+    console.log("[email:failed]", email.to, "|", email.subject, "|", error instanceof Error ? error.message : String(error));
+    return "failed";
+  }
+}
+
+/** One-off message through the configured provider, to verify it works. */
+export async function testEmail(to: string): Promise<SendOutcome> {
+  return sendEmail({
+    to,
+    subject: 'Test email',
+    body: 'This is a test email from your research system. If you received this, your email provider is configured correctly.',
+  });
 }
 
 export async function notifyUser(

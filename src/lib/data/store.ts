@@ -403,6 +403,19 @@ export interface InstitutionProfile {
   configuredAt: string | null;
 }
 
+export type EmailProvider = 'resend' | 'smtp' | 'none';
+
+export interface EmailSettings {
+  provider: EmailProvider;
+  fromName: string;
+  fromEmail: string;
+  smtpHost: string;
+  smtpPort: number;
+  smtpSecure: boolean;
+  smtpUser: string;
+  smtpPass: string;
+}
+
 interface Tables {
   consultations: Consultation[]; sheets: Sheet[]; docMarks: DocMark[];
   publications: Publication[]; moderations: ModerationRow[];
@@ -423,6 +436,8 @@ interface Tables {
   profileOverrides: Record<string, ProfileOverride>;
   /** The institution's identity and branding; null until the setup wizard runs. */
   institution: InstitutionProfile | null;
+  /** Email transport settings; null means the default (none). */
+  email: EmailSettings | null;
   seeded: boolean;
 }
 const globalForData = globalThis as unknown as { __upsasData?: Tables };
@@ -430,7 +445,7 @@ const tables: Tables = (globalForData.__upsasData ??= {
   consultations: [], sheets: [], docMarks: [], publications: [], moderations: [],
   topics: [], preferences: [], slots: [], meetingRequests: [], signatures: [], deliverables: [], passwords: {},
   enrolments: [], deadlines: [], extensions: [], resetTickets: [], meetingNotices: [], contactEmails: {},
-  roleOverrides: {}, profileOverrides: {}, institution: null, seeded: false,
+  roleOverrides: {}, profileOverrides: {}, institution: null, email: null, seeded: false,
 });
 const consultations = tables.consultations;
 const sheets = tables.sheets;
@@ -467,6 +482,16 @@ export function resetInstitutionForTests(): void {
 }
 export function institutionProduct(): string {
   return tables.institution?.productName || 'Research Chain';
+}
+export function getStoredEmailSettings(): EmailSettings | null {
+  return tables.email;
+}
+export function setStoredEmailSettings(v: EmailSettings): void {
+  tables.email = v;
+  schedulePersist();
+}
+export function resetEmailForTests(): void {
+  tables.email = null;
 }
 
 // Captain's seeded coordinator PIN (6456) — separate from the shared demo
@@ -2050,6 +2075,7 @@ function collectState() {
     roleOverrides: tables.roleOverrides,
     profileOverrides: tables.profileOverrides,
     institution: tables.institution,
+    email: tables.email,
     students: STUDENTS,
     registeredStaff: REGISTERED_STAFF,
     projects: PROJECTS,
@@ -2139,6 +2165,9 @@ async function hydrateFromPersistence(): Promise<void> {
     }
     tables.institution = (state.institution && typeof state.institution === 'object')
       ? state.institution as InstitutionProfile
+      : null;
+    tables.email = (state.email && typeof state.email === 'object')
+      ? state.email as EmailSettings
       : null;
     // Reset codes are deliberately absent: an outstanding code must not
     // survive a restart it was never meant to outlive.

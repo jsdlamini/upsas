@@ -2,7 +2,7 @@
   "name": "upsas",
   "version": "0.1.0",
   "private": true,
-  "description": "Research Project Supervision & Assessment System \u2014 Department of Computer Science, University of Eswatini",
+  "description": "Research Project Supervision & Assessment System — self-hostable, institution-configurable",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -15,7 +15,9 @@
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",
     "@prisma/client": "^6.2.1",
+    "@types/nodemailer": "^8.0.2",
     "next": "^15.1.6",
+    "nodemailer": "^10.0.13",
     "otpauth": "^9.3.6",
     "pdf-lib": "^1.17.1",
     "react": "^19.0.0",
