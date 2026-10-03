@@ -19,6 +19,23 @@ and a ClamAV scanner, packaged as one `docker compose` stack. Identity, branding
 and email are all configured **in the app** (not in code) by the first-run setup
 wizard — no fork is needed to adopt it at another institution.
 
+### 0. One-click deploys (hosted — no server to run)
+
+For a hosted copy without managing a server, use a Docker host with a managed
+Postgres. Both read this repo's `Dockerfile` (ClamAV is bundled in the image and
+the Prisma migration runs on boot):
+
+- **Railway** — `railway.json` is in the repo. New project → **Deploy from
+  GitHub** → add a **PostgreSQL** plugin (Railway provides `DATABASE_URL`).
+- **Render** — `render.yaml` is the blueprint. New **Blueprint** → point it at
+  the repo; it provisions the app and Postgres together.
+
+Caveats: the free tiers are fine for a **demo**; uploaded **logo files** sit on
+the instance's ephemeral disk, so use a logo **URL** or the monogram (or attach a
+persistent volume for `/var/lib/upsas/uploads`). Everything else persists in
+Postgres. After deploy, open the URL — the **/setup** wizard configures the
+institution.
+
 ### 1. Prerequisites
 
 - A Linux server (Ubuntu/Debian preferred) with Docker Engine and the Compose
