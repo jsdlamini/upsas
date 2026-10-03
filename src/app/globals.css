@@ -416,6 +416,10 @@ a{ transition:color .12s ease }
 }
 .brand-logo-img{ width:46px; height:46px; object-fit:cover; border-radius:12px; margin-bottom:20px; display:block }
 .rail .brand .rail-logo{ width:30px; height:30px; object-fit:cover; border-radius:8px; vertical-align:middle }
+.demo-hint{ background:var(--accent-dim); border:1px solid var(--accent); border-radius:var(--radius);
+  padding:12px 14px; margin:0 0 16px }
+.demo-hint strong{ display:block; font-size:13px; color:var(--accent); margin-bottom:4px }
+.demo-hint p{ font-size:12.5px; color:var(--ink) }
 
 @media (max-width: 900px){
   .auth-split{ grid-template-columns:1fr }

@@ -38,6 +38,7 @@ services:
       RESEND_FROM: ${RESEND_FROM:-ResearchChains <invites@idealsoftwaresolutions.com>}
       EMAIL_REDIRECT_TO: ${EMAIL_REDIRECT_TO:-}
       DISABLE_MFA: ${DISABLE_MFA:-}
+      DEMO_LOGIN_HINT: ${DEMO_LOGIN_HINT:-}
       TZ: Africa/Mbabane
     volumes:
       - uploads:/var/lib/upsas/uploads
