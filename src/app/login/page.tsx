@@ -207,6 +207,12 @@ export default async function LoginPage({
             <p className="unit">{inst.department} — Research project supervision</p>
           </div>
           <h1 className="page">{needsCode ? 'One more step' : 'Sign in'}</h1>
+      {process.env.DEMO_LOGIN_HINT && (
+        <div className="demo-hint">
+          <strong>Demo access</strong>
+          <p className="mono" style={{ whiteSpace: 'pre-line', margin: 0 }}>{process.env.DEMO_LOGIN_HINT}</p>
+        </div>
+      )}
       <p className="lede">
         {needsCode
           ? 'Your password was accepted. This role needs a second factor.'
