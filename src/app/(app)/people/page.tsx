@@ -12,6 +12,7 @@ import {
   passwordHashFor,
 } from '@/lib/data/store';
 import { syncOneUserToPrisma } from '@/lib/auth/prisma-auth';
+import { importRoster } from '@/lib/roster-import';
 
 export const dynamic = 'force-dynamic';
 
@@ -82,9 +83,22 @@ async function decline(formData: FormData) {
   redirect('/people?declined=1');
 }
 
+async function importRosterAction(formData: FormData) {
+  'use server';
+  const p = await currentPrincipal();
+  if (!p) redirect('/login');
+  if (!can(p, 'user.approve').allow) redirect('/people?e=Not+permitted');
+  const file = formData.get('roster');
+  if (!(file instanceof File) || file.size === 0) redirect('/people?e=No+file+chosen');
+  const result = await importRoster(await file.text());
+  const detail = result.skipped.slice(0, 10).map((s) => `row ${s.row}: ${s.reason}`).join(' · ');
+  revalidatePath('/people');
+  redirect(`/people?roster=${result.added}&rosterSkipped=${result.skipped.length}&rosterDetail=${encodeURIComponent(detail)}`);
+}
+
 export default async function People({
   searchParams,
-}: { searchParams: Promise<{ e?: string; saved?: string; approved?: string; declined?: string }> }) {
+}: { searchParams: Promise<{ e?: string; saved?: string; approved?: string; declined?: string; roster?: string; rosterSkipped?: string; rosterDetail?: string }> }) {
   const principal = await currentPrincipal();
   if (!principal) redirect('/login');
   const gate = can(principal, 'user.approve', {});
@@ -97,7 +111,7 @@ export default async function People({
     );
   }
 
-  const { e, saved, approved, declined } = await searchParams;
+  const { e, saved, approved, declined, roster, rosterSkipped, rosterDetail } = await searchParams;
   const people = allPeople();
   const requests = pendingStaffRequests();
 
@@ -111,7 +125,26 @@ export default async function People({
       {saved && <div className="notice">Saved.</div>}
       {approved && <div className="notice">Account activated — that staff member can now sign in.</div>}
       {declined && <div className="notice">Request declined.</div>}
+      {roster != null && (
+        <div className={rosterSkipped === '0' ? 'notice' : 'notice bad'}>
+          Imported {roster} account{roster !== '1' ? 's' : ''}
+          {rosterSkipped !== '0' ? `, ${rosterSkipped} skipped` : ''}
+          {rosterDetail ? `. ${rosterDetail}` : ''}.
+        </div>
+      )}
       {e && <div className="notice bad">{e}</div>}
+
+      <div className="box">
+        <strong>Import roster (CSV)</strong>
+        <p className="muted" style={{ margin: '6px 0 10px' }}>
+          Students: <code>studentNumber,surname,otherNames,email,programme,courseCode</code>.<br />
+          Staff: <code>username,surname,otherNames,email,roles</code> (roles split by ; or |).
+        </p>
+        <form action={importRosterAction} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input type="file" name="roster" accept=".csv,text/csv" required />
+          <Button>Import</Button>
+        </form>
+      </div>
 
       {requests.length > 0 && (
         <div className="box">
