@@ -681,3 +681,81 @@ model StoreState {
   payload   Json
   updatedAt DateTime @updatedAt
 }
+
+// ──────────────────────────────────────────────── working-store migration (A)
+
+model Publication {
+  id          String   @id
+  studentId   String
+  finalMark   Int?
+  grade       String?
+  publishedBy String
+  publishedAt DateTime @default(now())
+  supersedes  String?
+  reason      String?
+
+  @@index([studentId])
+}
+
+model MeetingRequest {
+  id             String   @id
+  studentId      String
+  supervisorId   String
+  agenda         String
+  preferredTimes String
+  status         String   @default("PENDING")
+  requestedAt    DateTime @default(now())
+  decidedAt      DateTime?
+
+  @@index([supervisorId])
+  @@index([studentId])
+}
+
+model Enrolment {
+  id            String   @id
+  studentId     String   @unique
+  status        String
+  effectiveFrom DateTime
+  note          String
+  decidedBy     String?
+  decidedAt     DateTime?
+  carried       Json     @default("[]")
+}
+
+model Extension {
+  id          String   @id
+  studentId   String
+  deadlineKey String
+  newDueAt    DateTime
+  kind        String
+  reason      String
+  approvedBy  String?
+  approvedAt  DateTime @default(now())
+
+  @@unique([studentId, deadlineKey])
+}
+
+model ResetTicket {
+  id        String   @id
+  userId    String
+  codeHash  String
+  issuedBy  String
+  issuedAt  DateTime @default(now())
+  expiresAt DateTime
+  usedAt    DateTime?
+  revokedAt DateTime?
+
+  @@index([userId])
+}
+
+model EmailSettings {
+  id         String  @id @default("default")
+  provider   String  @default("none")
+  fromName   String  @default("")
+  fromEmail  String  @default("")
+  smtpHost   String  @default("")
+  smtpPort   Int     @default(587)
+  smtpSecure Boolean @default(true)
+  smtpUser   String  @default("")
+  smtpPass   String  @default("")
+}
