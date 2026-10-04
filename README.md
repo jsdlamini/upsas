@@ -348,9 +348,14 @@ personal data under the Act.
 
 ## Screens
 
-Screenshots are not committed: every screen renders the institution's own
-branding and data, so a captured image would bake in one institution's identity.
-Run the app and capture your own.
+Captured from the public demo (a neutral "Demo University" instance):
+
+![Sign in — with demo credentials](screenshots/01-login.png)
+![Supervisees dashboard](screenshots/02-dashboard.png)
+![Topics](screenshots/03-topics.png)
+![People and roles](screenshots/04-people.png)
+![Institution settings](screenshots/05-settings.png)
+![Booking calendar](screenshots/06-book.png)
 
 ## What to build next, in order
 
