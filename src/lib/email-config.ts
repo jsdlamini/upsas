@@ -15,18 +15,18 @@ export const DEFAULT_EMAIL_SETTINGS: EmailSettings = {
   smtpPass: '',
 };
 
-export function getEmailSettings(): EmailSettings {
-  const stored = getStoredEmailSettings();
+export async function getEmailSettings(): Promise<EmailSettings> {
+  const stored = await getStoredEmailSettings();
   if (stored) return stored;
   // Backward-compatible default: an install that already sets RESEND_API_KEY
   // keeps sending via Resend until the wizard records an explicit choice.
   return { ...DEFAULT_EMAIL_SETTINGS, provider: process.env.RESEND_API_KEY ? 'resend' : 'none' };
 }
 
-export function saveEmailSettings(
+export async function saveEmailSettings(
   patch: Partial<EmailSettings>,
-): { ok: true } | { ok: false; error: string } {
-  const current = getStoredEmailSettings() ?? DEFAULT_EMAIL_SETTINGS;
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const current = (await getStoredEmailSettings()) ?? DEFAULT_EMAIL_SETTINGS;
   const next: EmailSettings = { ...current, ...patch };
 
   if (next.provider === 'smtp' && !next.smtpHost.trim()) {
@@ -36,6 +36,6 @@ export function saveEmailSettings(
     return { ok: false, error: 'SMTP port must be between 1 and 65535.' };
   }
 
-  setStoredEmailSettings(next);
+  await setStoredEmailSettings(next);
   return { ok: true };
 }

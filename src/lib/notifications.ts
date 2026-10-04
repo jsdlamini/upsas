@@ -40,8 +40,8 @@ export async function sendEmail(email: OutgoingEmail): Promise<SendOutcome> {
     return "stubbed";
   }
 
-  const settings = getEmailSettings();
-  const product = getInstitution().productName || 'Research Chain';
+  const settings = await getEmailSettings();
+  const product = (await getInstitution()).productName || 'Research Chain';
   const fromName = settings.fromName || product;
   const fromEmail = settings.fromEmail || 'no-reply@localhost';
   const from = `${fromName} <${fromEmail}>`;

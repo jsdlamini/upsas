@@ -37,7 +37,7 @@ async function requestStaffAction(formData: FormData) {
     (r): r is 'SUPERVISOR' | 'ASSESSOR' | 'MODERATOR' =>
       r === 'SUPERVISOR' || r === 'ASSESSOR' || r === 'MODERATOR',
   );
-  const r = requestStaffAccount({
+  const r = await requestStaffAccount({
     username: String(formData.get('username') ?? ''),
     surname: String(formData.get('surname') ?? ''),
     otherNames: String(formData.get('otherNames') ?? ''),
@@ -53,9 +53,9 @@ export default async function RegisterPage({
   searchParams,
 }: { searchParams: Promise<{ kind?: string; e?: string }> }) {
   const { kind, e } = await searchParams;
-  const inst = getInstitution();
-  const mono = monogramText();
-  const logo = logoUrl();
+  const inst = await getInstitution();
+  const mono = await monogramText();
+  const logo = await logoUrl();
   const isStaff = kind === 'staff';
 
   return (

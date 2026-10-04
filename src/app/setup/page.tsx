@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 
 async function save(formData: FormData) {
   'use server';
-  if (isConfigured()) redirect('/');
+  if (await isConfigured()) redirect('/');
 
   const patch: Partial<InstitutionProfile> = {
     name: String(formData.get('name') ?? '').trim(),
@@ -32,10 +32,10 @@ async function save(formData: FormData) {
     patch.logo = null;
   }
 
-  const res = saveInstitution(patch);
+  const res = await saveInstitution(patch);
   if (!res.ok) redirect(`/setup?e=${encodeURIComponent(res.error)}`);
 
-  const emailRes = saveEmailSettings({
+  const emailRes = await saveEmailSettings({
     provider: String(formData.get('emailProvider') ?? 'none') as EmailProvider,
     fromName: String(formData.get('fromName') ?? '').trim(),
     fromEmail: String(formData.get('fromEmail') ?? '').trim(),
@@ -63,9 +63,9 @@ export default async function Setup({
   searchParams,
 }: { searchParams: Promise<{ e?: string; ok?: string }> }) {
   const { e, ok } = await searchParams;
-  if (isConfigured()) redirect('/');
-  const inst = getInstitution();
-  const email = getEmailSettings();
+  if (await isConfigured()) redirect('/');
+  const inst = await getInstitution();
+  const email = await getEmailSettings();
 
   return (
     <main className="setup-page">

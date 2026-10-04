@@ -178,9 +178,9 @@ export default async function LoginPage({
   const next = safeNext(rawNext);
   if (await currentPrincipal()) redirect(next ?? '/');
   const needsCode = e === 'MFA_REQUIRED' && Boolean(challenge);
-  const inst = getInstitution();
-  const mono = monogramText();
-  const logo = logoUrl();
+  const inst = await getInstitution();
+  const mono = await monogramText();
+  const logo = await logoUrl();
 
   return (
     <div className="auth-split">

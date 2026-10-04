@@ -39,9 +39,9 @@ export default async function Recover({
   searchParams,
 }: { searchParams: Promise<{ e?: string; u?: string; sent?: string }> }) {
   const { e, u, sent } = await searchParams;
-  const inst = getInstitution();
-  const mono = monogramText();
-  const logo = logoUrl();
+  const inst = await getInstitution();
+  const mono = await monogramText();
+  const logo = await logoUrl();
 
   return (
     <div className="auth-split">

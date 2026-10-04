@@ -6,7 +6,7 @@ export const runtime = 'nodejs';
 
 /** Serves the configured institution logo; no auth so it shows on login/setup. */
 export async function GET() {
-  const logo = getInstitution().logo;
+  const logo = (await getInstitution()).logo;
   if (!logo || logo.kind !== 'file') {
     return Response.json({ error: 'Not found' }, { status: 404 });
   }

@@ -43,7 +43,7 @@ export async function GET() {
     }
   }
 
-  return new Response(buildIcal(events), {
+  return new Response(await buildIcal(events), {
     headers: {
       'Content-Type': 'text/calendar; charset=utf-8',
       'Content-Disposition': 'attachment; filename="consultations.ics"',

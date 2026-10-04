@@ -8,7 +8,7 @@ import {
   STUDENT_NUMBER_PATTERN, pendingStaffRequests,
 } from '../src/lib/data/store';
 
-test('student number pattern matches the observed nine-digit form', () => {
+test('student number pattern matches the observed nine-digit form', async () => {
   assert.ok(STUDENT_NUMBER_PATTERN.test('202500123'));
   assert.ok(STUDENT_NUMBER_PATTERN.test('209900101'));
   assert.ok(!STUDENT_NUMBER_PATTERN.test('20250'));
@@ -68,8 +68,8 @@ test('a registered account gets its own password hash, not the demo hash', async
   assert.notEqual(own, demo);
 });
 
-test('staff registration is held pending, then activated by a coordinator', () => {
-  const r = requestStaffAccount({
+test('staff registration is held pending, then activated by a coordinator', async () => {
+  const r = await requestStaffAccount({
     username: 'newsupervisor', surname: 'Supervisor', otherNames: 'Dr New', email: 'n@example.ac.sz',
     requestedRoles: ['SUPERVISOR', 'ASSESSOR'], justification: 'Supervising CSC 400 students this cycle.',
   });
@@ -86,16 +86,16 @@ test('staff registration is held pending, then activated by a coordinator', () =
   assert.deepEqual(approved?.grants.map((g) => g.role).sort(), ['ASSESSOR', 'SUPERVISOR']);
 });
 
-test('staff registration rejects a taken username', () => {
-  const r = requestStaffAccount({
+test('staff registration rejects a taken username', async () => {
+  const r = await requestStaffAccount({
     username: 'coordinator', surname: 'Impostor', otherNames: 'Test', email: 'x@example.ac.sz',
     requestedRoles: ['SUPERVISOR'], justification: 'Just testing a duplicate.',
   });
   assert.equal(r.ok, false);
 });
 
-test('declining a staff request deactivates it', () => {
-  requestStaffAccount({
+test('declining a staff request deactivates it', async () => {
+  await requestStaffAccount({
     username: 'declineduser', surname: 'Declined', otherNames: 'Dr', email: 'd@example.ac.sz',
     requestedRoles: ['ASSESSOR'], justification: 'For the decline test.',
   });
@@ -105,7 +105,7 @@ test('declining a staff request deactivates it', () => {
   assert.equal(findPersonByUsername('declineduser')?.status, 'DEACTIVATED');
 });
 
-test('a student can request a meeting and a supervisor can decide it', () => {
+test('a student can request a meeting and a supervisor can decide it', async () => {
   const r = requestMeeting({
     studentId: 's1', supervisorId: 'u-mahlalela', agenda: 'Review methodology',
     preferredTimes: 'Tue 10:00–12:00',
@@ -119,7 +119,7 @@ test('a student can request a meeting and a supervisor can decide it', () => {
   assert.equal(decideMeetingRequest('does-not-exist', 'APPROVED').ok, false);
 });
 
-test('requestMeeting requires an agenda and a time', () => {
+test('requestMeeting requires an agenda and a time', async () => {
   assert.equal(requestMeeting({ studentId: 's1', supervisorId: 'u-mahlalela', agenda: '', preferredTimes: 'Tue' }).ok, false);
   assert.equal(requestMeeting({ studentId: 's1', supervisorId: 'u-mahlalela', agenda: 'Review', preferredTimes: '' }).ok, false);
 });

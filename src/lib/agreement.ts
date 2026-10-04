@@ -34,7 +34,7 @@ export async function buildAgreementPdf(data: AgreementData): Promise<Buffer> {
 
   page.drawText("Research Topic and Supervision Agreement", { x: margin, y, size: 16, font: bold, color: rgb(0.1, 0.1, 0.16) });
   y -= 22;
-  page.drawText(departmentLine(), { x: margin, y, size: 9, font, color: rgb(0.42, 0.45, 0.55) });
+  page.drawText(await departmentLine(), { x: margin, y, size: 9, font, color: rgb(0.42, 0.45, 0.55) });
   y -= 30;
 
   const field = (label: string, value: string) => {

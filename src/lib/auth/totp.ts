@@ -13,8 +13,8 @@ export function generateTotpSecret(): string {
 export function verifyTotp(secretBase32: string, token: string, window = 1): boolean {
   try {
     const totp = new TOTP({
-      issuer: getInstitution().productName,
-      label: getInstitution().productName,
+      issuer: 'Research Chain',
+      label: 'Research Chain',
       algorithm: "SHA1",
       digits: 6,
       period: 30,
@@ -26,9 +26,9 @@ export function verifyTotp(secretBase32: string, token: string, window = 1): boo
   }
 }
 
-export function totpUri(secretBase32: string, username: string): string {
+export async function totpUri(secretBase32: string, username: string): Promise<string> {
   const totp = new TOTP({
-    issuer: getInstitution().productName,
+    issuer: (await getInstitution()).productName,
     label: username,
     algorithm: "SHA1",
     digits: 6,
@@ -42,8 +42,8 @@ export function totpUri(secretBase32: string, username: string): string {
 export function currentTotpCode(secretBase32: string): string | null {
   try {
     const totp = new TOTP({
-      issuer: getInstitution().productName,
-      label: getInstitution().productName,
+      issuer: 'Research Chain',
+      label: 'Research Chain',
       algorithm: "SHA1",
       digits: 6,
       period: 30,

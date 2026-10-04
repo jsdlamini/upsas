@@ -45,11 +45,11 @@ function actionLabel(notice: MeetingNotice): string {
  * read and — if the reader is signed out — signs them in first and then lands
  * them on the event.
  */
-export function renderNoticeEmail(
+export async function renderNoticeEmail(
   notice: MeetingNotice, recipientName: string, openUrl: string,
-): RenderedEmail {
+): Promise<RenderedEmail> {
   const tone = TONES[toneOf(notice.kind)];
-  const inst = getInstitution();
+  const inst = await getInstitution();
   const brand = inst.productName || 'Research Chain';
   const brandFoot = `${brand} · Research project supervision` +
     (inst.department || inst.name ? `, ${[inst.department, inst.name].filter(Boolean).join(', ')}` : '') + '.';

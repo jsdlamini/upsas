@@ -6,9 +6,9 @@ import { logoFileExists } from './logo-storage';
 export type { InstitutionProfile } from './data/store';
 
 /**
- * Institution identity and branding, read from the persisted working-state
- * snapshot. Every value here is neutral — no institution is baked in, so a
- * fresh install shows nothing specific until the setup wizard runs.
+ * Institution identity and branding, read from Postgres. Every value is
+ * neutral — no institution is baked in, so a fresh install shows nothing
+ * specific until the setup wizard runs.
  */
 export const DEFAULT_INSTITUTION: InstitutionProfile = {
   name: '',
@@ -23,18 +23,18 @@ export const DEFAULT_INSTITUTION: InstitutionProfile = {
 
 const ACCENT_RE = /^#[0-9a-fA-F]{6}$/;
 
-export function getInstitution(): InstitutionProfile {
-  return getStoredInstitution() ?? DEFAULT_INSTITUTION;
+export async function getInstitution(): Promise<InstitutionProfile> {
+  return (await getStoredInstitution()) ?? DEFAULT_INSTITUTION;
 }
 
-export function isConfigured(): boolean {
-  return getStoredInstitution() !== null;
+export async function isConfigured(): Promise<boolean> {
+  return (await getStoredInstitution()) !== null;
 }
 
-export function saveInstitution(
+export async function saveInstitution(
   patch: Partial<InstitutionProfile>,
-): { ok: true } | { ok: false; error: string } {
-  const current = getStoredInstitution() ?? DEFAULT_INSTITUTION;
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const current = (await getStoredInstitution()) ?? DEFAULT_INSTITUTION;
   const next: InstitutionProfile = { ...current, ...patch };
 
   if (!next.name.trim() || !next.department.trim()) {
@@ -48,28 +48,28 @@ export function saveInstitution(
   }
 
   if (next.configuredAt == null) next.configuredAt = new Date().toISOString();
-  setStoredInstitution(next);
+  await setStoredInstitution(next);
   return { ok: true };
 }
 
-export function institutionName(): string {
-  return getInstitution().name;
+export async function institutionName(): Promise<string> {
+  return (await getInstitution()).name;
 }
 
-export function departmentLine(): string {
-  const inst = getInstitution();
+export async function departmentLine(): Promise<string> {
+  const inst = await getInstitution();
   return [inst.department, inst.name].filter((s) => s.trim().length > 0).join(' — ');
 }
 
-export function monogramText(): string {
-  const inst = getInstitution();
+export async function monogramText(): Promise<string> {
+  const inst = await getInstitution();
   const mono = inst.monogram.trim();
   if (mono) return mono;
   return inst.name.replace(/[^A-Za-z]/g, '').slice(0, 2).toUpperCase();
 }
 
-export function logoUrl(): string | null {
-  const logo = getInstitution().logo;
+export async function logoUrl(): Promise<string | null> {
+  const logo = (await getInstitution()).logo;
   if (!logo) return null;
   if (logo.kind === 'url') return logo.url;
   return logoFileExists(logo.fileId) ? '/api/institution/logo' : null;

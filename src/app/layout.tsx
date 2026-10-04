@@ -10,7 +10,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import type { Metadata, Viewport } from 'next';
 
 export async function generateMetadata(): Promise<Metadata> {
-  const inst = getInstitution();
+  const inst = await getInstitution();
   const product = inst.productName || 'Research Chain';
   return {
     title: {
@@ -43,11 +43,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   // Load the persisted working state (topics, bookings, marks, registrations)
   // before any page reads it, so a restart never loses data.
   await ensureHydrated();
-  const inst = getInstitution();
+  const inst = await getInstitution();
 
   // Force the one-time setup wizard until an institution profile is saved.
   const pathname = (await headers()).get('x-pathname') ?? '';
-  if (!isConfigured() && pathname !== '/setup' && !pathname.startsWith('/api/')) {
+  if (!await isConfigured() && pathname !== '/setup' && !pathname.startsWith('/api/')) {
     redirect('/setup');
   }
 

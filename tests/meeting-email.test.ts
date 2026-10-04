@@ -41,14 +41,14 @@ const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
 
 /* ═════════════════════════════════════════════════════════ the message */
 
-test('an email says what happened, and its button goes to the exact event', () => {
+test('an email says what happened, and its button goes to the exact event', async () => {
   const notice = makeNotice({
     forUserId: 'u-mahlalela', meetingRef: 'slot-9', kind: 'BOOKED', actionRequired: true,
     title: 'Sipho Dlamini booked Tue 22 Sep, 14:00', body: 'Chapter 3 draft · CS-204.',
     startsAt: '2026-09-22T12:00:00Z', href: '/book?focus=slot-9#slot-slot-9',
   }, NOW);
   const url = 'https://upsas.example/api/notifications/mn-1/open';
-  const mail = renderNoticeEmail(notice, 'Dr Johnson Mahlalela', url);
+  const mail = await renderNoticeEmail(notice, 'Dr Johnson Mahlalela', url);
 
   assert.equal(mail.subject, 'Sipho Dlamini booked Tue 22 Sep, 14:00 — action needed');
   assert.match(mail.text, /Hello Dr Mahlalela,/, 'a title is kept with the surname');
@@ -57,12 +57,12 @@ test('an email says what happened, and its button goes to the exact event', () =
   assert.match(mail.html, /#FFB81C/, 'the same yellow as the banner');
 });
 
-test('names and details are escaped, never injected into the HTML', () => {
+test('names and details are escaped, never injected into the HTML', async () => {
   const notice = makeNotice({
     forUserId: 'u-s1', meetingRef: 'slot-1', kind: 'CONFIRMED', actionRequired: false,
     title: 'Confirmed', body: 'Agenda: <script>alert(1)</script>', startsAt: null,
   }, NOW);
-  const mail = renderNoticeEmail(notice, 'Sipho A. Dlamini', 'https://x/open');
+  const mail = await renderNoticeEmail(notice, 'Sipho A. Dlamini', 'https://x/open');
   assert.equal(mail.html.includes('<script>'), false);
   assert.ok(mail.html.includes('&lt;script&gt;'));
 });
@@ -142,7 +142,7 @@ test('someone with no address on file is skipped rather than failing the booking
   assert.equal(cap.sent.length, 0);
 });
 
-test('a bad address is refused, and a blank one clears it', () => {
+test('a bad address is refused, and a blank one clears it', async () => {
   assert.equal(setContactEmail('u-s1', 'not-an-address').ok, false);
   assert.ok(setContactEmail('u-s1', 'sipho@example.org').ok);
   assert.ok(setContactEmail('u-s1', '').ok);

@@ -87,7 +87,7 @@ export async function importRoster(text: string): Promise<RosterResult> {
       added += 1;
     } else {
       const roles = get(r, 'roles').split(/[;|]/).map((s) => s.trim().toUpperCase()).filter(Boolean) as RoleCode[];
-      const res = requestStaffAccount({
+      const res = await requestStaffAccount({
         username: get(r, 'username'),
         surname: get(r, 'surname'),
         otherNames: get(r, 'othernames'),

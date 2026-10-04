@@ -70,9 +70,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     );
   }
   const person = findPerson(principal.userId);
-  const inst = getInstitution();
-  const mono = monogramText();
-  const logo = logoUrl();
+  const inst = await getInstitution();
+  const mono = await monogramText();
+  const logo = await logoUrl();
   // Set by src/middleware.ts. Falls back to '/' if middleware is bypassed.
   const path = (await headers()).get('x-pathname') ?? '/';
   // Shown as a count on the booking tab, so the rail says something happened

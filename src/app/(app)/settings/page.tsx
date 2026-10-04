@@ -36,10 +36,10 @@ async function save(formData: FormData) {
     patch.logo = null;
   }
 
-  const res = saveInstitution(patch);
+  const res = await saveInstitution(patch);
   if (!res.ok) redirect(`/settings?e=${encodeURIComponent(res.error)}`);
 
-  const emailRes = saveEmailSettings({
+  const emailRes = await saveEmailSettings({
     provider: String(formData.get('emailProvider') ?? 'none') as EmailProvider,
     fromName: String(formData.get('fromName') ?? '').trim(),
     fromEmail: String(formData.get('fromEmail') ?? '').trim(),
@@ -83,8 +83,8 @@ export default async function Settings({
   }
 
   const { e, ok, saved } = await searchParams;
-  const inst = getInstitution();
-  const email = getEmailSettings();
+  const inst = await getInstitution();
+  const email = await getEmailSettings();
 
   return (
     <>
