@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "tsx --env-file=.env --test tests/*.test.ts",
+    "test": "tsx --env-file=.env --test --test-concurrency=1 tests/*.test.ts",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "typecheck": "tsc --noEmit"
