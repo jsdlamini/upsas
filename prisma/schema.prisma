@@ -20,10 +20,16 @@ datasource db {
 // ─────────────────────────────────────────────────────────── institution
 
 model Institution {
-  id            String  @id @default(uuid())
-  name          String
-  faculty       String
-  department    String
+  id            String  @id @default("default")
+  name          String  @default("")
+  location      String  @default("")
+  faculty       String  @default("")
+  department    String  @default("")
+  productName   String  @default("Research Chain")
+  monogram      String  @default("")
+  accentColor   String  @default("#2E5AC8")
+  logo          Json?
+  configuredAt  DateTime?
   timezone      String  @default("Africa/Mbabane")
   studentIdRegex String @default("^[0-9]{9}$")
   staffEmailDomain String @default("uniswa.sz")
