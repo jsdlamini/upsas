@@ -472,6 +472,7 @@ const meetingNotices = tables.meetingNotices;
 
 /** Institution profile accessors (back `src/lib/institution.ts`). */
 export async function getStoredInstitution(): Promise<InstitutionProfile | null> {
+  if (!process.env.DATABASE_URL) return null; // build-time prerender has no DB
   const row = await prisma.institution.findUnique({ where: { id: 'default' } });
   if (!row) return null;
   return {
@@ -482,6 +483,7 @@ export async function getStoredInstitution(): Promise<InstitutionProfile | null>
   };
 }
 export async function setStoredInstitution(v: InstitutionProfile): Promise<void> {
+  if (!process.env.DATABASE_URL) return;
   const data = {
     name: v.name, location: v.location, department: v.department,
     productName: v.productName, monogram: v.monogram, accentColor: v.accentColor,
@@ -498,6 +500,7 @@ export async function institutionProduct(): Promise<string> {
   return inst?.productName || 'Research Chain';
 }
 export async function getStoredEmailSettings(): Promise<EmailSettings | null> {
+  if (!process.env.DATABASE_URL) return null;
   const row = await prisma.emailSettings.findUnique({ where: { id: 'default' } });
   if (!row) return null;
   return {
@@ -507,6 +510,7 @@ export async function getStoredEmailSettings(): Promise<EmailSettings | null> {
   };
 }
 export async function setStoredEmailSettings(v: EmailSettings): Promise<void> {
+  if (!process.env.DATABASE_URL) return;
   await prisma.emailSettings.upsert({ where: { id: 'default' }, create: { id: 'default', ...v }, update: { ...v } });
 }
 export async function resetEmailForTests(): Promise<void> {
