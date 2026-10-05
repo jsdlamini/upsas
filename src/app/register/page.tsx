@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { registerStudent, requestStaffAccount, PROGRAMMES, COURSES, CYCLE } from '@/lib/data/store';
 import { getInstitution, monogramText, logoUrl } from '@/lib/institution';
+import { AuthGallery } from '@/components/auth-gallery';
 import { Button } from '@/components/ui/button';
 
 export const dynamic = 'force-dynamic';
@@ -75,6 +76,7 @@ export default async function RegisterPage({
             <li>Staff roles assigned on approval</li>
             <li>Offline-first, local sign-in only</li>
           </ul>
+          <AuthGallery />
           <div className="brand-foot">Cycle {CYCLE} · Accounts held locally</div>
         </div>
       </aside>

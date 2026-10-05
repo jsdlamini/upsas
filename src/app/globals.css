@@ -416,6 +416,15 @@ a{ transition:color .12s ease }
 }
 .brand-logo-img{ width:46px; height:46px; object-fit:cover; border-radius:12px; margin-bottom:20px; display:block }
 .rail .brand .rail-logo{ width:30px; height:30px; object-fit:cover; border-radius:8px; vertical-align:middle }
+.auth-gallery{ overflow:hidden; margin-top:18px;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);
+  mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent) }
+.auth-gallery-track{ display:flex; gap:12px; width:max-content; animation:auth-scroll 40s linear infinite }
+.auth-gallery-track img{ height:110px; width:auto; border-radius:8px;
+  border:1px solid rgba(255,255,255,.16); object-fit:cover; box-shadow:0 4px 14px rgba(0,0,0,.25) }
+.auth-gallery:hover .auth-gallery-track{ animation-play-state:paused }
+@keyframes auth-scroll{ from{ transform:translateX(0) } to{ transform:translateX(-50%) } }
+@media (prefers-reduced-motion: reduce){ .auth-gallery-track{ animation:none } }
 .demo-hint{ background:var(--accent-dim); border:1px solid var(--accent); border-radius:var(--radius);
   padding:12px 14px; margin:0 0 16px }
 .demo-hint strong{ display:block; font-size:13px; color:var(--accent); margin-bottom:4px }

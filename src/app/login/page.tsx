@@ -7,6 +7,7 @@ import { checkLoginRate } from '@/lib/auth/rate-limit';
 import { randomBytes } from 'node:crypto';
 import { CYCLE, passwordHashFor, findPersonByIdentifier, allPeople } from '@/lib/data/store';
 import { getInstitution, monogramText, logoUrl } from '@/lib/institution';
+import { AuthGallery } from '@/components/auth-gallery';
 import {
   authPrismaAvailable,
   ensureUsersSynced,
@@ -197,6 +198,7 @@ export default async function LoginPage({
             <li>Panel grading &amp; moderation</li>
             <li>Released results &amp; reports</li>
           </ul>
+          <AuthGallery />
           <div className="brand-foot">Cycle {CYCLE} · Accounts held locally — no external sign-in</div>
         </div>
       </aside>
