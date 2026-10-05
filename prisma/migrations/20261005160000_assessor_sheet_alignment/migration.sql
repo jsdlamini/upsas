@@ -1,3 +1,4 @@
--- AddForeignKey
-ALTER TABLE "CriterionScore" ADD CONSTRAINT "CriterionScore_sheetId_fkey" FOREIGN KEY ("sheetId") REFERENCES "AssessorSheet"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
+-- No-op: CriterionScore.sheetId -> AssessorSheet.id already has
+-- CriterionScore_sheetId_fkey from the original init migration. This alignment
+-- step previously re-added it, which failed on databases that still carry the
+-- init constraint.
