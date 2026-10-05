@@ -1,0 +1,15 @@
+# Secrets and local state must never reach the image build (the .env is loaded
+# by Next.js at build time and would both leak secrets and make the build try
+# to reach a database).
+.env
+.env.*
+!.env.example
+
+# Not needed in the image
+.git
+.gitignore
+node_modules
+.next
+tests
+docs
+screenshots
