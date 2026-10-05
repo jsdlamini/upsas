@@ -45,7 +45,6 @@ model AcademicCycle {
   label         String   // "2025/2026"
   startsOn      DateTime
   endsOn        DateTime
-  periods       AssessmentPeriod[]
   configs       AssessmentConfig[]
   sessions      PresentationSession[]
   isCurrent     Boolean  @default(false)
@@ -54,15 +53,16 @@ model AcademicCycle {
 }
 
 model AssessmentPeriod {
-  id       String  @id @default(uuid())
+  id       String  @id
   cycleId  String
-  cycle    AcademicCycle @relation(fields: [cycleId], references: [id])
-  code     String  // "SEM1"
+  key      String
   label    String
-  startsOn DateTime
-  endsOn   DateTime
+  dueAt    DateTime
+  graceMinutes Int
+  published Boolean @default(false)
+  note     String @default("")
 
-  @@unique([cycleId, code])
+  @@unique([cycleId, key])
 }
 
 model Programme {

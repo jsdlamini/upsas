@@ -89,9 +89,9 @@ export default async function MyProject({
   // A student sees their own dates. Where an extension applies it is theirs
   // that shows, and the reason behind it is never rendered anywhere.
   const now = new Date();
-  const myDeadlines = publishedDeadlines().map((deadline) => ({
-    deadline, status: deadlineStatusFor(student.id, deadline, now),
-  }));
+  const myDeadlines = await Promise.all((await publishedDeadlines()).map(async (deadline) => ({
+    deadline, status: await deadlineStatusFor(student.id, deadline, now),
+  })));
 
   return (
     <>

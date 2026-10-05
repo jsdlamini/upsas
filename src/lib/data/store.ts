@@ -1980,24 +1980,37 @@ export function demoPasswordHash(): Promise<string> {
  * A student with no explicit record is active. Absence of a decision is not a
  * decision, and an ordinary cohort should not need nine hundred rows to say so.
  */
-export function enrolmentOf(studentId: string): Enrolment {
-  return enrolments.find((e) => e.studentId === studentId)
-    ?? defaultEnrolment(studentId, CYCLE_START);
+function toEnrolment(row: { studentId: string; status: string; effectiveFrom: Date; note: string; decidedBy: string | null; decidedAt: Date | null; carried: unknown }): Enrolment {
+  return {
+    studentId: row.studentId, status: row.status as Enrolment['status'],
+    effectiveFrom: row.effectiveFrom.toISOString(), note: row.note, decidedBy: row.decidedBy,
+    decidedAt: row.decidedAt ? row.decidedAt.toISOString() : null,
+    carried: (row.carried as CarriedComponent[]) ?? [],
+  };
+}
+
+export async function enrolmentOf(studentId: string): Promise<Enrolment> {
+  if (!process.env.DATABASE_URL) return defaultEnrolment(studentId, CYCLE_START);
+  const row = await prisma.enrolment.findUnique({ where: { studentId } });
+  return row ? toEnrolment(row) : defaultEnrolment(studentId, CYCLE_START);
 }
 
 export const CYCLE_START = '2025-08-01';
 
-export function nonStandardEnrolments(): Enrolment[] {
-  return enrolments.filter((e) => e.status !== 'ACTIVE');
+export async function nonStandardEnrolments(): Promise<Enrolment[]> {
+  if (!process.env.DATABASE_URL) return [];
+  const rows = await prisma.enrolment.findMany({ where: { NOT: { status: 'ACTIVE' } } });
+  return rows.map(toEnrolment);
 }
 
 /** Students who are scheduled, marked and published this cycle. */
-export function isStudentAssessable(studentId: string): boolean {
-  return isAssessable(enrolmentOf(studentId).status);
+export async function isStudentAssessable(studentId: string): Promise<boolean> {
+  return isAssessable((await enrolmentOf(studentId)).status);
 }
 
-export function assessableStudents(): Student[] {
-  return STUDENTS.filter((st) => appearsInCohort(enrolmentOf(st.id).status));
+export async function assessableStudents(): Promise<Student[]> {
+  const results = await Promise.all(STUDENTS.map(async (st) => ({ st, ok: appearsInCohort((await enrolmentOf(st.id)).status) })));
+  return results.filter(({ ok }) => ok).map(({ st }) => st);
 }
 
 export interface EnrolmentChange {
@@ -2007,13 +2020,13 @@ export interface EnrolmentChange {
   carried: CarriedComponent[];
 }
 
-export function setEnrolment(
+export async function setEnrolment(
   studentId: string, change: EnrolmentChange, byUserId: string,
-): { ok: true } | { ok: false; errors: string[] } {
+): Promise<{ ok: true } | { ok: false; errors: string[] }> {
   const student = findStudent(studentId);
   if (!student) return { ok: false, errors: ['No such student.'] };
 
-  const current = enrolmentOf(studentId);
+  const current = await enrolmentOf(studentId);
   const errors = validateChange(current, change, {
     published: publications.some((p) => p.studentId === studentId),
     hasSignedMarks: sheets.some((sh) => sh.studentId === studentId && sh.submitted),
@@ -2038,71 +2051,77 @@ export function setEnrolment(
 
 /* ------------------------------------------------------------- deadlines */
 
-export function deadlinesFor(cycleId: string = CYCLE): Deadline[] {
-  return deadlines.filter((d) => d.cycleId === cycleId)
-    .slice().sort((a, b) => a.dueAt.localeCompare(b.dueAt));
+function toDeadline(row: { id: string; cycleId: string; key: string; label: string; dueAt: Date; graceMinutes: number; published: boolean; note: string }): Deadline {
+  return { id: row.id, cycleId: row.cycleId, key: row.key, label: row.label, dueAt: row.dueAt.toISOString(), graceMinutes: row.graceMinutes, published: row.published, note: row.note };
 }
 
-export function publishedDeadlines(cycleId: string = CYCLE): Deadline[] {
-  return deadlinesFor(cycleId).filter((d) => d.published);
+export async function deadlinesFor(cycleId: string = CYCLE): Promise<Deadline[]> {
+  if (!process.env.DATABASE_URL) return [];
+  const rows = await prisma.assessmentPeriod.findMany({ where: { cycleId } });
+  return rows.map(toDeadline).sort((a, b) => a.dueAt.localeCompare(b.dueAt));
 }
 
-export function findDeadline(key: string, cycleId: string = CYCLE): Deadline | null {
-  return deadlines.find((d) => d.key === key && d.cycleId === cycleId) ?? null;
+export async function publishedDeadlines(cycleId: string = CYCLE): Promise<Deadline[]> {
+  return (await deadlinesFor(cycleId)).filter((d) => d.published);
 }
 
-export function saveDeadline(
+export async function findDeadline(key: string, cycleId: string = CYCLE): Promise<Deadline | null> {
+  if (!process.env.DATABASE_URL) return null;
+  const row = await prisma.assessmentPeriod.findUnique({ where: { cycleId_key: { cycleId, key } } });
+  return row ? toDeadline(row) : null;
+}
+
+export async function saveDeadline(
   draft: Omit<Deadline, 'id'>,
-): { ok: true } | { ok: false; errors: string[] } {
+): Promise<{ ok: true } | { ok: false; errors: string[] }> {
   const errors = validateDeadline(draft);
   if (errors.length) return { ok: false, errors };
-
-  const existing = deadlines.find((d) => d.key === draft.key && d.cycleId === draft.cycleId);
-  if (existing) {
-    Object.assign(existing, draft);
-  } else {
-    deadlines.push({ ...draft, id: `dl-${draft.cycleId.replace(/\W/g, '')}-${draft.key}` });
-  }
-  schedulePersist();
+  if (!process.env.DATABASE_URL) return { ok: false, errors: ['No database.'] };
+  const id = `dl-${draft.cycleId.replace(/\W/g, '')}-${draft.key}`;
+  await prisma.assessmentPeriod.upsert({
+    where: { cycleId_key: { cycleId: draft.cycleId, key: draft.key } },
+    create: { id, cycleId: draft.cycleId, key: draft.key, label: draft.label, dueAt: new Date(draft.dueAt), graceMinutes: draft.graceMinutes, published: draft.published, note: draft.note },
+    update: { label: draft.label, dueAt: new Date(draft.dueAt), graceMinutes: draft.graceMinutes, published: draft.published, note: draft.note },
+  });
   return { ok: true };
 }
 
-export function removeDeadline(key: string, cycleId: string = CYCLE): void {
-  const index = deadlines.findIndex((d) => d.key === key && d.cycleId === cycleId);
-  if (index !== -1) deadlines.splice(index, 1);
-  // Extensions against a deadline that no longer exists are noise.
-  for (let i = extensions.length - 1; i >= 0; i -= 1) {
-    if (extensions[i]!.deadlineKey === key) extensions.splice(i, 1);
-  }
-  schedulePersist();
+export async function removeDeadline(key: string, cycleId: string = CYCLE): Promise<void> {
+  if (!process.env.DATABASE_URL) return;
+  await prisma.assessmentPeriod.deleteMany({ where: { cycleId, key } });
 }
 
-export function extensionFor(studentId: string, deadlineKey: string): Extension | null {
-  return extensions.find((e) => e.studentId === studentId && e.deadlineKey === deadlineKey) ?? null;
+export async function extensionFor(studentId: string, deadlineKey: string): Promise<Extension | null> {
+  if (!process.env.DATABASE_URL) return null;
+  const row = await prisma.extension.findUnique({ where: { studentId_deadlineKey: { studentId, deadlineKey } } });
+  return row ? { id: row.id, studentId: row.studentId, deadlineKey: row.deadlineKey, newDueAt: row.newDueAt.toISOString(), kind: row.kind as Extension['kind'], reason: row.reason, approvedBy: row.approvedBy ?? '', approvedAt: row.approvedAt.toISOString() } : null;
 }
 
-export function extensionsFor(studentId: string): Extension[] {
-  return extensions.filter((e) => e.studentId === studentId);
+export async function extensionsFor(studentId: string): Promise<Extension[]> {
+  if (!process.env.DATABASE_URL) return [];
+  const rows = await prisma.extension.findMany({ where: { studentId } });
+  return rows.map((row) => ({ id: row.id, studentId: row.studentId, deadlineKey: row.deadlineKey, newDueAt: row.newDueAt.toISOString(), kind: row.kind as Extension['kind'], reason: row.reason, approvedBy: row.approvedBy ?? '', approvedAt: row.approvedAt.toISOString() }));
 }
 
-export function grantExtension(
+export async function grantExtension(
   draft: Omit<Extension, 'id' | 'approvedAt'>,
-): { ok: true } | { ok: false; errors: string[] } {
-  const deadline = findDeadline(draft.deadlineKey);
+): Promise<{ ok: true } | { ok: false; errors: string[] }> {
+  const deadline = await findDeadline(draft.deadlineKey);
   const errors = validateExtension(draft, deadline);
   if (errors.length) return { ok: false, errors };
-
-  const record: Extension = { ...draft, id: `ext-${draft.studentId}-${draft.deadlineKey}`, approvedAt: new Date().toISOString() };
-  const index = extensions.findIndex((e) => e.studentId === draft.studentId && e.deadlineKey === draft.deadlineKey);
-  if (index === -1) extensions.push(record); else extensions[index] = record;
-  schedulePersist();
+  if (!process.env.DATABASE_URL) return { ok: false, errors: ['No database.'] };
+  const id = `ext-${draft.studentId}-${draft.deadlineKey}`;
+  await prisma.extension.upsert({
+    where: { studentId_deadlineKey: { studentId: draft.studentId, deadlineKey: draft.deadlineKey } },
+    create: { id, ...draft, approvedAt: new Date() },
+    update: { ...draft, approvedAt: new Date() },
+  });
   return { ok: true };
 }
 
-export function withdrawExtension(studentId: string, deadlineKey: string): void {
-  const index = extensions.findIndex((e) => e.studentId === studentId && e.deadlineKey === deadlineKey);
-  if (index !== -1) extensions.splice(index, 1);
-  schedulePersist();
+export async function withdrawExtension(studentId: string, deadlineKey: string): Promise<void> {
+  if (!process.env.DATABASE_URL) return;
+  await prisma.extension.deleteMany({ where: { studentId, deadlineKey } });
 }
 
 /**
@@ -2112,8 +2131,8 @@ export function withdrawExtension(studentId: string, deadlineKey: string): void 
  * already distinguishes submitted-on-time from submitted-late, so wiring it is
  * a call site rather than a redesign.
  */
-export function deadlineStatusFor(studentId: string, deadline: Deadline, now: Date = new Date()) {
-  return statusOf(deadline, extensionFor(studentId, deadline.key), null, now);
+export async function deadlineStatusFor(studentId: string, deadline: Deadline, now: Date = new Date()) {
+  return statusOf(deadline, await extensionFor(studentId, deadline.key), null, now);
 }
 
 /* ------------------------------------------------------ account recovery */

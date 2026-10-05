@@ -71,6 +71,7 @@ export default async function Dashboard({
     return Promise.all(members.map(async (s, i) => ({
       s, i, members, project, snap: await snapshotFor(s.id),
       consultations: await consultationsOf(s.id),
+      enrolment: await enrolmentOf(s.id),
     })));
   }))).flat();
 
@@ -142,7 +143,7 @@ export default async function Dashboard({
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ s, i, members, project, snap, consultations }) => {
+              {rows.map(({ s, i, members, project, snap, consultations, enrolment }) => {
                 const sem1 = consultations.filter((c) => c.periodId === 'SEM1' && c.status === 'COMPLETED').length;
                 const sem2 = consultations.filter((c) => c.periodId === 'SEM2' && c.status === 'COMPLETED').length;
                 const short = sem1 < 4 || sem2 < 4;
@@ -153,9 +154,9 @@ export default async function Dashboard({
                         <strong>{s.surname}, {s.otherNames}</strong>
                         {/* A supervisor needs to know a student is deferred or
                             carrying credit. They do not need the grounds. */}
-                        {enrolmentOf(s.id).status !== 'ACTIVE' && (
+                        {enrolment.status !== 'ACTIVE' && (
                           <Badge variant="warning" style={{ marginLeft: 6 }}>
-                            {STATUS_LABEL[enrolmentOf(s.id).status]}
+                            {STATUS_LABEL[enrolment.status]}
                           </Badge>
                         )}
                         <div className="muted mono" style={{ fontSize: 11 }}>

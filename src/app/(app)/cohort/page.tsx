@@ -7,9 +7,11 @@ import { can } from '@/lib/rbac/policy';
 import {
   CYCLE, STUDENTS, findStudent, findPerson, allPeople,
   enrolmentOf, setEnrolment, deadlinesFor, saveDeadline, removeDeadline,
-  extensionFor, grantExtension, withdrawExtension, deadlineStatusFor,
+  extensionFor, extensionsFor, grantExtension, withdrawExtension, deadlineStatusFor,
   issueResetCode, takeIssuedCode, outstandingResetFor, emailOf, setContactEmail,
 } from '@/lib/data/store';
+import type { Enrolment } from '@/lib/enrolment/status';
+import type { Extension } from '@/lib/deadlines/schedule';
 import {
   STATUS_LABEL, STATUS_MEANING, describe,
   type EnrolmentStatus, type CarriedComponent,
@@ -76,7 +78,7 @@ async function changeEnrolment(formData: FormData) {
     });
   }
 
-  const result = setEnrolment(studentId, {
+  const result = await setEnrolment(studentId, {
     status,
     effectiveFrom: String(formData.get('effectiveFrom') ?? '').trim(),
     note: String(formData.get('note') ?? ''),
@@ -91,7 +93,7 @@ async function changeEnrolment(formData: FormData) {
 async function upsertDeadline(formData: FormData) {
   'use server';
   await guard();
-  const result = saveDeadline({
+  const result = await saveDeadline({
     cycleId: CYCLE,
     key: String(formData.get('key') ?? '').trim().toLowerCase(),
     label: String(formData.get('label') ?? '').trim(),
@@ -116,7 +118,7 @@ async function dropDeadline(formData: FormData) {
 async function addExtension(formData: FormData) {
   'use server';
   const principal = await guard();
-  const result = grantExtension({
+  const result = await grantExtension({
     studentId: String(formData.get('studentId')),
     deadlineKey: String(formData.get('deadlineKey')),
     newDueAt: fromLocalInput(String(formData.get('newDueAt') ?? '')),
@@ -132,7 +134,7 @@ async function addExtension(formData: FormData) {
 async function dropExtension(formData: FormData) {
   'use server';
   await guard();
-  withdrawExtension(String(formData.get('studentId')), String(formData.get('deadlineKey')));
+  await withdrawExtension(String(formData.get('studentId')), String(formData.get('deadlineKey')));
   revalidatePath('/cohort');
   back('extensions', '&done=' + encodeURIComponent('Extension withdrawn'));
 }
@@ -181,8 +183,20 @@ export default async function Cohort({
   let errors: string[] = [];
   if (e) { try { const parsed: unknown = JSON.parse(e); if (Array.isArray(parsed)) errors = parsed.map(String); } catch { errors = [e]; } }
 
-  const deadlines = deadlinesFor();
+  const deadlines = await deadlinesFor();
   const code = issued ? takeIssuedCode(principal.userId) : null;
+
+  const enrolmentsMap = new Map<string, Enrolment>();
+  for (const s of STUDENTS) enrolmentsMap.set(s.id, await enrolmentOf(s.id));
+  const extensionsByStudent = new Map<string, Map<string, Extension>>();
+  for (const s of STUDENTS) {
+    const exts = await extensionsFor(s.id);
+    extensionsByStudent.set(s.id, new Map(exts.map((e) => [e.deadlineKey, e])));
+  }
+  const deadlineStatuses = new Map<string, Awaited<ReturnType<typeof deadlineStatusFor>>>();
+  for (const d of deadlines) {
+    deadlineStatuses.set(d.key, await deadlineStatusFor(STUDENTS[0]?.id ?? '', d));
+  }
 
   return (
     <>
@@ -222,7 +236,7 @@ export default async function Cohort({
           </ul>
 
           {STUDENTS.map((student) => {
-            const enrolment = enrolmentOf(student.id);
+            const enrolment = enrolmentsMap.get(student.id)!;
             const carried = enrolment.carried[0];
             return (
               <details key={student.id} open={enrolment.status !== 'ACTIVE'}>
@@ -405,7 +419,7 @@ export default async function Cohort({
               <tbody>
                 {STUDENTS.flatMap((student) =>
                   deadlines.map((deadline) => {
-                    const extension = extensionFor(student.id, deadline.key);
+                    const extension = extensionsByStudent.get(student.id)?.get(deadline.key) ?? null;
                     if (!extension) return null;
                     return (
                       <tr key={`${student.id}-${deadline.key}`}>
@@ -430,7 +444,7 @@ export default async function Cohort({
                     );
                   }).filter(Boolean),
                 )}
-                {STUDENTS.every((student) => deadlines.every((d) => !extensionFor(student.id, d.key))) && (
+                {STUDENTS.every((student) => deadlines.every((d) => !extensionsByStudent.get(student.id)?.get(d.key))) && (
                   <tr><td colSpan={7} className="muted">No extensions granted this cycle.</td></tr>
                 )}
               </tbody>
@@ -567,8 +581,8 @@ export default async function Cohort({
           </thead>
           <tbody>
             {deadlines.filter((d) => d.published).map((deadline) => {
-              const differing = STUDENTS.filter((s) => extensionFor(s.id, deadline.key)).length;
-              const status = deadlineStatusFor(STUDENTS[0]?.id ?? '', deadline);
+              const differing = STUDENTS.filter((s) => extensionsByStudent.get(s.id)?.get(deadline.key)).length;
+              const status = deadlineStatuses.get(deadline.key)!;
               return (
                 <tr key={deadline.key}>
                   <td>{deadline.label}</td>
