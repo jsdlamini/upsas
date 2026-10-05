@@ -387,21 +387,21 @@ a{ transition:color .12s ease }
 .auth-split{ display:grid; grid-template-columns:minmax(360px, 460px) 1fr; min-height:100vh }
 .auth-brand{
   background:
-    radial-gradient(1200px 500px at -10% -10%, rgba(110,147,214,.22), transparent 60%),
-    linear-gradient(180deg, #0B1420 0%, #12263D 100%);
-  color:#C6D0DB; padding:48px 44px; display:flex;
+    radial-gradient(1200px 500px at -10% -10%, rgba(110,147,214,.18), transparent 60%),
+    linear-gradient(180deg, #F2F5FA 0%, #E9EEF6 100%);
+  color:var(--ink-soft); padding:48px 44px; display:flex;
 }
 .auth-brand-inner{ display:flex; flex-direction:column; max-width:380px; width:100% }
-.auth-brand .inst{ font:600 15px var(--sans); color:#fff; letter-spacing:.02em; margin:0 }
-.auth-brand .unit{ color:#7E8D9E; font-size:13px; margin:5px 0 0 }
-.auth-brand h2{ font:600 32px/1.15 var(--serif); color:#fff; margin:44px 0 14px; border:0; padding:0 }
-.auth-brand .tagline{ color:#9FB0C3; font-size:14.5px; line-height:1.65; margin:0 }
+.auth-brand .inst{ font:600 15px var(--sans); color:var(--ink); letter-spacing:.02em; margin:0 }
+.auth-brand .unit{ color:var(--muted); font-size:13px; margin:5px 0 0 }
+.auth-brand h2{ font:600 32px/1.15 var(--serif); color:var(--ink); margin:44px 0 14px; border:0; padding:0 }
+.auth-brand .tagline{ color:var(--ink-soft); font-size:14.5px; line-height:1.65; margin:0 }
 .brand-points{ list-style:none; padding:0; margin:30px 0 0 }
-.brand-points li{ position:relative; padding:9px 0 9px 26px; color:#B9C6D6; font-size:13.5px;
-  border-bottom:1px solid rgba(255,255,255,.07) }
+.brand-points li{ position:relative; padding:9px 0 9px 26px; color:var(--ink-soft); font-size:13.5px;
+  border-bottom:1px solid var(--rule) }
 .brand-points li::before{ content:""; position:absolute; left:2px; top:16px; width:8px; height:8px;
   border-radius:50%; background:#6E93D6 }
-.brand-foot{ margin-top:auto; font-size:12px; color:#7E8D9E; padding-top:24px }
+.brand-foot{ margin-top:auto; font-size:12px; color:var(--muted); padding-top:24px }
 
 .auth-main{ display:flex; align-items:center; justify-content:center; padding:48px 44px }
 .auth-main-inner{ width:100%; max-width:560px }
@@ -427,9 +427,9 @@ a{ transition:color .12s ease }
 .feature-carousel{ position:relative; height:250px; margin-top:20px; overflow:hidden; border-radius:12px }
 .feature-slide{ position:absolute; inset:0; display:flex; flex-direction:column; gap:10px; opacity:0;
   animation:feature-cycle var(--feature-cycle,16s) linear infinite }
-.feature-slide strong{ font:600 15px/1.2 var(--sans); color:#fff; letter-spacing:.01em }
+.feature-slide strong{ font:600 15px/1.2 var(--sans); color:var(--ink); letter-spacing:.01em }
 .feature-slide img{ flex:1; width:100%; height:0; object-fit:cover; object-position:top;
-  border-radius:10px; border:1px solid rgba(255,255,255,.16); box-shadow:0 6px 18px rgba(0,0,0,.3) }
+  border-radius:10px; border:1px solid var(--rule); box-shadow:0 6px 18px rgba(0,0,0,.15) }
 @keyframes feature-cycle{
   0%{ opacity:0; transform:translateY(8px) }
   3%{ opacity:1; transform:none }
@@ -975,9 +975,9 @@ tr.band td{
 
 .auth-brand{
   background:
-    radial-gradient(900px 420px at -15% -20%, rgba(91,67,191,.32), transparent 62%),
-    radial-gradient(700px 400px at 115% 108%, rgba(14,116,128,.30), transparent 60%),
-    linear-gradient(165deg, #0B1420 0%, #12263D 62%, #14304A 100%);
+    radial-gradient(900px 420px at -15% -20%, rgba(91,67,191,.14), transparent 62%),
+    radial-gradient(700px 400px at 115% 108%, rgba(14,116,128,.14), transparent 60%),
+    linear-gradient(165deg, #F4F7FB 0%, #ECF1F8 62%, #E5ECF4 100%);
   position:relative;
 }
 .auth-brand::after{
