@@ -1201,13 +1201,33 @@ export async function runAllocation(): Promise<{
 
 /* --------------------------------------------------------------- booking */
 
-export const slotsOf = (supervisorId: string) =>
-  slots.filter((s) => s.supervisorId === supervisorId).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
-export const openSlotsFor = (supervisorId: string, from: string) =>
-  slotsOf(supervisorId).filter((s) => s.bookedByStudentId === null && s.startsAt > from);
-export const bookingsOf = (studentId: string) =>
-  slots.filter((s) => s.bookedByStudentId === studentId).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
-export const findSlot = (id: string) => slots.find((s) => s.id === id) ?? null;
+function toSlot(row: { id: string; supervisorId: string; startsAt: Date; minutes: number; mode: string; venue: string; bookedByStudentId: string | null; agenda: string | null; status: string | null; meetingLink: string | null }): Slot {
+  return {
+    id: row.id, supervisorId: row.supervisorId, startsAt: row.startsAt.toISOString(), minutes: row.minutes,
+    mode: row.mode as Slot['mode'], venue: row.venue, bookedByStudentId: row.bookedByStudentId,
+    agenda: row.agenda, status: (row.status ?? undefined) as Slot['status'], meetingLink: row.meetingLink,
+  };
+}
+
+export async function slotsOf(supervisorId: string): Promise<Slot[]> {
+  if (!process.env.DATABASE_URL) return [];
+  const rows = await prisma.availabilitySlot.findMany({ where: { supervisorId } });
+  return rows.map(toSlot).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+}
+export async function openSlotsFor(supervisorId: string, from: string): Promise<Slot[]> {
+  const all = await slotsOf(supervisorId);
+  return all.filter((s) => s.bookedByStudentId === null && s.startsAt > from);
+}
+export async function bookingsOf(studentId: string): Promise<Slot[]> {
+  if (!process.env.DATABASE_URL) return [];
+  const rows = await prisma.availabilitySlot.findMany({ where: { bookedByStudentId: studentId } });
+  return rows.map(toSlot).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+}
+export async function findSlot(id: string): Promise<Slot | null> {
+  if (!process.env.DATABASE_URL) return null;
+  const row = await prisma.availabilitySlot.findUnique({ where: { id } });
+  return row ? toSlot(row) : null;
+}
 
 export const MIN_NOTICE_HOURS = 24;
 
@@ -1351,7 +1371,7 @@ export async function bookSlot(
   slotId: string, studentId: string, agenda: string, now: Date,
   mode: 'IN_PERSON' | 'ONLINE' = 'IN_PERSON', meetingLink = '',
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const slot = findSlot(slotId);
+  const slot = await findSlot(slotId);
   if (!slot) return { ok: false, error: 'No such slot.' };
   if (slot.bookedByStudentId !== null) {
     return { ok: false, error: 'Someone booked that slot first. Pick another.' };
@@ -1364,14 +1384,10 @@ export async function bookSlot(
   if (project && project.supervisorId !== slot.supervisorId) {
     return { ok: false, error: 'You can only book with your own supervisor.' };
   }
-  if (bookingsOf(studentId).some((s) => s.startsAt.slice(0, 10) === slot.startsAt.slice(0, 10))) {
+  if ((await bookingsOf(studentId)).some((s) => s.startsAt.slice(0, 10) === slot.startsAt.slice(0, 10))) {
     return { ok: false, error: 'You already have a session booked that day.' };
   }
-  slot.bookedByStudentId = studentId;
-  slot.agenda = agenda.trim() || 'Consultation';
-  slot.mode = mode;
-  slot.meetingLink = meetingLink.trim() || null;
-  slot.status = 'REQUESTED';
+  await prisma.availabilitySlot.update({ where: { id: slotId }, data: { bookedByStudentId: studentId, agenda: agenda.trim() || 'Consultation', mode, meetingLink: meetingLink.trim() || null, status: 'REQUESTED' } });
   const when = whenLabel(slot.startsAt);
   announce(slot.id, slot.startsAt, [
     {
@@ -1392,12 +1408,12 @@ export async function bookSlot(
 }
 
 /** Supervisor confirms a pending booking. */
-export function confirmBooking(slotId: string, supervisorId: string): { ok: true } | { ok: false; error: string } {
-  const slot = findSlot(slotId);
+export async function confirmBooking(slotId: string, supervisorId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const slot = await findSlot(slotId);
   if (!slot) return { ok: false, error: 'No such slot.' };
   if (slot.supervisorId !== supervisorId) return { ok: false, error: 'Not your slot.' };
   if (!slot.bookedByStudentId) return { ok: false, error: 'No booking on this slot.' };
-  slot.status = 'CONFIRMED';
+  await prisma.availabilitySlot.update({ where: { id: slotId }, data: { status: 'CONFIRMED' } });
   const confirmedWhen = whenLabel(slot.startsAt);
   announce(slot.id, slot.startsAt, [
     {
@@ -1418,8 +1434,8 @@ export function confirmBooking(slotId: string, supervisorId: string): { ok: true
 }
 
 /** Supervisor declines a pending booking, returning the slot to open. */
-export function declineBooking(slotId: string, supervisorId: string): { ok: true } | { ok: false; error: string } {
-  const slot = findSlot(slotId);
+export async function declineBooking(slotId: string, supervisorId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const slot = await findSlot(slotId);
   if (!slot) return { ok: false, error: 'No such slot.' };
   if (slot.supervisorId !== supervisorId) return { ok: false, error: 'Not your slot.' };
   if (!slot.bookedByStudentId) return { ok: false, error: 'No booking on this slot.' };
@@ -1442,12 +1458,13 @@ export function declineBooking(slotId: string, supervisorId: string): { ok: true
   slot.agenda = null;
   slot.status = undefined;
   slot.meetingLink = null;
+  await prisma.availabilitySlot.update({ where: { id: slotId }, data: { bookedByStudentId: null, agenda: null, status: null, meetingLink: null } });
   schedulePersist();
   return { ok: true };
 }
 
-export function cancelBooking(slotId: string, studentId: string, now: Date): { ok: true } | { ok: false; error: string } {
-  const slot = findSlot(slotId);
+export async function cancelBooking(slotId: string, studentId: string, now: Date): Promise<{ ok: true } | { ok: false; error: string }> {
+  const slot = await findSlot(slotId);
   if (!slot || slot.bookedByStudentId !== studentId) return { ok: false, error: 'That booking is not yours.' };
   const hours = (new Date(slot.startsAt).getTime() - now.getTime()) / 3_600_000;
   if (hours < MIN_NOTICE_HOURS) {
@@ -1473,6 +1490,7 @@ export function cancelBooking(slotId: string, studentId: string, now: Date): { o
   // Without these a reopened slot kept the last booking's state and link.
   slot.status = undefined;
   slot.meetingLink = null;
+  await prisma.availabilitySlot.update({ where: { id: slotId }, data: { bookedByStudentId: null, agenda: null, status: null, meetingLink: null } });
   schedulePersist();
   return { ok: true };
 }
@@ -2272,6 +2290,14 @@ export async function seedPrismaDomain(): Promise<void> {
       contributionFiled: p.contributionFiled as never, topicId: p.topicId ?? null,
     };
     await prisma.project.upsert({ where: { id: p.id }, create: { id: p.id, ...data }, update: data });
+  }
+  for (const s of slots) {
+    const data = {
+      supervisorId: s.supervisorId, startsAt: new Date(s.startsAt), minutes: s.minutes,
+      mode: s.mode, venue: s.venue, bookedByStudentId: s.bookedByStudentId,
+      agenda: s.agenda, status: s.status ?? null, meetingLink: s.meetingLink ?? null,
+    };
+    await prisma.availabilitySlot.upsert({ where: { id: s.id }, create: { id: s.id, ...data }, update: data });
   }
 }
 

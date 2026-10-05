@@ -355,13 +355,16 @@ enum ConsultationStatus {
 }
 
 model AvailabilitySlot {
-  id           String @id @default(uuid())
+  id           String @id
   supervisorId String
   startsAt     DateTime
-  endsAt       DateTime
+  minutes      Int
   mode         String @default("IN_PERSON")
-  recurrenceRule String?
-  bookedById   String?
+  venue        String @default("")
+  bookedByStudentId String?
+  agenda       String?
+  status       String?
+  meetingLink  String?
 }
 
 model Consultation {

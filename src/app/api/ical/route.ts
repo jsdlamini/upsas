@@ -19,7 +19,7 @@ export async function GET() {
 
   if (student) {
     // Upcoming bookings (open slots the student has claimed).
-    for (const s of bookingsOf(student.id)) {
+    for (const s of await bookingsOf(student.id)) {
       const end = new Date(new Date(s.startsAt).getTime() + s.minutes * 60000).toISOString();
       events.push({
         uid: `slot-${s.id}`,

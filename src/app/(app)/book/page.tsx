@@ -54,7 +54,7 @@ async function cancel(formData: FormData) {
   if (!p) redirect('/login');
   const person = findPerson(p.userId);
   if (!person?.studentId) redirect('/book?e=Not+your+booking.');
-  const r = cancelBooking(String(formData.get('slotId')), person.studentId, new Date());
+  const r = await cancelBooking(String(formData.get('slotId')), person.studentId, new Date());
   redirect(`/book?${r.ok ? `saved=1&toast=${encodeURIComponent('Booking cancelled.')}` : `e=${encodeURIComponent(r.error)}`}`);
 }
 
@@ -73,7 +73,7 @@ async function confirm(formData: FormData) {
   'use server';
   const p = await currentPrincipal();
   if (!p) redirect('/login');
-  const r = confirmBooking(String(formData.get('slotId')), p.userId);
+  const r = await confirmBooking(String(formData.get('slotId')), p.userId);
   redirect(`/book?${r.ok ? `saved=1&toast=${encodeURIComponent('Booking confirmed.')}` : `e=${encodeURIComponent(r.error)}`}`);
 }
 
@@ -81,7 +81,7 @@ async function decline(formData: FormData) {
   'use server';
   const p = await currentPrincipal();
   if (!p) redirect('/login');
-  const r = declineBooking(String(formData.get('slotId')), p.userId);
+  const r = await declineBooking(String(formData.get('slotId')), p.userId);
   redirect(`/book?${r.ok ? `saved=1&toast=${encodeURIComponent('Booking declined.')}` : `e=${encodeURIComponent(r.error)}`}`);
 }
 
@@ -127,8 +127,8 @@ export default async function Book({
       return <><h1 className="page">Book a consultation</h1>
         <p className="lede">You have no supervisor yet. Choose a topic first and wait for allocation.</p></>;
     }
-    const open = openSlotsFor(project.supervisorId, nowIso);
-    const mine = bookingsOf(person.studentId).filter((s) => s.startsAt > nowIso);
+    const open = await openSlotsFor(project.supervisorId, nowIso);
+    const mine = (await bookingsOf(person.studentId)).filter((s) => s.startsAt > nowIso);
     const held = consultationsOf(person.studentId).filter((c) => c.status === 'COMPLETED').length;
     const myRequests = myMeetingRequests(person.studentId);
     const nextOpen = open[0];
@@ -265,7 +265,7 @@ export default async function Book({
   }
 
   // Supervisor view: publish availability and see who has booked.
-  const mine = slotsOf(principal.userId);
+  const mine = await slotsOf(principal.userId);
   const upcoming = mine.filter((s) => s.startsAt > nowIso);
   const requests = meetingRequestsFor(principal.userId);
   // Every booked slot is listed, and so is the one a notification points at;

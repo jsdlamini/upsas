@@ -1,4 +1,4 @@
-import { test, before } from 'node:test';
+import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { renderNoticeEmail } from '../src/lib/meetings/email';
 import { makeNotice } from '../src/lib/meetings/notices';
@@ -8,7 +8,7 @@ import {
   registerStudent, findPersonByUsername, seedPrismaDomain,
 } from '../src/lib/data/store';
 
-before(async () => { await seedPrismaDomain(); });
+beforeEach(async () => { await seedPrismaDomain(); });
 
 const NOW = new Date('2026-09-21T08:00:00Z');
 
@@ -107,7 +107,7 @@ test('booking and confirming email both people, each replying to the other', asy
   try {
     await withEnv({ RESEND_API_KEY: 're_test', EMAIL_REDIRECT_TO: undefined, APP_URL: 'https://upsas.example/' }, async () => {
       const early = new Date('2026-01-01T00:00:00Z');
-      const slot = slotsOf(supervisorId).find((s) => s.bookedByStudentId === null)!;
+      const slot = (await slotsOf(supervisorId)).find((s) => s.bookedByStudentId === null)!;
       assert.ok((await bookSlot(slot.id, studentId, 'Maize dataset', early)).ok);
       await settle();
       assert.ok((await confirmBooking(slot.id, supervisorId)).ok);
@@ -136,7 +136,7 @@ test('someone with no address on file is skipped rather than failing the booking
   const cap = captureResend();
   try {
     await withEnv({ RESEND_API_KEY: 're_test' }, async () => {
-      const slot = slotsOf(supervisorId).find((s) => s.bookedByStudentId === null)!;
+      const slot = (await slotsOf(supervisorId)).find((s) => s.bookedByStudentId === null)!;
       assert.ok((await bookSlot(slot.id, studentId, 'Constraints', new Date('2026-01-01T00:00:00Z'))).ok);
       await settle();
     });

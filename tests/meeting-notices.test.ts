@@ -1,15 +1,15 @@
-import { test, before } from 'node:test';
+import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   makeNotice, isVisible, visibleFor, supersede, dismiss, dismissAll, toneOf,
   type MeetingNotice,
 } from '../src/lib/meetings/notices';
 import {
-  slotsOf, bookSlot, confirmBooking, declineBooking, cancelBooking,
+  slotsOf, bookSlot, confirmBooking, declineBooking, cancelBooking, findSlot,
   noticesFor, dismissNotice, projectOf, seedPrismaDomain,
 } from '../src/lib/data/store';
 
-before(async () => { await seedPrismaDomain(); });
+beforeEach(async () => { await seedPrismaDomain(); });
 
 const NOW = new Date('2026-09-21T08:00:00Z');
 const TOMORROW = '2026-09-22T12:00:00.000Z';
@@ -88,7 +88,7 @@ test('booking, confirming and cancelling each tell both people', async () => {
   const supervisorId = (await projectOf(studentId))!.supervisorId;
   const studentUser = 'u-s4';
   const early = new Date('2026-01-01T00:00:00Z');
-  const slot = slotsOf(supervisorId).find((s) => s.bookedByStudentId === null)!;
+  const slot = (await slotsOf(supervisorId)).find((s) => s.bookedByStudentId === null)!;
   assert.ok(slot, 'seed provides an open slot');
 
   const booked = await bookSlot(slot.id, studentId, 'Chapter 3 draft', early);
@@ -110,13 +110,14 @@ test('booking, confirming and cancelling each tell both people', async () => {
     ['CONFIRMED'],
   );
 
-  assert.ok(cancelBooking(slot.id, studentId, early).ok);
+  assert.ok((await cancelBooking(slot.id, studentId, early)).ok);
   assert.deepEqual(
     noticesFor(supervisorId, early).filter((n) => n.meetingRef === slot.id).map((n) => n.kind),
     ['CANCELLED'], 'no confirmation left standing after a cancellation',
   );
-  assert.equal(slot.status, undefined, 'a reopened slot no longer carries the old state');
-  assert.equal(slot.meetingLink, null);
+  const reopened = await findSlot(slot.id);
+  assert.equal(reopened?.status, undefined, 'a reopened slot no longer carries the old state');
+  assert.equal(reopened?.meetingLink, null);
 
   const mine = noticesFor(studentUser, early).find((n) => n.meetingRef === slot.id)!;
   assert.equal(dismissNotice(mine.id, supervisorId), false, 'not theirs to dismiss');
@@ -127,9 +128,9 @@ test('a declined booking tells the student to book again', async () => {
   const studentId = 's3';
   const supervisorId = (await projectOf(studentId))!.supervisorId;
   const early = new Date('2026-01-01T00:00:00Z');
-  const slot = slotsOf(supervisorId).find((s) => s.bookedByStudentId === null)!;
+  const slot = (await slotsOf(supervisorId)).find((s) => s.bookedByStudentId === null)!;
   assert.ok((await bookSlot(slot.id, studentId, 'Timetable constraints', early)).ok);
-  assert.ok(declineBooking(slot.id, supervisorId).ok);
+  assert.ok((await declineBooking(slot.id, supervisorId)).ok);
 
   const told = noticesFor('u-s3', early).find((n) => n.meetingRef === slot.id);
   assert.equal(told?.kind, 'DECLINED');
@@ -145,7 +146,7 @@ test('each party is linked to the row where they can act on the event', async ()
   const studentId = 's5';
   const supervisorId = (await projectOf(studentId))!.supervisorId;
   const early = new Date('2026-01-01T00:00:00Z');
-  const slot = slotsOf(supervisorId).find((s) => s.bookedByStudentId === null)!;
+  const slot = (await slotsOf(supervisorId)).find((s) => s.bookedByStudentId === null)!;
   assert.ok((await bookSlot(slot.id, studentId, 'Results chapter', early)).ok);
 
   const forSupervisor = noticesFor(supervisorId, early).find((n) => n.meetingRef === slot.id)!;
@@ -154,7 +155,7 @@ test('each party is linked to the row where they can act on the event', async ()
                'the supervisor lands on the row with Confirm and Decline');
   assert.equal(hrefOf(forStudent), `/book?focus=${slot.id}#booking-${slot.id}`);
 
-  assert.ok(declineBooking(slot.id, supervisorId).ok);
+  assert.ok((await declineBooking(slot.id, supervisorId)).ok);
   const declined = noticesFor('u-s5', early).find((n) => n.meetingRef === slot.id)!;
   assert.equal(hrefOf(declined), '/book#open-slots', 'a declined student is sent to pick another slot');
 });
@@ -163,7 +164,7 @@ test('opening a notice marks it read, moves it to Earlier, and returns its link'
   const studentId = 's6';
   const supervisorId = (await projectOf(studentId))!.supervisorId;
   const early = new Date('2026-01-01T00:00:00Z');
-  const slot = slotsOf(supervisorId).find((s) => s.bookedByStudentId === null)!;
+  const slot = (await slotsOf(supervisorId)).find((s) => s.bookedByStudentId === null)!;
   assert.ok((await bookSlot(slot.id, studentId, 'Evaluation plan', early)).ok);
 
   const notice = noticesFor(supervisorId, early).find((n) => n.meetingRef === slot.id)!;
