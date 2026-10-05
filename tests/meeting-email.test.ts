@@ -96,7 +96,7 @@ test('without a Resend key nothing leaves the server', async () => {
 
 test('booking and confirming email both people, each replying to the other', async () => {
   const studentId = 's4';
-  const supervisorId = projectOf(studentId)!.supervisorId;
+  const supervisorId = (await projectOf(studentId))!.supervisorId;
   assert.ok(setContactEmail(supervisorId, 'Supervisor@Example.org').ok);
   assert.ok(setContactEmail(`u-${studentId}`, 'lindiwe@example.org').ok);
   assert.equal(emailOf(supervisorId), 'supervisor@example.org', 'stored lower-cased');
@@ -106,9 +106,9 @@ test('booking and confirming email both people, each replying to the other', asy
     await withEnv({ RESEND_API_KEY: 're_test', EMAIL_REDIRECT_TO: undefined, APP_URL: 'https://upsas.example/' }, async () => {
       const early = new Date('2026-01-01T00:00:00Z');
       const slot = slotsOf(supervisorId).find((s) => s.bookedByStudentId === null)!;
-      assert.ok(bookSlot(slot.id, studentId, 'Maize dataset', early).ok);
+      assert.ok((await bookSlot(slot.id, studentId, 'Maize dataset', early)).ok);
       await settle();
-      assert.ok(confirmBooking(slot.id, supervisorId).ok);
+      assert.ok((await confirmBooking(slot.id, supervisorId)).ok);
       await settle();
     });
   } finally { cap.restore(); }
@@ -128,14 +128,14 @@ test('booking and confirming email both people, each replying to the other', asy
 
 test('someone with no address on file is skipped rather than failing the booking', async () => {
   const studentId = 's3';
-  const supervisorId = projectOf(studentId)!.supervisorId;
+  const supervisorId = (await projectOf(studentId))!.supervisorId;
   setContactEmail(supervisorId, '');
   setContactEmail(`u-${studentId}`, '');
   const cap = captureResend();
   try {
     await withEnv({ RESEND_API_KEY: 're_test' }, async () => {
       const slot = slotsOf(supervisorId).find((s) => s.bookedByStudentId === null)!;
-      assert.ok(bookSlot(slot.id, studentId, 'Constraints', new Date('2026-01-01T00:00:00Z')).ok);
+      assert.ok((await bookSlot(slot.id, studentId, 'Constraints', new Date('2026-01-01T00:00:00Z'))).ok);
       await settle();
     });
   } finally { cap.restore(); }

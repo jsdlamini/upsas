@@ -259,8 +259,14 @@ export const STUDENTS: Student[] = (globalForStudents.__upsasStudents ??= [
 ]);
 
 /** Students with no project yet — they rank topics rather than being assessed. */
-export const unallocatedStudents = () => STUDENTS.filter((s) => !findProject(s.projectId));
-export const allocatedStudents = () => STUDENTS.filter((s) => findProject(s.projectId));
+export async function unallocatedStudents(): Promise<Student[]> {
+  const results = await Promise.all(STUDENTS.map(async (s) => ({ s, p: await findProject(s.projectId) })));
+  return results.filter(({ p }) => !p).map(({ s }) => s);
+}
+export async function allocatedStudents(): Promise<Student[]> {
+  const results = await Promise.all(STUDENTS.map(async (s) => ({ s, p: await findProject(s.projectId) })));
+  return results.filter(({ p }) => p).map(({ s }) => s);
+}
 
 const globalForProjects = globalThis as unknown as { __upsasProjects?: Project[] };
 
@@ -763,13 +769,27 @@ export const findPersonByIdentifier = (identifier: string) => {
 };
 export const findStudent = (id: string) => STUDENTS.find((s) => s.id === id) ?? null;
 export const findStudentByNumber = (n: string) => STUDENTS.find((s) => s.studentNumber === n) ?? null;
-export const findProject = (id: string) => PROJECTS.find((p) => p.id === id) ?? null;
-export const projectOf = (studentId: string) => {
+function toProject(row: { id: string; title: string; supervisorId: string | null; memberIds: string[]; state: string; ethicsStatus: string; contributionFiled: unknown; topicId: string | null }): Project {
+  return {
+    id: row.id, title: row.title, supervisorId: row.supervisorId ?? '',
+    memberIds: row.memberIds, state: row.state, ethicsStatus: row.ethicsStatus as Project['ethicsStatus'],
+    contributionFiled: (row.contributionFiled as Record<string, boolean>) ?? {},
+    ...(row.topicId ? { topicId: row.topicId } : {}),
+  };
+}
+export async function findProject(id: string): Promise<Project | null> {
+  if (!process.env.DATABASE_URL) return null;
+  const row = await prisma.project.findUnique({ where: { id } });
+  return row ? toProject(row) : null;
+}
+export async function projectOf(studentId: string): Promise<Project | null> {
   const st = findStudent(studentId);
   return st ? findProject(st.projectId) : null;
-};
-export const superviseesOf = (supervisorId: string): Student[] =>
-  STUDENTS.filter((s) => findProject(s.projectId)?.supervisorId === supervisorId);
+}
+export async function superviseesOf(supervisorId: string): Promise<Student[]> {
+  const results = await Promise.all(STUDENTS.map(async (s) => ({ s, p: await findProject(s.projectId) })));
+  return results.filter(({ p }) => p?.supervisorId === supervisorId).map(({ s }) => s);
+}
 
 export const consultationsOf = (studentId: string): Consultation[] =>
   consultations.filter((c) => c.studentId === studentId);
@@ -1020,9 +1040,11 @@ export async function preferencesForTopic(topicId: string): Promise<Preference[]
 }
 
 /** Supervision capacity counts students across all of a supervisor's topics. */
-export const loadOf = (supervisorId: string) =>
-  PROJECTS.filter((p) => p.supervisorId === supervisorId)
-    .reduce((a, p) => a + p.memberIds.length, 0);
+export async function loadOf(supervisorId: string): Promise<number> {
+  if (!process.env.DATABASE_URL) return 0;
+  const rows = await prisma.project.findMany({ where: { supervisorId } });
+  return rows.reduce((a, p) => a + p.memberIds.length, 0);
+}
 
 export const CAPACITY = 8;
 
@@ -1083,7 +1105,7 @@ export async function acceptProposal(topicId: string, supervisorId: string): Pro
   const t = await findTopic(topicId);
   if (!t || !t.studentProposed) return { ok: false, error: 'No such proposal.' };
   if (t.supervisorId !== supervisorId) return { ok: false, error: 'That proposal was not sent to you.' };
-  if (loadOf(supervisorId) >= CAPACITY) return { ok: false, error: 'You are at capacity.' };
+  if ((await loadOf(supervisorId)) >= CAPACITY) return { ok: false, error: 'You are at capacity.' };
   await prisma.topic.update({ where: { id: topicId }, data: { acceptedAt: new Date(), published: true } });
   return { ok: true };
 }
@@ -1113,11 +1135,14 @@ export async function runAllocation(): Promise<{
   const assigned: Array<{ studentId: string; studentNumber: string; topicId: string; title: string; supervisorId: string }> = [];
   const unmatched: Array<{ studentId: string; studentNumber: string }> = [];
 
-  const takenOnTopic = (topicId: string) =>
-    PROJECTS.filter((p) => p.topicId === topicId).reduce((a, p) => a + p.memberIds.length, 0);
+  const takenOnTopic = async (topicId: string) => {
+    if (!process.env.DATABASE_URL) return 0;
+    const rows = await prisma.project.findMany({ where: { topicId } });
+    return rows.reduce((a, p) => a + p.memberIds.length, 0);
+  };
 
   // Deterministic order: student number ascending.
-  const queue = unallocatedStudents().slice().sort((a, b) => a.studentNumber.localeCompare(b.studentNumber));
+  const queue = (await unallocatedStudents()).slice().sort((a, b) => a.studentNumber.localeCompare(b.studentNumber));
 
   for (const student of queue) {
     const prefs = await preferencesOf(student.id);
@@ -1125,19 +1150,21 @@ export async function runAllocation(): Promise<{
     for (const pref of prefs) {
       const topic = await findTopic(pref.topicId);
       if (!topic || !topic.published) continue;
-      if (loadOf(topic.supervisorId) >= CAPACITY) continue;
-      if (takenOnTopic(topic.id) >= topic.capacity) continue;
+      if ((await loadOf(topic.supervisorId)) >= CAPACITY) continue;
+      if ((await takenOnTopic(topic.id)) >= topic.capacity) continue;
 
       const projectId = `p-alloc-${student.id}-${Date.now().toString(36)}`;
-      PROJECTS.push({
-        id: projectId,
-        title: topic.title,
-        supervisorId: topic.supervisorId,
-        memberIds: [student.id],
-        state: 'TOPIC_SELECTED',
-        ethicsStatus: 'NOT_REQUIRED',
-        contributionFiled: { [student.id]: false },
-        topicId: topic.id,
+      await prisma.project.create({
+        data: {
+          id: projectId,
+          title: topic.title,
+          supervisorId: topic.supervisorId,
+          memberIds: [student.id],
+          state: 'TOPIC_SELECTED',
+          ethicsStatus: 'NOT_REQUIRED',
+          contributionFiled: { [student.id]: false } as never,
+          topicId: topic.id,
+        },
       });
       student.projectId = projectId;
       assigned.push({
@@ -1307,10 +1334,10 @@ export function dismissAllNotices(userId: string): number {
   return count;
 }
 
-export function bookSlot(
+export async function bookSlot(
   slotId: string, studentId: string, agenda: string, now: Date,
   mode: 'IN_PERSON' | 'ONLINE' = 'IN_PERSON', meetingLink = '',
-): { ok: true } | { ok: false; error: string } {
+): Promise<{ ok: true } | { ok: false; error: string }> {
   const slot = findSlot(slotId);
   if (!slot) return { ok: false, error: 'No such slot.' };
   if (slot.bookedByStudentId !== null) {
@@ -1320,7 +1347,7 @@ export function bookSlot(
   if (hours < MIN_NOTICE_HOURS) {
     return { ok: false, error: `Slots need ${MIN_NOTICE_HOURS} hours' notice. Ask your supervisor directly for anything sooner.` };
   }
-  const project = projectOf(studentId);
+  const project = await projectOf(studentId);
   if (project && project.supervisorId !== slot.supervisorId) {
     return { ok: false, error: 'You can only book with your own supervisor.' };
   }
@@ -1518,11 +1545,12 @@ export function toConsultationRecords(studentId: string): ConsultationRecord[] {
   }));
 }
 
-export function toAssessorEntries(studentId: string, component: 'p1' | 'p2'): AssessorEntry[] {
+export async function toAssessorEntries(studentId: string, component: 'p1' | 'p2'): Promise<AssessorEntry[]> {
+  const project = await projectOf(studentId);
   return sheetsFor(studentId, component).map((s) => ({
     assessorId: s.assessorId, rubricVersionId: s.rubricVersionId, rubricMax: s.rubricMax,
     criterionScores: s.marks, submitted: s.submitted,
-    isSupervisor: projectOf(studentId)?.supervisorId === s.assessorId,
+    isSupervisor: project?.supervisorId === s.assessorId,
   }));
 }
 

@@ -88,13 +88,16 @@ export default async function Topics({
   const isCoordinator = principal.permissions.includes('topic.allocate');
   const topics = (await allTopics()).filter((t) => !t.studentProposed || t.published);
   const myPrefs = person?.studentId ? await preferencesOf(person.studentId) : [];
-  const unallocated = isCoordinator ? unallocatedStudents() : [];
+  const unallocated = isCoordinator ? (await unallocatedStudents()) : [];
   const proposals = isSupervisor
     ? (await topicsBySupervisor(principal.userId)).filter((t) => t.studentProposed && !t.acceptedAt)
     : [];
   const interestCounts = new Map<string, number>();
   for (const t of topics) interestCounts.set(t.id, (await preferencesForTopic(t.id)).length);
   const prefTitles = await Promise.all(myPrefs.map(async (p) => (await findTopic(p.topicId))?.title ?? '—'));
+  const takenByTopic = new Map<string, number>();
+  for (const t of topics) takenByTopic.set(t.id, await loadOf(t.supervisorId));
+  const myProject = person?.studentId ? await projectOf(person.studentId) : null;
 
   return (
     <>
@@ -128,7 +131,7 @@ export default async function Topics({
       {isSupervisor && (
         <>
           <div className="box">
-            <strong>Your load: {loadOf(principal.userId)} of {CAPACITY} places taken</strong>
+            <strong>Your load: {await loadOf(principal.userId)} of {CAPACITY} places taken</strong>
             <span className="muted"> — counted across every topic you have published.</span>
           </div>
 
@@ -198,7 +201,7 @@ export default async function Topics({
           <tbody>
             {topics.map((t) => {
               const sup = findPerson(t.supervisorId);
-              const taken = loadOf(t.supervisorId);
+              const taken = takenByTopic.get(t.id) ?? 0;
               const full = taken >= CAPACITY;
               return (
                 <tr key={t.id}>
@@ -225,12 +228,12 @@ export default async function Topics({
       {isStudent && (
         <>
           <h2 style={{ fontSize: 15 }}>My three choices</h2>
-          {projectOf(person!.studentId!) ? (
+          {await projectOf(person!.studentId!) ? (
             <div className="box">
               <strong>You are already allocated.</strong>
               <p className="muted" style={{ margin: '6px 0 0' }}>
-                {projectOf(person!.studentId!)?.title} with{' '}
-                {findPerson(projectOf(person!.studentId!)!.supervisorId)?.fullName}. Changing topic or
+                {myProject?.title} with{' '}
+                {findPerson(myProject?.supervisorId ?? '')?.fullName}. Changing topic or
                 supervisor after allocation needs both their approval and the coordinator&apos;s.
               </p>
             </div>

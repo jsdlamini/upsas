@@ -16,7 +16,7 @@ export async function GET(
   if (!principal) redirect('/login');
 
   const { projectId } = await params;
-  const project = findProject(projectId);
+  const project = await findProject(projectId);
   if (!project) return Response.json({ error: 'No such project.' }, { status: 404 });
 
   const supervisor = findPerson(project.supervisorId);

@@ -41,7 +41,7 @@ async function book(formData: FormData) {
   if (!d.allow) redirect(`/book?e=${encodeURIComponent(d.reason)}`);
   const person = findPerson(p.userId);
   if (!person?.studentId) redirect('/book?e=Only+students+book+from+here.');
-  const r = bookSlot(String(formData.get('slotId')), person.studentId,
+  const r = await bookSlot(String(formData.get('slotId')), person.studentId,
                      String(formData.get('agenda') ?? ''), new Date(),
                      String(formData.get('mode')) as 'IN_PERSON' | 'ONLINE',
                      String(formData.get('meetingLink') ?? ''));
@@ -91,7 +91,7 @@ async function requestMeetingAction(formData: FormData) {
   if (!p) redirect('/login');
   const person = findPerson(p.userId);
   if (!person?.studentId) redirect('/book?e=Only+students+request+from+here.');
-  const project = projectOf(person.studentId);
+  const project = await projectOf(person.studentId);
   if (!project) redirect('/book?e=You+have+no+supervisor+yet.');
   const r = requestMeeting({
     studentId: person.studentId,
@@ -122,7 +122,7 @@ export default async function Book({
   const nowIso = new Date().toISOString();
 
   if (person?.studentId) {
-    const project = projectOf(person.studentId);
+    const project = await projectOf(person.studentId);
     if (!project) {
       return <><h1 className="page">Book a consultation</h1>
         <p className="lede">You have no supervisor yet. Choose a topic first and wait for allocation.</p></>;

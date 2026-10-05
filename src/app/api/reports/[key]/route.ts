@@ -24,22 +24,22 @@ export async function GET(_req: Request, { params }: { params: Promise<{ key: st
 
   // Scope is enforced here, not in the UI: a supervisor gets their own students.
   const isCoordinator = principal.roles.includes('COORDINATOR');
-  const students = isCoordinator ? allocatedStudents() : superviseesOf(principal.userId);
+  const students = isCoordinator ? await allocatedStudents() : await superviseesOf(principal.userId);
   const now = new Date();
   let content: string;
   let filename: string;
   let includesUnpublished = false;
 
   if (key === 'mark-schedule') {
-    const rows: ScheduleRow[] = students.map((s) => {
-      const project = projectOf(s.id)!;
+    const rows: ScheduleRow[] = await Promise.all(students.map(async (s) => {
+      const project = (await projectOf(s.id))!;
       const doc = docMarkOf(s.id);
       const snapshot = computeFinalMark({
         studentId: s.id, cycleId: '2025/2026',
         consultations: toConsultationRecords(s.id),
         presentations: [
-          { componentKey: 'p1', entries: toAssessorEntries(s.id, 'p1') },
-          { componentKey: 'p2', entries: toAssessorEntries(s.id, 'p2') },
+          { componentKey: 'p1', entries: await toAssessorEntries(s.id, 'p1') },
+          { componentKey: 'p2', entries: await toAssessorEntries(s.id, 'p2') },
         ],
         ...(doc ? { documentation: {
           rawTotal: doc.rawTotal, rubricMax: doc.rubricMax, rubricVersionId: 'rv-doc-1',
@@ -55,12 +55,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ key: st
         projectTitle: project.title, groupSize: project.memberIds.length,
         snapshot, published: !snapshot.blocked,
       };
-    });
+    }));
     content = buildMarkSchedule(rows);
     filename = 'mark-schedule-2025-2026.csv';
   } else if (key === 'consultation-register') {
-    const rows: RegisterRow[] = students.flatMap((s) => {
-      const project = projectOf(s.id)!;
+    const rows: RegisterRow[] = (await Promise.all(students.map(async (s) => {
+      const project = (await projectOf(s.id))!;
       return consultationsOf(s.id).map<RegisterRow>((c) => ({
         studentNumber: s.studentNumber, studentName: `${s.surname}, ${s.otherNames}`,
         supervisor: findPerson(project.supervisorId)?.fullName ?? '',
@@ -72,7 +72,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ key: st
         counted: c.status === 'COMPLETED' && c.supervisorAttested && c.studentAttested && c.rawTotal !== null,
         actionItems: 0,
       }));
-    });
+    }))).flat();
     content = buildConsultationRegister(rows);
     filename = 'consultation-register.csv';
   } else {

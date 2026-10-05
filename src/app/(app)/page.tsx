@@ -29,14 +29,14 @@ async function declineStaff(formData: FormData) {
   redirect('/?declined=1');
 }
 
-function snapshotFor(studentId: string) {
+async function snapshotFor(studentId: string) {
   const doc = docMarkOf(studentId);
   return computeFinalMark({
     studentId, cycleId: '2025/2026',
     consultations: toConsultationRecords(studentId),
     presentations: [
-      { componentKey: 'p1', entries: toAssessorEntries(studentId, 'p1') },
-      { componentKey: 'p2', entries: toAssessorEntries(studentId, 'p2') },
+      { componentKey: 'p1', entries: await toAssessorEntries(studentId, 'p1') },
+      { componentKey: 'p2', entries: await toAssessorEntries(studentId, 'p2') },
     ],
     ...(doc ? { documentation: {
       rawTotal: doc.rawTotal, rubricMax: doc.rubricMax, rubricVersionId: 'rv-doc-1',
@@ -55,7 +55,7 @@ export default async function Dashboard({
 
   if (principal.roles.includes('STUDENT') && !principal.roles.includes('SUPERVISOR')) redirect('/me');
   const isCoordinator = principal.roles.includes('COORDINATOR');
-  const students = isCoordinator ? allocatedStudents() : superviseesOf(principal.userId);
+  const students = isCoordinator ? await allocatedStudents() : await superviseesOf(principal.userId);
   const requests = isCoordinator ? pendingStaffRequests() : [];
 
   // Group by project so a pair appears as one row with two members.
@@ -65,6 +65,13 @@ export default async function Dashboard({
     list.push(s);
     byProject.set(s.projectId, list);
   }
+
+  const rows = (await Promise.all([...byProject.entries()].map(async ([, members]) => {
+    const project = await projectOf(members[0]!.id);
+    return Promise.all(members.map(async (s, i) => ({
+      s, i, members, project, snap: await snapshotFor(s.id),
+    })));
+  }))).flat();
 
   return (
     <>
@@ -134,15 +141,12 @@ export default async function Dashboard({
               </tr>
             </thead>
             <tbody>
-              {[...byProject.entries()].map(([projectId, members]) => {
-                const project = projectOf(members[0]!.id);
-                return members.map((s, i) => {
-                  const snap = snapshotFor(s.id);
-                  const sem1 = consultationsOf(s.id).filter((c) => c.periodId === 'SEM1' && c.status === 'COMPLETED').length;
-                  const sem2 = consultationsOf(s.id).filter((c) => c.periodId === 'SEM2' && c.status === 'COMPLETED').length;
-                  const short = sem1 < 4 || sem2 < 4;
-                  const contribution = project?.contributionFiled[s.id] ?? true;
-                  return (
+              {rows.map(({ s, i, members, project, snap }) => {
+                const sem1 = consultationsOf(s.id).filter((c) => c.periodId === 'SEM1' && c.status === 'COMPLETED').length;
+                const sem2 = consultationsOf(s.id).filter((c) => c.periodId === 'SEM2' && c.status === 'COMPLETED').length;
+                const short = sem1 < 4 || sem2 < 4;
+                const contribution = project?.contributionFiled[s.id] ?? true;
+                return (
                     <tr key={s.id}>
                       <td>
                         <strong>{s.surname}, {s.otherNames}</strong>
@@ -180,7 +184,6 @@ export default async function Dashboard({
                       </td>
                     </tr>
                   );
-                });
               })}
             </tbody>
           </table>

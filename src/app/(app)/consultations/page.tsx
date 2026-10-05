@@ -18,7 +18,7 @@ async function grade(formData: FormData) {
   if (!principal) redirect('/login');
   const id = String(formData.get('id'));
   const studentId = String(formData.get('studentId'));
-  const supervisorId = projectOf(studentId)?.supervisorId;
+  const supervisorId = (await projectOf(studentId))?.supervisorId;
   const decision = can(principal, 'consultation.grade', supervisorId ? { supervisorId } : {});
   if (!decision.allow) redirect(`/consultations?e=${encodeURIComponent(decision.reason)}`);
 
@@ -43,7 +43,7 @@ async function addSession(formData: FormData) {
   const principal = await currentPrincipal();
   if (!principal) redirect('/login');
   const studentId = String(formData.get('studentId'));
-  const supervisorId = projectOf(studentId)?.supervisorId;
+  const supervisorId = (await projectOf(studentId))?.supervisorId;
   const decision = can(principal, 'consultation.grade', supervisorId ? { supervisorId } : {});
   if (!decision.allow) redirect(`/consultations?e=${encodeURIComponent(decision.reason)}`);
   addConsultation(studentId, String(formData.get('periodId')) as 'SEM1' | 'SEM2',
@@ -58,7 +58,7 @@ export default async function Consultations({
   if (!principal) redirect('/login');
   const { saved, e, student } = await searchParams;
 
-  const mine = principal.roles.includes('COORDINATOR') ? STUDENTS : superviseesOf(principal.userId);
+  const mine = principal.roles.includes('COORDINATOR') ? STUDENTS : await superviseesOf(principal.userId);
   const selected = (student ? findStudent(student) : null) ?? mine[0];
   if (!selected) return <><h1 className="page">Consultations</h1><p className="lede">No supervisees.</p></>;
 
@@ -86,7 +86,7 @@ export default async function Consultations({
       </p>
 
       <div className="box">
-        <strong>{selected.surname}, {selected.otherNames}</strong> — {projectOf(selected.id)?.title}
+        <strong>{selected.surname}, {selected.otherNames}</strong> — {(await projectOf(selected.id))?.title}
         <div className="table-wrap">
           <table className="list" style={{ marginTop: 10 }}>
             <thead>

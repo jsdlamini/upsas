@@ -20,7 +20,7 @@ export async function GET() {
     : findStudentByNumber(person?.username ?? '');
   if (!student) return jsonError('Not linked to a student record.', 403);
 
-  const project = projectOf(student.id);
+  const project = await projectOf(student.id);
   if (!project) return jsonError('No project yet.', 404);
 
   return Response.json({ deliverables: deliverablesFor(project.id) });
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     : findStudentByNumber(person?.username ?? '');
   if (!student) return jsonError('Not linked to a student record.', 403);
 
-  const project = projectOf(student.id);
+  const project = await projectOf(student.id);
   if (!project) return jsonError('No project yet.', 404);
 
   const form = await request.formData().catch(() => null);

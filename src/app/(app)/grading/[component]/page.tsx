@@ -123,6 +123,15 @@ export default async function Grading({
   // a column through the session bands without losing its place.
   let rowIndex = -1;
 
+  const sessionData = await Promise.all(sessions.map(async (slot) => {
+    const project = slot.joint ? await projectOf(slot.studentIds[0]!) : null;
+    const titles = slot.joint ? [] : await Promise.all(slot.studentIds.map(async (id) => (await projectOf(id))?.title ?? '—'));
+    const students = await Promise.all(slot.studentIds.map(async (id) => ({
+      id, student: findStudent(id)!, panel: aggregatePanel(await toAssessorEntries(id, component), PROFILE_A.panel),
+    })));
+    return { slot, project, titles, students };
+  }));
+
   return (
     <>
       <h1 className="page">{rubric.title}</h1>
@@ -200,11 +209,7 @@ export default async function Grading({
               </tr>
             </thead>
             <tbody>
-              {sessions.map((slot) => {
-                const project = projectOf(slot.studentIds[0]!);
-                return (
-                  /* A bare fragment cannot carry a key: React warned on every
-                     render and reconciled these rows by position. */
+              {sessionData.map(({ slot, project, titles, students }) => (
                   <Fragment key={`slot-${slot.serial}`}>
                     <tr className={slot.joint ? 'band' : 'band solo'}>
                       <td className="sess" rowSpan={slot.studentIds.length + 1}>{slot.serial}
@@ -214,14 +219,12 @@ export default async function Grading({
                           ? <><strong>Joint project, {slot.studentIds.length} members — grade each member separately.</strong>{' '}
                               <em>{project?.title}</em></>
                           : <><strong>Two individual projects sharing this slot.</strong>{' '}
-                              {slot.studentIds.map((id) => projectOf(id)?.title).join(' · ')}</>}
+                              {titles.join(' · ')}</>}
                       </td>
                     </tr>
-                    {slot.studentIds.map((id) => {
-                      const student = findStudent(id)!;
+                    {students.map(({ id, student, panel }) => {
                       const sheet = sheetOf(principal.userId, id, component);
                       const total = rawTotalOf(sheet);
-                      const panel = aggregatePanel(toAssessorEntries(id, component), PROFILE_A.panel);
                       const who = `${student.surname}, ${student.otherNames}`;
                       rowIndex += 1;
                       const row = rowIndex;
@@ -258,9 +261,8 @@ export default async function Grading({
                         </tr>
                       );
                     })}
-                  </Fragment>
-                );
-              })}
+                </Fragment>
+              ))}
             </tbody>
           </table>
         </div>

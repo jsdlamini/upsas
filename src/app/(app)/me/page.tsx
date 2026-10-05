@@ -45,14 +45,14 @@ async function updateCourse(formData: FormData) {
   redirect(`/me?toast=${encodeURIComponent(result.ok ? 'Course code updated.' : result.error)}`);
 }
 
-function snapshotFor(studentId: string) {
+async function snapshotFor(studentId: string) {
   const doc = docMarkOf(studentId);
   return computeFinalMark({
     studentId, cycleId: '2025/2026',
     consultations: toConsultationRecords(studentId),
     presentations: [
-      { componentKey: 'p1', entries: toAssessorEntries(studentId, 'p1') },
-      { componentKey: 'p2', entries: toAssessorEntries(studentId, 'p2') },
+      { componentKey: 'p1', entries: await toAssessorEntries(studentId, 'p1') },
+      { componentKey: 'p2', entries: await toAssessorEntries(studentId, 'p2') },
     ],
     ...(doc ? { documentation: {
       rawTotal: doc.rawTotal, rubricMax: doc.rubricMax, rubricVersionId: 'rv-doc-1',
@@ -78,11 +78,11 @@ export default async function MyProject({
       <p className="lede">This page is for students. Your account is not linked to a student record.</p></>;
   }
 
-  const project = projectOf(student.id);
+  const project = await projectOf(student.id);
   const rows = consultationsOf(student.id);
   const outcome = evaluateConsultations(toConsultationRecords(student.id), PROFILE_A.consultation);
   const published = publicationOf(student.id);
-  const snapshot = published ? snapshotFor(student.id) : null;
+  const snapshot = published ? (await snapshotFor(student.id)) : null;
   const p1pct = snapshot?.components.find((c) => c.key === 'p1')?.percentage ?? null;
   const p2pct = snapshot?.components.find((c) => c.key === 'p2')?.percentage ?? null;
   const awaiting = rows.filter((c) => c.status === 'COMPLETED' && c.supervisorAttested && !c.studentAttested);

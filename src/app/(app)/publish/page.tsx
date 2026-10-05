@@ -11,7 +11,7 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-function snapshotFor(studentId: string, computedBy: string) {
+async function snapshotFor(studentId: string, computedBy: string) {
   const doc = docMarkOf(studentId);
   const mod = (c: 'p1' | 'p2') => {
     const m = moderationOf(studentId, c);
@@ -22,8 +22,8 @@ function snapshotFor(studentId: string, computedBy: string) {
     studentId, cycleId: '2025/2026',
     consultations: toConsultationRecords(studentId),
     presentations: [
-      { componentKey: 'p1', entries: toAssessorEntries(studentId, 'p1'), ...mod('p1') },
-      { componentKey: 'p2', entries: toAssessorEntries(studentId, 'p2'), ...mod('p2') },
+      { componentKey: 'p1', entries: await toAssessorEntries(studentId, 'p1'), ...mod('p1') },
+      { componentKey: 'p2', entries: await toAssessorEntries(studentId, 'p2'), ...mod('p2') },
     ],
     ...(doc ? { documentation: {
       rawTotal: doc.rawTotal, rubricMax: doc.rubricMax, rubricVersionId: 'rv-doc-1',
@@ -61,7 +61,7 @@ async function release(formData: FormData) {
     doc ? { originatingMarkerId: doc.markedBy } : {});
   if (!decision.allow) redirect(`/publish?e=${encodeURIComponent(decision.reason)}`);
 
-  const snap = snapshotFor(studentId, principal.userId);
+  const snap = (await snapshotFor(studentId, principal.userId));
   if (snap.blocked) redirect('/publish?e=A+blocked+mark+cannot+be+released.');
   publish(studentId, snap.finalMark, snap.grade, principal.userId, null);
   redirect('/publish?saved=1');
@@ -78,13 +78,16 @@ export default async function Publish({
   }
   const { saved, e } = await searchParams;
 
-  const rows = allocatedStudents().map((s) => ({ student: s, snap: snapshotFor(s.id, principal.userId),
-                                      published: publicationOf(s.id) }));
-  const needsModeration = rows.flatMap(({ student }) =>
-    (['p1', 'p2'] as const).map((c) => {
-      const panel = aggregatePanel(toAssessorEntries(student.id, c), PROFILE_A.panel);
-      return panel.status === 'MODERATION_REQUIRED' ? { student, component: c, panel } : null;
-    }).filter((x) => x !== null));
+  const rows = await Promise.all((await allocatedStudents()).map(async (s) => ({
+    student: s, snap: await snapshotFor(s.id, principal.userId), published: publicationOf(s.id),
+  })));
+  const needsModeration = (await Promise.all(rows.flatMap(async ({ student }) =>
+    (await Promise.all((['p1', 'p2'] as const).map(async (c) => {
+      const entries = await toAssessorEntries(student.id, c);
+      const panel = aggregatePanel(entries, PROFILE_A.panel);
+      return panel.status === 'MODERATION_REQUIRED' ? { student, component: c, panel, entries } : null;
+    }))).filter((x) => x !== null),
+  ))).flat();
 
   const ready = rows.filter((r) => !r.snap.blocked && !r.published).length;
 
@@ -103,7 +106,7 @@ export default async function Publish({
         <>
           <h2 style={{ fontSize: 15 }}>Moderation queue</h2>
           {needsModeration.map((m) => {
-            const entries = toAssessorEntries(m.student.id, m.component);
+            const entries = m.entries;
             const doc = docMarkOf(m.student.id);
             return (
               <div className="box" key={`${m.student.id}-${m.component}`} style={{ borderLeftColor: 'var(--pen)' }}>

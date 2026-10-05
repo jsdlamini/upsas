@@ -17,7 +17,7 @@ export default async function MarkSheet({ params }: { params: Promise<{ studentI
   const student = findStudentByNumber(studentId);
   if (!student) notFound();
 
-  const project = projectOf(student.id)!;
+  const project = (await projectOf(student.id))!;
   if (!principal.roles.includes('COORDINATOR') && project.supervisorId !== principal.userId) {
     return <><h1 className="page">Not permitted</h1>
       <p className="lede">You are not the supervisor of record for this student.</p></>;
@@ -28,8 +28,8 @@ export default async function MarkSheet({ params }: { params: Promise<{ studentI
     studentId: student.id, cycleId: '2025/2026',
     consultations: toConsultationRecords(student.id),
     presentations: [
-      { componentKey: 'p1', entries: toAssessorEntries(student.id, 'p1') },
-      { componentKey: 'p2', entries: toAssessorEntries(student.id, 'p2') },
+      { componentKey: 'p1', entries: await toAssessorEntries(student.id, 'p1') },
+      { componentKey: 'p2', entries: await toAssessorEntries(student.id, 'p2') },
     ],
     ...(doc ? { documentation: {
       rawTotal: doc.rawTotal, rubricMax: doc.rubricMax, rubricVersionId: 'rv-doc-1',
@@ -130,7 +130,7 @@ export default async function MarkSheet({ params }: { params: Promise<{ studentI
               return (
                 <tr key={s.assessorId}>
                   <td>{findPerson(s.assessorId)?.fullName}
-                    {projectOf(student.id)?.supervisorId === s.assessorId && <span className="muted"> (supervisor)</span>}</td>
+                    {project.supervisorId === s.assessorId && <span className="muted"> (supervisor)</span>}</td>
                   <td className="num mono">{total ?? '—'}</td>
                   <td className="num mono">{total === null ? '—' : `${normalisePercentage(total, s.rubricMax).toFixed(1)}%`}</td>
                   <td style={{ fontSize: 11.5 }}>
@@ -140,7 +140,7 @@ export default async function MarkSheet({ params }: { params: Promise<{ studentI
               );
             })}
             {(() => {
-              const p = aggregatePanel(toAssessorEntries(student.id, 'p2'), PROFILE_A.panel);
+              const p = aggregatePanel(input.presentations[1]!.entries, PROFILE_A.panel);
               return (
                 <tr style={{ background: '#F4F6F2', fontWeight: 700 }}>
                   <td>Panel — {p.contributingAssessorIds.length} contributing</td>
