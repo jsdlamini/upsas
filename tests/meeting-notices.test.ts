@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   makeNotice, isVisible, visibleFor, supersede, dismiss, dismissAll, toneOf,
@@ -6,8 +6,10 @@ import {
 } from '../src/lib/meetings/notices';
 import {
   slotsOf, bookSlot, confirmBooking, declineBooking, cancelBooking,
-  noticesFor, dismissNotice, projectOf,
+  noticesFor, dismissNotice, projectOf, seedPrismaDomain,
 } from '../src/lib/data/store';
+
+before(async () => { await seedPrismaDomain(); });
 
 const NOW = new Date('2026-09-21T08:00:00Z');
 const TOMORROW = '2026-09-22T12:00:00.000Z';

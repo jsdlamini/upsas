@@ -190,7 +190,7 @@ model StudentProfile {
 }
 
 model StaffProfile {
-  id                 String @id @default(uuid())
+  id                 String @id
   userId             String @unique
   user               User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   staffNumber        String @unique

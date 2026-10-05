@@ -2199,6 +2199,57 @@ export function ensureHydrated(): Promise<void> {
   return hydratePromise;
 }
 
+/** Seed the Postgres domain tables (topics, projects) from the in-memory seed
+ *  once, so the topics/projects slices read the same demo data the tests use. */
+export async function seedPrismaDomain(): Promise<void> {
+  if (!process.env.DATABASE_URL) return;
+  for (const p of allPeople()) {
+    const email = p.email ?? `${p.username}@localhost`;
+    await prisma.user.upsert({
+      where: { username: p.username },
+      create: { id: p.id, username: p.username, email, fullName: p.fullName, surname: p.surname, status: 'ACTIVE' },
+      update: { email, fullName: p.fullName, surname: p.surname },
+    });
+    if (p.studentId) {
+      const s = findStudent(p.studentId);
+      if (!s) continue;
+      await prisma.studentProfile.upsert({
+        where: { id: s.id },
+        create: {
+          id: s.id, userId: p.id, studentNumber: s.studentNumber, surname: s.surname,
+          otherNames: s.otherNames, programmeName: s.programme, courseCode: s.courseCode,
+          projectId: s.projectId === 'unallocated' ? null : s.projectId, email: s.email ?? null,
+        },
+        update: { studentNumber: s.studentNumber, surname: s.surname, otherNames: s.otherNames, programmeName: s.programme, courseCode: s.courseCode, projectId: s.projectId === 'unallocated' ? null : s.projectId, email: s.email ?? null },
+      });
+    } else {
+      await prisma.staffProfile.upsert({
+        where: { id: p.id },
+        create: { id: p.id, userId: p.id, staffNumber: p.username, title: p.fullName, researchAreas: [] },
+        update: { staffNumber: p.username, title: p.fullName },
+      });
+    }
+  }
+  for (const t of topics) {
+    const data = {
+      supervisorId: t.supervisorId, title: t.title, description: t.description,
+      prerequisites: t.prerequisites || null, tags: t.tags, capacity: t.capacity,
+      groupSuitable: t.groupSuitable, studentProposed: t.studentProposed,
+      proposedBy: t.proposedBy, published: t.published,
+      acceptedAt: t.acceptedAt ? new Date(t.acceptedAt) : null,
+    };
+    await prisma.topic.upsert({ where: { id: t.id }, create: { id: t.id, ...data }, update: data });
+  }
+  for (const p of PROJECTS) {
+    const data = {
+      title: p.title, supervisorId: p.supervisorId, memberIds: p.memberIds,
+      state: p.state, ethicsStatus: p.ethicsStatus,
+      contributionFiled: p.contributionFiled as never, topicId: p.topicId ?? null,
+    };
+    await prisma.project.upsert({ where: { id: p.id }, create: { id: p.id, ...data }, update: data });
+  }
+}
+
 async function hydrateFromPersistence(): Promise<void> {
   const loaded = await loadPersistedState();
   if (loaded.status === 'disabled') { persistState.health = 'disabled'; return; }

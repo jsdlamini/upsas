@@ -1,12 +1,14 @@
-import { test } from 'node:test';
+import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { renderNoticeEmail } from '../src/lib/meetings/email';
 import { makeNotice } from '../src/lib/meetings/notices';
 import { sendEmail } from '../src/lib/notifications';
 import {
   slotsOf, bookSlot, confirmBooking, projectOf, setContactEmail, emailOf,
-  registerStudent, findPersonByUsername,
+  registerStudent, findPersonByUsername, seedPrismaDomain,
 } from '../src/lib/data/store';
+
+before(async () => { await seedPrismaDomain(); });
 
 const NOW = new Date('2026-09-21T08:00:00Z');
 
