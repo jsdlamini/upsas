@@ -275,7 +275,6 @@ model Project {
   members      ProjectMember[]
   transitions  StateTransition[]
   agreements   Agreement[]
-  deliverables Deliverable[]
   ethics       EthicsApplication[]
   nominations  PresentationNomination[]
 }
@@ -397,31 +396,19 @@ model ActionItem {
 // ────────────────────────────────────────────────── deliverables & ethics
 
 model Deliverable {
-  id             String @id @default(uuid())
+  id             String @id
   projectId      String
-  project        Project @relation(fields: [projectId], references: [id])
-  consultationId String?
   kind           String
   title          String
-  createdAt      DateTime @default(now())
-  versions       DeliverableVersion[]
-}
+  version        Int
+  mediaType      String
+  byteSize       Int
+  sha256         String
+  scanStatus     String @default("PENDING")
+  uploadedById   String
+  uploadedAt     DateTime @default(now())
 
-model DeliverableVersion {
-  id            String @id @default(uuid())
-  deliverableId String
-  deliverable   Deliverable @relation(fields: [deliverableId], references: [id])
-  version       Int
-  storagePath   String
-  mediaType     String
-  byteSize      Int
-  sha256        String
-  scanStatus    String   @default("PENDING")
-  scanEngine    String?
-  uploadedById  String
-  uploadedAt    DateTime @default(now())
-
-  @@unique([deliverableId, version])
+  @@unique([projectId, title, version])
 }
 
 model EthicsApplication {

@@ -23,7 +23,7 @@ export async function GET() {
   const project = await projectOf(student.id);
   if (!project) return jsonError('No project yet.', 404);
 
-  return Response.json({ deliverables: deliverablesFor(project.id) });
+  return Response.json({ deliverables: await deliverablesFor(project.id) });
 }
 
 export async function POST(request: Request) {
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     return jsonError('The file failed the virus scan and was rejected.', 422);
   }
 
-  const result = uploadDeliverable({
+  const result = await uploadDeliverable({
     projectId: project.id,
     kind: kind || 'document',
     title,

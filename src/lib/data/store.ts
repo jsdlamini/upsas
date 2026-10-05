@@ -1920,12 +1920,22 @@ export function signAgreement(
 
 /* ------------------------------------------------------- deliverables */
 
-export const deliverablesFor = (projectId: string): DeliverableRecord[] =>
-  deliverables
-    .filter((d) => d.projectId === projectId)
-    .sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
+function toDeliverable(row: { id: string; projectId: string; kind: string; title: string; version: number; mediaType: string; byteSize: number; sha256: string; scanStatus: string; uploadedById: string; uploadedAt: Date }): DeliverableRecord {
+  return {
+    id: row.id, projectId: row.projectId, kind: row.kind, title: row.title, version: row.version,
+    mediaType: row.mediaType, byteSize: row.byteSize, sha256: row.sha256,
+    scanStatus: row.scanStatus as DeliverableRecord['scanStatus'], uploadedById: row.uploadedById,
+    uploadedAt: row.uploadedAt.toISOString(),
+  };
+}
 
-export function uploadDeliverable(input: {
+export async function deliverablesFor(projectId: string): Promise<DeliverableRecord[]> {
+  if (!process.env.DATABASE_URL) return [];
+  const rows = await prisma.deliverable.findMany({ where: { projectId }, orderBy: { uploadedAt: 'desc' } });
+  return rows.map(toDeliverable);
+}
+
+export async function uploadDeliverable(input: {
   projectId: string;
   kind: string;
   title: string;
@@ -1934,26 +1944,20 @@ export function uploadDeliverable(input: {
   sha256: string;
   scanStatus: DeliverableRecord['scanStatus'];
   uploadedById: string;
-}): { ok: true; id: string; version: number } | { ok: false; error: string } {
-  const project = findProject(input.projectId);
+}): Promise<{ ok: true; id: string; version: number } | { ok: false; error: string }> {
+  const project = await findProject(input.projectId);
   if (!project) return { ok: false, error: 'No such project.' };
-  const existing = deliverables.filter((d) => d.projectId === input.projectId && d.title === input.title.trim());
+  if (!process.env.DATABASE_URL) return { ok: false, error: 'No database.' };
+  const existing = await prisma.deliverable.findMany({ where: { projectId: input.projectId, title: input.title.trim() } });
   const version = existing.length + 1;
   const id = `del-${input.projectId}-${Date.now().toString(36)}`;
-  deliverables.push({
-    id,
-    projectId: input.projectId,
-    kind: input.kind,
-    title: input.title.trim(),
-    version,
-    mediaType: input.mediaType,
-    byteSize: input.byteSize,
-    sha256: input.sha256,
-    scanStatus: input.scanStatus,
-    uploadedById: input.uploadedById,
-    uploadedAt: new Date().toISOString(),
+  await prisma.deliverable.create({
+    data: {
+      id, projectId: input.projectId, kind: input.kind, title: input.title.trim(), version,
+      mediaType: input.mediaType, byteSize: input.byteSize, sha256: input.sha256,
+      scanStatus: input.scanStatus, uploadedById: input.uploadedById, uploadedAt: new Date(),
+    },
   });
-  schedulePersist();
   return { ok: true, id, version };
 }
 
