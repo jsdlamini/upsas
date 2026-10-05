@@ -791,8 +791,20 @@ export async function superviseesOf(supervisorId: string): Promise<Student[]> {
   return results.filter(({ p }) => p?.supervisorId === supervisorId).map(({ s }) => s);
 }
 
-export const consultationsOf = (studentId: string): Consultation[] =>
-  consultations.filter((c) => c.studentId === studentId);
+function toConsultation(row: { id: string; studentId: string; periodId: string; heldAt: Date; status: string; supervisorAttested: boolean; studentAttested: boolean; rawTotal: number | null; rubricMax: number; agenda: string }): Consultation {
+  return {
+    id: row.id, studentId: row.studentId, periodId: row.periodId as 'SEM1' | 'SEM2',
+    heldAt: row.heldAt.toISOString(), status: row.status as Consultation['status'],
+    supervisorAttested: row.supervisorAttested, studentAttested: row.studentAttested,
+    rawTotal: row.rawTotal, rubricMax: row.rubricMax, agenda: row.agenda,
+  };
+}
+
+export async function consultationsOf(studentId: string): Promise<Consultation[]> {
+  if (!process.env.DATABASE_URL) return [];
+  const rows = await prisma.consultation.findMany({ where: { studentId } });
+  return rows.map(toConsultation);
+}
 
 function toSheet(row: { assessorId: string; studentId: string; component: string; rubricVersionId: string; rubricMax: number; submitted: boolean; submittedAt: Date | null; scores: Array<{ criterionId: string; mark: number | null }> }): Sheet {
   const marks: Record<string, number | null> = {};
@@ -977,36 +989,42 @@ export function applyInstrumentEdit(
   return { ok: true, applied: { plan, summary: describePlan(plan) } };
 }
 
-export function gradeConsultation(
+export async function gradeConsultation(
   id: string, rawTotal: number | null, byUserId: string,
-): { ok: true } | { ok: false; error: string } {
-  const c = consultations.find((x) => x.id === id);
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const c = await findConsultation(id);
   if (!c) return { ok: false, error: 'No such consultation.' };
   if (c.status !== 'COMPLETED') return { ok: false, error: 'Only a completed session can be graded.' };
   if (rawTotal !== null && (!Number.isInteger(rawTotal) || rawTotal < 0 || rawTotal > c.rubricMax)) {
     return { ok: false, error: `Mark must be a whole number between 0 and ${c.rubricMax}.` };
   }
-  c.rawTotal = rawTotal;
+  if (process.env.DATABASE_URL) await prisma.consultation.update({ where: { id }, data: { rawTotal } });
   void byUserId;
-  schedulePersist();
   return { ok: true };
 }
 
-export function attestConsultation(id: string, role: 'SUPERVISOR' | 'STUDENT'): void {
-  const c = consultations.find((x) => x.id === id);
-  if (!c) return;
-  if (role === 'SUPERVISOR') c.supervisorAttested = true; else c.studentAttested = true;
-  schedulePersist();
+export async function attestConsultation(id: string, role: 'SUPERVISOR' | 'STUDENT'): Promise<void> {
+  if (!process.env.DATABASE_URL) return;
+  if (role === 'SUPERVISOR') await prisma.consultation.update({ where: { id }, data: { supervisorAttested: true } });
+  else await prisma.consultation.update({ where: { id }, data: { studentAttested: true } });
 }
 
-export function addConsultation(studentId: string, periodId: 'SEM1' | 'SEM2', agenda: string): Consultation {
+export async function addConsultation(studentId: string, periodId: 'SEM1' | 'SEM2', agenda: string): Promise<Consultation> {
   const c: Consultation = {
     id: `${studentId}-${periodId}-${Date.now()}`, studentId, periodId,
     heldAt: new Date().toISOString(), status: 'COMPLETED',
     supervisorAttested: false, studentAttested: false, rawTotal: null, rubricMax: 100, agenda,
   };
-  consultations.push(c);
+  if (process.env.DATABASE_URL) {
+    await prisma.consultation.create({ data: { id: c.id, studentId, periodId, heldAt: new Date(c.heldAt), status: c.status, supervisorAttested: false, studentAttested: false, rawTotal: null, rubricMax: 100, agenda } });
+  }
   return c;
+}
+
+export async function findConsultation(id: string): Promise<Consultation | null> {
+  if (!process.env.DATABASE_URL) return null;
+  const row = await prisma.consultation.findUnique({ where: { id } });
+  return row ? toConsultation(row) : null;
 }
 
 export async function submitSheet(assessorId: string, component: 'p1' | 'p2', at: string): Promise<number> {
@@ -1580,8 +1598,8 @@ export async function publish(
 
 /* ------------------------------------------- adapters into the pure engine */
 
-export function toConsultationRecords(studentId: string): ConsultationRecord[] {
-  return consultationsOf(studentId).map((c) => ({
+export async function toConsultationRecords(studentId: string): Promise<ConsultationRecord[]> {
+  return (await consultationsOf(studentId)).map((c) => ({
     id: c.id, periodId: c.periodId, status: c.status,
     supervisorAttested: c.supervisorAttested, studentAttested: c.studentAttested,
     score: c.rawTotal === null ? null : (c.rawTotal / c.rubricMax) * 100,

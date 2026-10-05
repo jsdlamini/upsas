@@ -24,10 +24,10 @@ async function attest(formData: FormData) {
   // A student may attest only their own session.
   const person = findPerson(principal.userId);
   const id = String(formData.get('id'));
-  if (!person?.studentId || !consultationsOf(person.studentId).some((c) => c.id === id)) {
+  if (!person?.studentId || !(await consultationsOf(person.studentId)).some((c) => c.id === id)) {
     redirect('/me?e=That+session+is+not+yours+to+confirm.');
   }
-  attestConsultation(id, 'STUDENT');
+  await attestConsultation(id, 'STUDENT');
   redirect('/me?saved=1');
 }
 
@@ -49,7 +49,7 @@ async function snapshotFor(studentId: string) {
   const doc = await docMarkOf(studentId);
   return computeFinalMark({
     studentId, cycleId: '2025/2026',
-    consultations: toConsultationRecords(studentId),
+    consultations: await toConsultationRecords(studentId),
     presentations: [
       { componentKey: 'p1', entries: await toAssessorEntries(studentId, 'p1') },
       { componentKey: 'p2', entries: await toAssessorEntries(studentId, 'p2') },
@@ -79,8 +79,8 @@ export default async function MyProject({
   }
 
   const project = await projectOf(student.id);
-  const rows = consultationsOf(student.id);
-  const outcome = evaluateConsultations(toConsultationRecords(student.id), PROFILE_A.consultation);
+  const rows = await consultationsOf(student.id);
+  const outcome = evaluateConsultations(await toConsultationRecords(student.id), PROFILE_A.consultation);
   const published = await publicationOf(student.id);
   const snapshot = published ? (await snapshotFor(student.id)) : null;
   const p1pct = snapshot?.components.find((c) => c.key === 'p1')?.percentage ?? null;

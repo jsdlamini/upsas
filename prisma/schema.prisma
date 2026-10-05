@@ -275,7 +275,6 @@ model Project {
   members      ProjectMember[]
   transitions  StateTransition[]
   agreements   Agreement[]
-  consultations Consultation[]
   deliverables Deliverable[]
   ethics       EthicsApplication[]
   nominations  PresentationNomination[]
@@ -292,7 +291,6 @@ model ProjectMember {
   joinedAt             DateTime @default(now())
   withdrawnAt          DateTime?
 
-  consultations   Consultation[]
   snapshots       MarkSnapshot[]
   nominations     PresentationNomination[]
 
@@ -344,16 +342,6 @@ model AgreementSignature {
 
 // ────────────────────────────────────────────── consultations & attestation
 
-enum ConsultationStatus {
-  REQUESTED
-  CONFIRMED
-  RESCHEDULED
-  COMPLETED
-  NO_SHOW_STUDENT
-  NO_SHOW_SUPERVISOR
-  CANCELLED
-}
-
 model AvailabilitySlot {
   id           String @id
   supervisorId String
@@ -368,40 +356,24 @@ model AvailabilitySlot {
 }
 
 model Consultation {
-  id           String @id @default(uuid())
-  projectId    String
-  project      Project @relation(fields: [projectId], references: [id])
-  memberId     String
-  member       ProjectMember @relation(fields: [memberId], references: [id])
-  periodCode   String
-  supervisorId String
-  startsAt     DateTime
-  endsAt       DateTime
-  mode         String @default("IN_PERSON")
-  meetingLink  String?
-  agenda       String?
-  status       ConsultationStatus @default(REQUESTED)
-  notes        String?
-  /// Raw rubric total and the maximum it was awarded against.
+  id           String @id
+  studentId    String
+  periodId     String
+  heldAt       DateTime
+  status       String @default("REQUESTED")
+  supervisorAttested Boolean @default(false)
+  studentAttested Boolean @default(false)
   rawTotal     Int?
-  rubricVersionId String?
-  rubricMax    Int?
-  gradedById   String?
-  gradedAt     DateTime?
-  createdAt    DateTime @default(now())
+  rubricMax    Int
+  agenda       String
 
-  attestations Attestation[]
-  actionItems  ActionItem[]
-  deliverables Deliverable[]
-
-  @@index([memberId, periodCode, status])
+  @@index([studentId, periodId])
 }
 
 /// Replaces the paper register. Append-only: corrections supersede.
 model Attestation {
   id             String @id @default(uuid())
   consultationId String
-  consultation   Consultation @relation(fields: [consultationId], references: [id])
   actorId        String
   actorRole      RoleCode
   attestedAt     DateTime @default(now())
@@ -416,7 +388,6 @@ model Attestation {
 model ActionItem {
   id             String @id @default(uuid())
   consultationId String
-  consultation   Consultation @relation(fields: [consultationId], references: [id])
   description    String
   dueOn          DateTime?
   completedAt    DateTime?
@@ -430,7 +401,6 @@ model Deliverable {
   projectId      String
   project        Project @relation(fields: [projectId], references: [id])
   consultationId String?
-  consultation   Consultation? @relation(fields: [consultationId], references: [id])
   kind           String
   title          String
   createdAt      DateTime @default(now())

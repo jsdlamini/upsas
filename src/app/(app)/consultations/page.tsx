@@ -23,7 +23,7 @@ async function grade(formData: FormData) {
   if (!decision.allow) redirect(`/consultations?e=${encodeURIComponent(decision.reason)}`);
 
   const raw = String(formData.get('rawTotal')).trim();
-  const result = gradeConsultation(id, raw === '' ? null : Number(raw), principal.userId);
+  const result = await gradeConsultation(id, raw === '' ? null : Number(raw), principal.userId);
   redirect(`/consultations?${result.ok ? 'saved=1' : `e=${encodeURIComponent(result.error)}`}`);
 }
 
@@ -33,7 +33,7 @@ async function attest(formData: FormData) {
   if (!principal) redirect('/login');
   const decision = can(principal, 'consultation.attest');
   if (!decision.allow) redirect(`/consultations?e=${encodeURIComponent(decision.reason)}`);
-  attestConsultation(String(formData.get('id')), 'SUPERVISOR');
+  await attestConsultation(String(formData.get('id')), 'SUPERVISOR');
   revalidatePath('/consultations');
   redirect('/consultations?saved=1');
 }
@@ -46,7 +46,7 @@ async function addSession(formData: FormData) {
   const supervisorId = (await projectOf(studentId))?.supervisorId;
   const decision = can(principal, 'consultation.grade', supervisorId ? { supervisorId } : {});
   if (!decision.allow) redirect(`/consultations?e=${encodeURIComponent(decision.reason)}`);
-  addConsultation(studentId, String(formData.get('periodId')) as 'SEM1' | 'SEM2',
+  await addConsultation(studentId, String(formData.get('periodId')) as 'SEM1' | 'SEM2',
                   String(formData.get('agenda')) || 'Consultation');
   redirect('/consultations?saved=1');
 }
@@ -62,8 +62,8 @@ export default async function Consultations({
   const selected = (student ? findStudent(student) : null) ?? mine[0];
   if (!selected) return <><h1 className="page">Consultations</h1><p className="lede">No supervisees.</p></>;
 
-  const rows = consultationsOf(selected.id);
-  const outcome = evaluateConsultations(toConsultationRecords(selected.id), PROFILE_A.consultation);
+  const rows = await consultationsOf(selected.id);
+  const outcome = evaluateConsultations(await toConsultationRecords(selected.id), PROFILE_A.consultation);
 
   return (
     <>

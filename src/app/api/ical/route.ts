@@ -31,7 +31,7 @@ export async function GET() {
     }
 
     // Past/completed consultations.
-    for (const c of consultationsOf(student.id)) {
+    for (const c of await consultationsOf(student.id)) {
       if (c.status !== 'COMPLETED') continue;
       const end = new Date(new Date(c.heldAt).getTime() + 30 * 60000).toISOString();
       events.push({

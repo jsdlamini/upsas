@@ -129,7 +129,7 @@ export default async function Book({
     }
     const open = await openSlotsFor(project.supervisorId, nowIso);
     const mine = (await bookingsOf(person.studentId)).filter((s) => s.startsAt > nowIso);
-    const held = consultationsOf(person.studentId).filter((c) => c.status === 'COMPLETED').length;
+    const held = (await consultationsOf(person.studentId)).filter((c) => c.status === 'COMPLETED').length;
     const myRequests = myMeetingRequests(person.studentId);
     const nextOpen = open[0];
     const supervisor = findPerson(project.supervisorId);

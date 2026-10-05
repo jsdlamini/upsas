@@ -20,7 +20,7 @@ async function snapshotFor(studentId: string, computedBy: string) {
   };
   return computeFinalMark({
     studentId, cycleId: '2025/2026',
-    consultations: toConsultationRecords(studentId),
+    consultations: await toConsultationRecords(studentId),
     presentations: [
       { componentKey: 'p1', entries: await toAssessorEntries(studentId, 'p1'), ...(await mod('p1')) },
       { componentKey: 'p2', entries: await toAssessorEntries(studentId, 'p2'), ...(await mod('p2')) },

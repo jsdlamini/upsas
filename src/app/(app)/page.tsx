@@ -33,7 +33,7 @@ async function snapshotFor(studentId: string) {
   const doc = await docMarkOf(studentId);
   return computeFinalMark({
     studentId, cycleId: '2025/2026',
-    consultations: toConsultationRecords(studentId),
+    consultations: await toConsultationRecords(studentId),
     presentations: [
       { componentKey: 'p1', entries: await toAssessorEntries(studentId, 'p1') },
       { componentKey: 'p2', entries: await toAssessorEntries(studentId, 'p2') },
@@ -70,6 +70,7 @@ export default async function Dashboard({
     const project = await projectOf(members[0]!.id);
     return Promise.all(members.map(async (s, i) => ({
       s, i, members, project, snap: await snapshotFor(s.id),
+      consultations: await consultationsOf(s.id),
     })));
   }))).flat();
 
@@ -141,9 +142,9 @@ export default async function Dashboard({
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ s, i, members, project, snap }) => {
-                const sem1 = consultationsOf(s.id).filter((c) => c.periodId === 'SEM1' && c.status === 'COMPLETED').length;
-                const sem2 = consultationsOf(s.id).filter((c) => c.periodId === 'SEM2' && c.status === 'COMPLETED').length;
+              {rows.map(({ s, i, members, project, snap, consultations }) => {
+                const sem1 = consultations.filter((c) => c.periodId === 'SEM1' && c.status === 'COMPLETED').length;
+                const sem2 = consultations.filter((c) => c.periodId === 'SEM2' && c.status === 'COMPLETED').length;
                 const short = sem1 < 4 || sem2 < 4;
                 const contribution = project?.contributionFiled[s.id] ?? true;
                 return (

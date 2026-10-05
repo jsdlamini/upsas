@@ -36,7 +36,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ key: st
       const doc = await docMarkOf(s.id);
       const snapshot = computeFinalMark({
         studentId: s.id, cycleId: '2025/2026',
-        consultations: toConsultationRecords(s.id),
+        consultations: await toConsultationRecords(s.id),
         presentations: [
           { componentKey: 'p1', entries: await toAssessorEntries(s.id, 'p1') },
           { componentKey: 'p2', entries: await toAssessorEntries(s.id, 'p2') },
@@ -61,7 +61,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ key: st
   } else if (key === 'consultation-register') {
     const rows: RegisterRow[] = (await Promise.all(students.map(async (s) => {
       const project = (await projectOf(s.id))!;
-      return consultationsOf(s.id).map<RegisterRow>((c) => ({
+      return (await consultationsOf(s.id)).map<RegisterRow>((c) => ({
         studentNumber: s.studentNumber, studentName: `${s.surname}, ${s.otherNames}`,
         supervisor: findPerson(project.supervisorId)?.fullName ?? '',
         periodCode: c.periodId, heldAt: c.heldAt, mode: 'IN_PERSON', status: c.status,
