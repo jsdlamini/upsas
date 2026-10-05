@@ -7,7 +7,7 @@ import { checkLoginRate } from '@/lib/auth/rate-limit';
 import { randomBytes } from 'node:crypto';
 import { CYCLE, passwordHashFor, findPersonByIdentifier, allPeople } from '@/lib/data/store';
 import { getInstitution, monogramText, logoUrl } from '@/lib/institution';
-import { AuthGallery } from '@/components/auth-gallery';
+import { FeatureCarousel } from '@/components/feature-carousel';
 import {
   authPrismaAvailable,
   ensureUsersSynced,
@@ -192,13 +192,12 @@ export default async function LoginPage({
           <p className="unit">{inst.department}</p>
           <h2>Research project supervision &amp; assessment</h2>
           <p className="tagline">One system of record for topics, consultations, presentations and final marks — from allocation to release.</p>
-          <ul className="brand-points">
-            <li>Topic selection &amp; agreements</li>
-            <li>Supervision consultations &amp; register</li>
-            <li>Panel grading &amp; moderation</li>
-            <li>Released results &amp; reports</li>
-          </ul>
-          <AuthGallery />
+          <FeatureCarousel features={[
+            { title: 'Topic selection & agreements', image: '/screenshots/03-topics.png' },
+            { title: 'Supervision consultations & register', image: '/screenshots/06-book.png' },
+            { title: 'Panel grading & moderation', image: '/screenshots/02-dashboard.png' },
+            { title: 'Released results & reports', image: '/screenshots/04-people.png' },
+          ]} />
           <div className="brand-foot">Cycle {CYCLE} · Accounts held locally — no external sign-in</div>
         </div>
       </aside>

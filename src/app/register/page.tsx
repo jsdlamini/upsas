@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { registerStudent, requestStaffAccount, PROGRAMMES, COURSES, CYCLE } from '@/lib/data/store';
 import { getInstitution, monogramText, logoUrl } from '@/lib/institution';
-import { AuthGallery } from '@/components/auth-gallery';
+import { FeatureCarousel } from '@/components/feature-carousel';
 import { Button } from '@/components/ui/button';
 
 export const dynamic = 'force-dynamic';
@@ -71,12 +71,11 @@ export default async function RegisterPage({
             Students self-register and start straight away. Staff accounts are held for a
             coordinator to review and activate.
           </p>
-          <ul className="brand-points">
-            <li>Student number &amp; institutional email</li>
-            <li>Staff roles assigned on approval</li>
-            <li>Offline-first, local sign-in only</li>
-          </ul>
-          <AuthGallery />
+          <FeatureCarousel features={[
+            { title: 'Student number & institutional email', image: '/screenshots/01-login.png' },
+            { title: 'Staff roles assigned on approval', image: '/screenshots/04-people.png' },
+            { title: 'Offline-first, local sign-in only', image: '/screenshots/05-settings.png' },
+          ]} />
           <div className="brand-foot">Cycle {CYCLE} · Accounts held locally</div>
         </div>
       </aside>

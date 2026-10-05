@@ -424,7 +424,24 @@ a{ transition:color .12s ease }
   border:1px solid rgba(255,255,255,.16); object-fit:cover; box-shadow:0 4px 14px rgba(0,0,0,.25) }
 .auth-gallery:hover .auth-gallery-track{ animation-play-state:paused }
 @keyframes auth-scroll{ from{ transform:translateX(0) } to{ transform:translateX(-50%) } }
-@media (prefers-reduced-motion: reduce){ .auth-gallery-track{ animation:none } }
+.feature-carousel{ position:relative; height:250px; margin-top:20px; overflow:hidden; border-radius:12px }
+.feature-slide{ position:absolute; inset:0; display:flex; flex-direction:column; gap:10px; opacity:0;
+  animation:feature-cycle var(--feature-cycle,16s) linear infinite }
+.feature-slide strong{ font:600 15px/1.2 var(--sans); color:#fff; letter-spacing:.01em }
+.feature-slide img{ flex:1; width:100%; height:0; object-fit:cover; object-position:top;
+  border-radius:10px; border:1px solid rgba(255,255,255,.16); box-shadow:0 6px 18px rgba(0,0,0,.3) }
+@keyframes feature-cycle{
+  0%{ opacity:0; transform:translateY(8px) }
+  3%{ opacity:1; transform:none }
+  17%{ opacity:1 }
+  21%{ opacity:0; transform:translateY(-6px) }
+  100%{ opacity:0 }
+}
+@media (prefers-reduced-motion: reduce){
+  .auth-gallery-track, .feature-slide{ animation:none }
+  .feature-slide{ position:relative; opacity:1 }
+  .feature-carousel{ height:auto }
+}
 .demo-hint{ background:var(--accent-dim); border:1px solid var(--accent); border-radius:var(--radius);
   padding:12px 14px; margin:0 0 16px }
 .demo-hint strong{ display:block; font-size:13px; color:var(--accent); margin-bottom:4px }
