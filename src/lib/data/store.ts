@@ -984,12 +984,40 @@ export function submitSheet(assessorId: string, component: 'p1' | 'p2', at: stri
 
 /* ------------------------------------------------------------------ topics */
 
-export const allTopics = () => topics.filter((t) => t.published || t.studentProposed);
-export const topicsBySupervisor = (supervisorId: string) => topics.filter((t) => t.supervisorId === supervisorId);
-export const findTopic = (id: string) => topics.find((t) => t.id === id) ?? null;
-export const preferencesOf = (studentId: string) =>
-  preferences.filter((p) => p.studentId === studentId).sort((a, b) => a.rank - b.rank);
-export const preferencesForTopic = (topicId: string) => preferences.filter((p) => p.topicId === topicId);
+function toTopic(row: { id: string; supervisorId: string; title: string; description: string; prerequisites: string | null; tags: string[]; capacity: number; groupSuitable: boolean; studentProposed: boolean; proposedBy: string | null; published: boolean; acceptedAt: Date | null }): Topic {
+  return {
+    id: row.id, supervisorId: row.supervisorId, title: row.title, description: row.description,
+    prerequisites: row.prerequisites ?? '', tags: row.tags, capacity: row.capacity,
+    groupSuitable: row.groupSuitable, published: row.published, studentProposed: row.studentProposed,
+    proposedBy: row.proposedBy, acceptedAt: row.acceptedAt ? row.acceptedAt.toISOString() : null,
+  };
+}
+
+export async function allTopics(): Promise<Topic[]> {
+  if (!process.env.DATABASE_URL) return [];
+  const rows = await prisma.topic.findMany({ where: { OR: [{ published: true }, { studentProposed: true }] } });
+  return rows.map(toTopic);
+}
+export async function topicsBySupervisor(supervisorId: string): Promise<Topic[]> {
+  if (!process.env.DATABASE_URL) return [];
+  const rows = await prisma.topic.findMany({ where: { supervisorId } });
+  return rows.map(toTopic);
+}
+export async function findTopic(id: string): Promise<Topic | null> {
+  if (!process.env.DATABASE_URL) return null;
+  const row = await prisma.topic.findUnique({ where: { id } });
+  return row ? toTopic(row) : null;
+}
+export async function preferencesOf(studentId: string): Promise<Preference[]> {
+  if (!process.env.DATABASE_URL) return [];
+  const rows = await prisma.topicPreference.findMany({ where: { studentId }, orderBy: { rank: 'asc' } });
+  return rows.map((r) => ({ studentId: r.studentId, topicId: r.topicId, rank: r.rank }));
+}
+export async function preferencesForTopic(topicId: string): Promise<Preference[]> {
+  if (!process.env.DATABASE_URL) return [];
+  const rows = await prisma.topicPreference.findMany({ where: { topicId } });
+  return rows.map((r) => ({ studentId: r.studentId, topicId: r.topicId, rank: r.rank }));
+}
 
 /** Supervision capacity counts students across all of a supervisor's topics. */
 export const loadOf = (supervisorId: string) =>
@@ -998,10 +1026,10 @@ export const loadOf = (supervisorId: string) =>
 
 export const CAPACITY = 8;
 
-export function addTopic(
+export async function addTopic(
   supervisorId: string, title: string, description: string,
   prerequisites: string, capacity: number, groupSuitable: boolean,
-): { ok: true; id: string } | { ok: false; error: string } {
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   if (title.trim().length < 10) return { ok: false, error: 'Give the topic a real title — at least ten characters.' };
   if (description.trim().length < 30) {
     return { ok: false, error: 'Describe the work in at least a couple of sentences; students choose on this text.' };
@@ -1009,64 +1037,66 @@ export function addTopic(
   if (!Number.isInteger(capacity) || capacity < 1 || capacity > 6) {
     return { ok: false, error: 'Capacity must be between 1 and 6 students.' };
   }
-  const id = `t-${topics.length + 1}-${Date.now()}`;
-  topics.push({
-    id, supervisorId, title: title.trim(), description: description.trim(),
-    prerequisites: prerequisites.trim(), tags: [], capacity, groupSuitable,
-    published: true, studentProposed: false, proposedBy: null, acceptedAt: null,
+  if (!process.env.DATABASE_URL) return { ok: false, error: 'No database.' };
+  const id = `t-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  await prisma.topic.create({
+    data: {
+      id, supervisorId, title: title.trim(), description: description.trim(),
+      prerequisites: prerequisites.trim(), tags: [], capacity, groupSuitable,
+      published: true, studentProposed: false, proposedBy: null, acceptedAt: null,
+    },
   });
-  schedulePersist();
   return { ok: true, id };
 }
 
-export function bulkAddTopics(supervisorId: string, text: string): { added: number; skipped: number } {
+export async function bulkAddTopics(supervisorId: string, text: string): Promise<{ added: number; skipped: number }> {
   let added = 0, skipped = 0;
   for (const line of text.split('\n')) {
     const parts = line.split('|').map((x) => x.trim());
     if (parts.length < 2 || !parts[0] || !parts[1]) { if (line.trim()) skipped += 1; continue; }
     const cap = Number(parts[2] ?? '1');
-    const r = addTopic(supervisorId, parts[0], parts[1], parts[3] ?? '',
+    const r = await addTopic(supervisorId, parts[0], parts[1], parts[3] ?? '',
                        Number.isInteger(cap) && cap > 0 ? cap : 1, true);
     if (r.ok) added += 1; else skipped += 1;
   }
   return { added, skipped };
 }
 
-export function proposeTopic(
+export async function proposeTopic(
   studentId: string, supervisorId: string, title: string, description: string,
-): { ok: true } | { ok: false; error: string } {
+): Promise<{ ok: true } | { ok: false; error: string }> {
   if (title.trim().length < 10 || description.trim().length < 30) {
     return { ok: false, error: 'A proposal needs a real title and a description of at least a couple of sentences.' };
   }
-  topics.push({
-    id: `t-prop-${Date.now()}`, supervisorId, title: title.trim(), description: description.trim(),
-    prerequisites: '', tags: [], capacity: 1, groupSuitable: true,
-    published: false, studentProposed: true, proposedBy: studentId, acceptedAt: null,
+  if (!process.env.DATABASE_URL) return { ok: false, error: 'No database.' };
+  await prisma.topic.create({
+    data: {
+      id: `t-prop-${Date.now()}`, supervisorId, title: title.trim(), description: description.trim(),
+      prerequisites: '', tags: [], capacity: 1, groupSuitable: true,
+      published: false, studentProposed: true, proposedBy: studentId, acceptedAt: null,
+    },
   });
-  schedulePersist();
   return { ok: true };
 }
 
-export function acceptProposal(topicId: string, supervisorId: string): { ok: true } | { ok: false; error: string } {
-  const t = findTopic(topicId);
+export async function acceptProposal(topicId: string, supervisorId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const t = await findTopic(topicId);
   if (!t || !t.studentProposed) return { ok: false, error: 'No such proposal.' };
   if (t.supervisorId !== supervisorId) return { ok: false, error: 'That proposal was not sent to you.' };
   if (loadOf(supervisorId) >= CAPACITY) return { ok: false, error: 'You are at capacity.' };
-  t.acceptedAt = new Date().toISOString();
-  t.published = true;
-  schedulePersist();
+  await prisma.topic.update({ where: { id: topicId }, data: { acceptedAt: new Date(), published: true } });
   return { ok: true };
 }
 
-export function setPreferences(studentId: string, topicIds: string[]): { ok: true } | { ok: false; error: string } {
+export async function setPreferences(studentId: string, topicIds: string[]): Promise<{ ok: true } | { ok: false; error: string }> {
   const chosen = topicIds.filter(Boolean);
   if (new Set(chosen).size !== chosen.length) return { ok: false, error: 'Choose three different topics.' };
   if (chosen.length === 0) return { ok: false, error: 'Pick at least one topic.' };
-  for (let i = preferences.length - 1; i >= 0; i -= 1) {
-    if (preferences[i]!.studentId === studentId) preferences.splice(i, 1);
-  }
-  chosen.forEach((topicId, i) => preferences.push({ studentId, topicId, rank: i + 1 }));
-  schedulePersist();
+  if (!process.env.DATABASE_URL) return { ok: false, error: 'No database.' };
+  await prisma.topicPreference.deleteMany({ where: { studentId } });
+  await prisma.topicPreference.createMany({
+    data: chosen.map((topicId, i) => ({ id: `${studentId}-${topicId}`, studentId, topicId, rank: i + 1 })),
+  });
   return { ok: true };
 }
 
@@ -1076,10 +1106,10 @@ export function setPreferences(studentId: string, topicIds: string[]): { ok: tru
  * and whose topic capacity is not yet full. Students who cannot be placed are
  * returned as unmatched for manual placement by the coordinator.
  */
-export function runAllocation(): {
+export async function runAllocation(): Promise<{
   assigned: Array<{ studentId: string; studentNumber: string; topicId: string; title: string; supervisorId: string }>;
   unmatched: Array<{ studentId: string; studentNumber: string }>;
-} {
+}> {
   const assigned: Array<{ studentId: string; studentNumber: string; topicId: string; title: string; supervisorId: string }> = [];
   const unmatched: Array<{ studentId: string; studentNumber: string }> = [];
 
@@ -1090,10 +1120,10 @@ export function runAllocation(): {
   const queue = unallocatedStudents().slice().sort((a, b) => a.studentNumber.localeCompare(b.studentNumber));
 
   for (const student of queue) {
-    const prefs = preferencesOf(student.id);
+    const prefs = await preferencesOf(student.id);
     let placed = false;
     for (const pref of prefs) {
-      const topic = findTopic(pref.topicId);
+      const topic = await findTopic(pref.topicId);
       if (!topic || !topic.published) continue;
       if (loadOf(topic.supervisorId) >= CAPACITY) continue;
       if (takenOnTopic(topic.id) >= topic.capacity) continue;

@@ -18,7 +18,7 @@ async function createTopic(formData: FormData) {
   if (!p) redirect('/login');
   const d = can(p, 'topic.publish');
   if (!d.allow) redirect(`/topics?e=${encodeURIComponent(d.reason)}`);
-  const r = addTopic(p.userId, String(formData.get('title') ?? ''), String(formData.get('description') ?? ''),
+  const r = await addTopic(p.userId, String(formData.get('title') ?? ''), String(formData.get('description') ?? ''),
                      String(formData.get('prerequisites') ?? ''), Number(formData.get('capacity') ?? 1),
                      formData.get('groupSuitable') === 'on');
   redirect(`/topics?${r.ok ? 'saved=1' : `e=${encodeURIComponent(r.error)}`}`);
@@ -30,7 +30,7 @@ async function bulkUpload(formData: FormData) {
   if (!p) redirect('/login');
   const d = can(p, 'topic.publish');
   if (!d.allow) redirect(`/topics?e=${encodeURIComponent(d.reason)}`);
-  const { added, skipped } = bulkAddTopics(p.userId, String(formData.get('bulk') ?? ''));
+  const { added, skipped } = await bulkAddTopics(p.userId, String(formData.get('bulk') ?? ''));
   redirect(`/topics?added=${added}&skipped=${skipped}`);
 }
 
@@ -38,7 +38,7 @@ async function accept(formData: FormData) {
   'use server';
   const p = await currentPrincipal();
   if (!p) redirect('/login');
-  const r = acceptProposal(String(formData.get('topicId')), p.userId);
+  const r = await acceptProposal(String(formData.get('topicId')), p.userId);
   redirect(`/topics?${r.ok ? 'saved=1' : `e=${encodeURIComponent(r.error)}`}`);
 }
 
@@ -48,7 +48,7 @@ async function saveChoices(formData: FormData) {
   if (!p) redirect('/login');
   const person = findPerson(p.userId);
   if (!person?.studentId) redirect('/topics?e=Only+students+rank+topics.');
-  const r = setPreferences(person.studentId, [
+  const r = await setPreferences(person.studentId, [
     String(formData.get('first') ?? ''), String(formData.get('second') ?? ''), String(formData.get('third') ?? ''),
   ]);
   redirect(`/topics?${r.ok ? 'saved=1' : `e=${encodeURIComponent(r.error)}`}`);
@@ -60,7 +60,7 @@ async function propose(formData: FormData) {
   if (!p) redirect('/login');
   const person = findPerson(p.userId);
   if (!person?.studentId) redirect('/topics?e=Only+students+propose+topics.');
-  const r = proposeTopic(person.studentId, String(formData.get('supervisorId')),
+  const r = await proposeTopic(person.studentId, String(formData.get('supervisorId')),
                          String(formData.get('title') ?? ''), String(formData.get('description') ?? ''));
   redirect(`/topics?${r.ok ? 'saved=1' : `e=${encodeURIComponent(r.error)}`}`);
 }
@@ -71,7 +71,7 @@ async function runAllocationAction() {
   if (!p) redirect('/login');
   const d = can(p, 'topic.allocate');
   if (!d.allow) redirect(`/topics?e=${encodeURIComponent(d.reason)}`);
-  const { assigned, unmatched } = runAllocation();
+  const { assigned, unmatched } = await runAllocation();
   redirect(`/topics?allocated=${assigned.length}&unmatched=${unmatched.length}`);
 }
 
@@ -86,12 +86,15 @@ export default async function Topics({
   const isStudent = Boolean(person?.studentId);
   const isSupervisor = principal.permissions.includes('topic.publish');
   const isCoordinator = principal.permissions.includes('topic.allocate');
-  const topics = allTopics().filter((t) => !t.studentProposed || t.published);
-  const myPrefs = person?.studentId ? preferencesOf(person.studentId) : [];
+  const topics = (await allTopics()).filter((t) => !t.studentProposed || t.published);
+  const myPrefs = person?.studentId ? await preferencesOf(person.studentId) : [];
   const unallocated = isCoordinator ? unallocatedStudents() : [];
   const proposals = isSupervisor
-    ? topicsBySupervisor(principal.userId).filter((t) => t.studentProposed && !t.acceptedAt)
+    ? (await topicsBySupervisor(principal.userId)).filter((t) => t.studentProposed && !t.acceptedAt)
     : [];
+  const interestCounts = new Map<string, number>();
+  for (const t of topics) interestCounts.set(t.id, (await preferencesForTopic(t.id)).length);
+  const prefTitles = await Promise.all(myPrefs.map(async (p) => (await findTopic(p.topicId))?.title ?? '—'));
 
   return (
     <>
@@ -211,7 +214,7 @@ export default async function Topics({
                     <div className="muted" style={{ fontSize: 11 }}>{taken} of {CAPACITY} places used</div></td>
                   <td className="muted" style={{ fontSize: 12 }}>{t.prerequisites || '—'}</td>
                   <td className="num">{t.capacity}{full && <div><Badge variant="warning">supervisor full</Badge></div>}</td>
-                  <td className="num mono">{preferencesForTopic(t.id).length}</td>
+                  <td className="num mono">{interestCounts.get(t.id) ?? 0}</td>
                 </tr>
               );
             })}
@@ -249,7 +252,7 @@ export default async function Topics({
               <Button type="submit">Save my choices</Button>
               {myPrefs.length > 0 && (
                 <p className="muted" style={{ margin: '8px 0 0', fontSize: 12 }}>
-                  Currently: {myPrefs.map((p, i) => `${i + 1}. ${findTopic(p.topicId)?.title}`).join(' · ')}
+                  Currently: {myPrefs.map((p, i) => `${i + 1}. ${prefTitles[i]}`).join(' · ')}
                 </p>
               )}
             </form>
