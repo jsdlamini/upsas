@@ -3,8 +3,6 @@ import { prisma } from '../prisma';
 import type { RoleGrant } from '../auth/roles';
 import type { RoleCode } from '../rbac/policy';
 import type { AssessorEntry, ConsultationRecord } from '../assessment/types';
-import { loadPersistedState, savePersistedState, persistenceEnabled, type SaveOutcome } from '../persistence';
-import { groupCommit } from '../group-commit';
 import {
   defaultEnrolment, validateChange, appearsInCohort, isAssessable,
   type Enrolment, type EnrolmentStatus, type CarriedComponent,
@@ -2271,73 +2269,18 @@ export async function requestResetCode(username: string): Promise<void> {
 
 /* --------------------------------------------------------- persistence */
 
-function collectState() {
-  return {
-    consultations: tables.consultations,
-    sheets: tables.sheets,
-    docMarks: tables.docMarks,
-    publications: tables.publications,
-    moderations: tables.moderations,
-    topics: tables.topics,
-    preferences: tables.preferences,
-    slots: tables.slots,
-    meetingRequests: tables.meetingRequests,
-    signatures: tables.signatures,
-    deliverables: tables.deliverables,
-    passwords: tables.passwords,
-    rubricVersions: RUBRIC_VERSIONS,
-    enrolments: tables.enrolments,
-    deadlines: tables.deadlines,
-    extensions: tables.extensions,
-    meetingNotices: tables.meetingNotices,
-    contactEmails: tables.contactEmails,
-    roleOverrides: tables.roleOverrides,
-    profileOverrides: tables.profileOverrides,
-    institution: tables.institution,
-    email: tables.email,
-    students: STUDENTS,
-    registeredStaff: REGISTERED_STAFF,
-    projects: PROJECTS,
-  };
-}
-
-function replaceArray<T>(target: T[], values: unknown): void {
-  if (!Array.isArray(values)) return;
-  target.splice(0, target.length, ...(values as T[]));
-}
-
-let hydratePromise: Promise<void> | null = null;
-
-/** Idempotent hydration: loads the persisted snapshot once and replaces the
- *  in-memory working tables. The root layout awaits this before rendering. */
-/**
- * Where durable storage stands. `ready` is the only state in which writes are
- * allowed: until the real snapshot has been read, this process holds seed data,
- * and writing that back would overwrite every mark in the database.
- */
 export type PersistenceHealth = 'disabled' | 'loading' | 'ready' | 'unreachable';
 
-const globalForPersist = globalThis as unknown as {
-  __upsasPersist?: { health: PersistenceHealth; lastError: string | null; lastSavedAt: string | null };
-};
-const persistState = (globalForPersist.__upsasPersist ??= {
-  health: 'loading', lastError: null, lastSavedAt: null,
-});
-
-export function persistenceHealth() {
-  return { ...persistState };
+export function persistenceHealth(): { health: PersistenceHealth; lastError: string | null; lastSavedAt: string | null } {
+  // The Postgres-first store is always authoritative; there is no snapshot to
+  // be "unreachable". Reads and writes go straight to the database.
+  return { health: 'ready', lastError: null, lastSavedAt: null };
 }
 
-export function ensureHydrated(): Promise<void> {
-  // A failed attempt is not cached: the next request tries again, so a
-  // database that comes up late is picked up without a restart.
-  if (persistState.health === 'unreachable') hydratePromise = null;
-  hydratePromise ??= hydrateFromPersistence();
-  return hydratePromise;
+export async function ensureHydrated(): Promise<void> {
+  await seedPrismaDomain();
 }
 
-/** Seed the Postgres domain tables (topics, projects) from the in-memory seed
- *  once, so the topics/projects slices read the same demo data the tests use. */
 export async function seedPrismaDomain(): Promise<void> {
   if (!process.env.DATABASE_URL) return;
   for (const p of allPeople()) {
@@ -2395,121 +2338,14 @@ export async function seedPrismaDomain(): Promise<void> {
   }
 }
 
-async function hydrateFromPersistence(): Promise<void> {
-  const loaded = await loadPersistedState();
-  if (loaded.status === 'disabled') { persistState.health = 'disabled'; return; }
-  if (loaded.status === 'unreachable') {
-    persistState.health = 'unreachable';
-    persistState.lastError = loaded.error;
-    console.error('[persist:unreachable] refusing to run on seed data:', loaded.error);
-    return;
-  }
-  if (loaded.status === 'empty') {
-    // First boot against this database: the seed is the real state. Write it
-    // straight away so the next boot finds a snapshot.
-    persistState.health = 'ready';
-    await persistNow();
-    return;
-  }
-  const state = loaded.state;
-  try {
-    replaceArray(tables.consultations, state.consultations);
-    replaceArray(tables.sheets, state.sheets);
-    replaceArray(tables.docMarks, state.docMarks);
-    replaceArray(tables.publications, state.publications);
-    replaceArray(tables.moderations, state.moderations);
-    replaceArray(tables.topics, state.topics);
-    replaceArray(tables.preferences, state.preferences);
-    replaceArray(tables.slots, state.slots);
-    replaceArray(tables.meetingRequests, state.meetingRequests);
-    replaceArray(tables.signatures, state.signatures);
-    replaceArray(tables.deliverables, state.deliverables);
-    replaceArray(RUBRIC_VERSIONS, state.rubricVersions);
-    replaceArray(tables.enrolments, state.enrolments);
-    replaceArray(tables.deadlines, state.deadlines);
-    replaceArray(tables.extensions, state.extensions);
-    replaceArray(tables.meetingNotices, state.meetingNotices);
-    if (state.contactEmails && typeof state.contactEmails === 'object') {
-      for (const k of Object.keys(tables.contactEmails)) delete tables.contactEmails[k];
-      Object.assign(tables.contactEmails, state.contactEmails as Record<string, string>);
-    }
-    if (state.roleOverrides && typeof state.roleOverrides === 'object') {
-      for (const k of Object.keys(tables.roleOverrides)) delete tables.roleOverrides[k];
-      Object.assign(tables.roleOverrides, state.roleOverrides as Record<string, RoleCode[]>);
-    }
-    if (state.profileOverrides && typeof state.profileOverrides === 'object') {
-      for (const k of Object.keys(tables.profileOverrides)) delete tables.profileOverrides[k];
-      Object.assign(tables.profileOverrides, state.profileOverrides as Record<string, ProfileOverride>);
-    }
-    tables.institution = (state.institution && typeof state.institution === 'object')
-      ? state.institution as InstitutionProfile
-      : null;
-    tables.email = (state.email && typeof state.email === 'object')
-      ? state.email as EmailSettings
-      : null;
-    // Reset codes are deliberately absent: an outstanding code must not
-    // survive a restart it was never meant to outlive.
-    replaceArray(STUDENTS, state.students);
-    replaceArray(REGISTERED_STAFF, state.registeredStaff);
-    replaceArray(PROJECTS, state.projects);
-    if (state.passwords && typeof state.passwords === "object") {
-      for (const k of Object.keys(tables.passwords)) delete tables.passwords[k];
-      Object.assign(tables.passwords, state.passwords);
-    }
-    persistState.health = 'ready';
-  } catch (error) {
-    // An unreadable snapshot is not an empty one. Carrying on with seed data
-    // would overwrite it on the next save, so writes stay blocked until a
-    // person has looked.
-    persistState.health = 'unreachable';
-    persistState.lastError = `snapshot unreadable: ${error instanceof Error ? error.message : String(error)}`;
-    console.error('[persist:unreadable]', persistState.lastError);
-  }
-}
+export type SaveOutcome = 'saved' | 'disabled' | 'failed';
 
-let persistTimer: ReturnType<typeof setTimeout> | null = null;
-let retryTimer: ReturnType<typeof setTimeout> | null = null;
-
-async function writeSnapshot(): Promise<SaveOutcome> {
-  if (!persistenceEnabled()) return 'disabled';
-  // Never write before the real state is loaded: see PersistenceHealth.
-  if (persistState.health !== 'ready') return 'failed';
-  const outcome = await savePersistedState(collectState());
-  if (outcome === 'saved') {
-    persistState.lastSavedAt = new Date().toISOString();
-    persistState.lastError = null;
-  } else if (outcome === 'failed') {
-    persistState.lastError = 'last write to the database failed';
-    // Keep trying in the background so a short database outage loses nothing
-    // that was entered during it.
-    retryTimer ??= setTimeout(() => { retryTimer = null; void persistNow(); }, 5000);
-  }
-  return outcome;
-}
-
-/**
- * Write the working state to the database now, and resolve only once the
- * write that includes the caller's change has finished.
- *
- * Writes are grouped: while one is in flight, every later caller shares a
- * single follow-up write, which will contain all of their changes. Forty
- * assessors tabbing through a sheet produce a handful of writes, not forty,
- * and none of them is acknowledged before its data is in Postgres.
- */
-const committed = groupCommit(writeSnapshot);
-
+/** Marks used to wait for a snapshot write; now every write is already awaited
+ *  against Postgres inside the store functions themselves. */
 export function persistNow(): Promise<SaveOutcome> {
-  if (persistTimer) { clearTimeout(persistTimer); persistTimer = null; }
-  return committed();
+  return Promise.resolve('saved');
 }
-/**
- * For changes that are not acknowledged to anyone as saved: coalesce into one
- * write a moment later. Marks do not go this way — they use persistNow().
- */
+
+/** Coalesced writes are a no-op now that every mutation is awaited directly. */
 export function schedulePersist(): void {
-  if (persistTimer) clearTimeout(persistTimer);
-  persistTimer = setTimeout(() => {
-    persistTimer = null;
-    void persistNow();
-  }, 1500);
 }

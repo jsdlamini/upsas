@@ -622,12 +622,6 @@ model Notification {
 /// Durable snapshot of the application's working state (topics, consultations,
 /// marks, registrations) so data survives restarts. Mirrors the in-memory
 /// store until the full per-entity Prisma migration lands.
-model StoreState {
-  key       String   @id
-  payload   Json
-  updatedAt DateTime @updatedAt
-}
-
 // ──────────────────────────────────────────────── working-store migration (A)
 
 model Publication {
