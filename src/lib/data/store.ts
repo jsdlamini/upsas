@@ -1807,17 +1807,34 @@ export function updatePersonProfile(
 
 /* --------------------------------------------------- meeting requests */
 
-export function requestMeeting(input: {
+function toMeetingRequest(row: { id: string; studentId: string; supervisorId: string; agenda: string; preferredTimes: string; status: string; requestedAt: Date; decidedAt: Date | null }): MeetingRequest {
+  return {
+    id: row.id, studentId: row.studentId, supervisorId: row.supervisorId,
+    agenda: row.agenda, preferredTimes: row.preferredTimes, status: row.status as MeetingRequest['status'],
+    requestedAt: row.requestedAt.toISOString(), decidedAt: row.decidedAt ? row.decidedAt.toISOString() : null,
+  };
+}
+
+export async function requestMeeting(input: {
   studentId: string; supervisorId: string; agenda: string; preferredTimes: string;
-}): { ok: true } | { ok: false; error: string } {
+}): Promise<{ ok: true } | { ok: false; error: string }> {
   if (input.agenda.trim().length < 5) return { ok: false, error: 'Say what you want to cover.' };
   if (input.preferredTimes.trim().length < 3) return { ok: false, error: 'Suggest at least one time.' };
-  meetingRequests.push({
-    id: `mr-${Date.now()}`, studentId: input.studentId, supervisorId: input.supervisorId,
+  const id = `mr-${Date.now()}`;
+  if (process.env.DATABASE_URL) {
+    await prisma.meetingRequest.create({
+      data: {
+        id, studentId: input.studentId, supervisorId: input.supervisorId,
+        agenda: input.agenda.trim(), preferredTimes: input.preferredTimes.trim(),
+        status: 'PENDING', requestedAt: new Date(), decidedAt: null,
+      },
+    });
+  }
+  const request: MeetingRequest = {
+    id, studentId: input.studentId, supervisorId: input.supervisorId,
     agenda: input.agenda.trim(), preferredTimes: input.preferredTimes.trim(),
     status: 'PENDING', requestedAt: new Date().toISOString(), decidedAt: null,
-  });
-  const request = meetingRequests[meetingRequests.length - 1]!;
+  };
   announce(request.id, null, [
     {
       forUserId: input.supervisorId, kind: 'BOOKED', actionRequired: true,
@@ -1832,20 +1849,31 @@ export function requestMeeting(input: {
       body: `${staffName(input.supervisorId)} will approve or decline it.`,
     },
   ]);
-  schedulePersist();
   return { ok: true };
 }
 
-export const meetingRequestsFor = (supervisorId: string) =>
-  meetingRequests.filter((m) => m.supervisorId === supervisorId);
-export const myMeetingRequests = (studentId: string) =>
-  meetingRequests.filter((m) => m.studentId === studentId);
+export async function meetingRequestsFor(supervisorId: string): Promise<MeetingRequest[]> {
+  if (!process.env.DATABASE_URL) return [];
+  const rows = await prisma.meetingRequest.findMany({ where: { supervisorId } });
+  return rows.map(toMeetingRequest);
+}
+export async function myMeetingRequests(studentId: string): Promise<MeetingRequest[]> {
+  if (!process.env.DATABASE_URL) return [];
+  const rows = await prisma.meetingRequest.findMany({ where: { studentId } });
+  return rows.map(toMeetingRequest);
+}
+export async function findMeetingRequest(id: string): Promise<MeetingRequest | null> {
+  if (!process.env.DATABASE_URL) return null;
+  const row = await prisma.meetingRequest.findUnique({ where: { id } });
+  return row ? toMeetingRequest(row) : null;
+}
 
-export function decideMeetingRequest(id: string, decision: 'APPROVED' | 'DECLINED'): { ok: true } | { ok: false; error: string } {
-  const m = meetingRequests.find((x) => x.id === id);
+export async function decideMeetingRequest(id: string, decision: 'APPROVED' | 'DECLINED'): Promise<{ ok: true } | { ok: false; error: string }> {
+  const m = await findMeetingRequest(id);
   if (!m) return { ok: false, error: 'No such request.' };
-  m.status = decision;
-  m.decidedAt = new Date().toISOString();
+  if (process.env.DATABASE_URL) {
+    await prisma.meetingRequest.update({ where: { id }, data: { status: decision, decidedAt: new Date() } });
+  }
   const approved = decision === 'APPROVED';
   announce(m.id, null, [
     {

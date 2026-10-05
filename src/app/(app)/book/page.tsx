@@ -93,7 +93,7 @@ async function requestMeetingAction(formData: FormData) {
   if (!person?.studentId) redirect('/book?e=Only+students+request+from+here.');
   const project = await projectOf(person.studentId);
   if (!project) redirect('/book?e=You+have+no+supervisor+yet.');
-  const r = requestMeeting({
+  const r = await requestMeeting({
     studentId: person.studentId,
     supervisorId: project.supervisorId,
     agenda: String(formData.get('agenda') ?? ''),
@@ -107,7 +107,7 @@ async function decideMeeting(formData: FormData) {
   const p = await currentPrincipal();
   if (!p) redirect('/login');
   const decision = String(formData.get('decision') ?? 'DECLINED') as 'APPROVED' | 'DECLINED';
-  decideMeetingRequest(String(formData.get('id') ?? ''), decision);
+  await decideMeetingRequest(String(formData.get('id') ?? ''), decision);
   redirect(`/book?saved=1&toast=${encodeURIComponent(decision === 'APPROVED' ? 'Meeting request approved.' : 'Meeting request declined.')}`);
 }
 
@@ -130,7 +130,7 @@ export default async function Book({
     const open = await openSlotsFor(project.supervisorId, nowIso);
     const mine = (await bookingsOf(person.studentId)).filter((s) => s.startsAt > nowIso);
     const held = (await consultationsOf(person.studentId)).filter((c) => c.status === 'COMPLETED').length;
-    const myRequests = myMeetingRequests(person.studentId);
+    const myRequests = await myMeetingRequests(person.studentId);
     const nextOpen = open[0];
     const supervisor = findPerson(project.supervisorId);
 
@@ -267,7 +267,7 @@ export default async function Book({
   // Supervisor view: publish availability and see who has booked.
   const mine = await slotsOf(principal.userId);
   const upcoming = mine.filter((s) => s.startsAt > nowIso);
-  const requests = meetingRequestsFor(principal.userId);
+  const requests = await meetingRequestsFor(principal.userId);
   // Every booked slot is listed, and so is the one a notification points at;
   // only open slots are trimmed. Trimming by position used to hide bookings
   // past the sixteenth row, which a notification link would then land short of.

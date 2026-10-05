@@ -186,9 +186,7 @@ test('Earlier leaves out superseded notices and anything older than a week', asy
 test('a meeting request rings the supervisor bell with a link to approve it', async () => {
   const studentId = 's2';
   const supervisorId = (await projectOf(studentId))!.supervisorId;
-  assert.ok(requestMeeting({
-    studentId, supervisorId, agenda: 'Corpus licensing question', preferredTimes: 'Friday morning',
-  }).ok);
+  assert.ok((await requestMeeting({ studentId, supervisorId, agenda: 'Corpus licensing question', preferredTimes: 'Friday morning' })).ok);
   const rung = noticesFor(supervisorId).find((n) => n.title.includes('asked for a meeting'));
   assert.ok(rung);
   assert.equal(rung?.actionRequired, true);

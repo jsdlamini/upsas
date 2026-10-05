@@ -106,20 +106,20 @@ test('declining a staff request deactivates it', async () => {
 });
 
 test('a student can request a meeting and a supervisor can decide it', async () => {
-  const r = requestMeeting({
+  const r = await requestMeeting({
     studentId: 's1', supervisorId: 'u-mahlalela', agenda: 'Review methodology',
     preferredTimes: 'Tue 10:00–12:00',
   });
   assert.ok(r.ok);
-  const mine = meetingRequestsFor('u-mahlalela').filter((m) => m.studentId === 's1');
+  const mine = (await meetingRequestsFor('u-mahlalela')).filter((m) => m.studentId === 's1');
   assert.ok(mine.length > 0);
   const id = mine.at(-1)!.id;
-  assert.ok(decideMeetingRequest(id, 'APPROVED').ok);
-  assert.equal(meetingRequestsFor('u-mahlalela').find((m) => m.id === id)?.status, 'APPROVED');
-  assert.equal(decideMeetingRequest('does-not-exist', 'APPROVED').ok, false);
+  assert.ok((await decideMeetingRequest(id, 'APPROVED')).ok);
+  assert.equal((await meetingRequestsFor('u-mahlalela')).find((m) => m.id === id)?.status, 'APPROVED');
+  assert.equal((await decideMeetingRequest('does-not-exist', 'APPROVED')).ok, false);
 });
 
 test('requestMeeting requires an agenda and a time', async () => {
-  assert.equal(requestMeeting({ studentId: 's1', supervisorId: 'u-mahlalela', agenda: '', preferredTimes: 'Tue' }).ok, false);
-  assert.equal(requestMeeting({ studentId: 's1', supervisorId: 'u-mahlalela', agenda: 'Review', preferredTimes: '' }).ok, false);
+  assert.equal((await requestMeeting({ studentId: 's1', supervisorId: 'u-mahlalela', agenda: '', preferredTimes: 'Tue' })).ok, false);
+  assert.equal((await requestMeeting({ studentId: 's1', supervisorId: 'u-mahlalela', agenda: 'Review', preferredTimes: '' })).ok, false);
 });
