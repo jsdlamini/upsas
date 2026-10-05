@@ -204,7 +204,7 @@ model StaffProfile {
 // ──────────────────────────────────────────────────────── topics & projects
 
 model Topic {
-  id             String  @id @default(uuid())
+  id             String  @id
   supervisorId   String
   supervisor     StaffProfile @relation(fields: [supervisorId], references: [id])
   title          String
@@ -215,14 +215,16 @@ model Topic {
   capacity       Int     @default(1)
   groupSuitable  Boolean @default(true)
   studentProposed Boolean @default(false)
+  proposedBy     String?
   published      Boolean @default(false)
+  acceptedAt     DateTime?
   createdAt      DateTime @default(now())
   preferences    TopicPreference[]
   projects       Project[]
 }
 
 model TopicPreference {
-  id        String @id @default(uuid())
+  id        String @id
   studentId String
   student   StudentProfile @relation(fields: [studentId], references: [id])
   topicId   String
@@ -259,7 +261,7 @@ enum ProjectState {
 }
 
 model Project {
-  id           String  @id @default(uuid())
+  id           String  @id
   cycleId      String
   cycle        AcademicCycle @relation(fields: [cycleId], references: [id])
   courseId     String
@@ -283,7 +285,7 @@ model Project {
 
 /// Marks and consultations belong to the STUDENT; artefacts belong to the project.
 model ProjectMember {
-  id                   String @id @default(uuid())
+  id                   String @id
   projectId            String
   project              Project @relation(fields: [projectId], references: [id])
   studentId            String
