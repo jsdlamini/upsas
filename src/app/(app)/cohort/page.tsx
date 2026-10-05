@@ -152,7 +152,7 @@ async function issueCode(formData: FormData) {
   'use server';
   const principal = await guard();
   const userId = String(formData.get('userId'));
-  const issued = issueResetCode(userId, principal.userId);
+  const issued = await issueResetCode(userId, principal.userId);
   if (!issued) back('recovery', `&e=${encodeURIComponent('["No such account."]')}`);
   revalidatePath('/cohort');
   // The code itself is handed back in memory, never in this URL.
@@ -197,6 +197,8 @@ export default async function Cohort({
   for (const d of deadlines) {
     deadlineStatuses.set(d.key, await deadlineStatusFor(STUDENTS[0]?.id ?? '', d));
   }
+  const outstandingMap = new Map<string, Awaited<ReturnType<typeof outstandingResetFor>>>();
+  for (const p of allPeople()) outstandingMap.set(p.id, await outstandingResetFor(p.id));
 
   return (
     <>
@@ -525,7 +527,7 @@ export default async function Cohort({
               </thead>
               <tbody>
                 {allPeople().map((person) => {
-                  const outstanding = outstandingResetFor(person.id);
+                  const outstanding = outstandingMap.get(person.id) ?? null;
                   return (
                     <tr key={person.id}>
                       <td><strong>{person.fullName}</strong></td>

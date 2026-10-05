@@ -2156,27 +2156,50 @@ export interface IssuedReset {
 const globalForCodes = globalThis as unknown as { __upsasIssuedCodes?: Map<string, IssuedReset & { forUserId: string }> };
 const issuedCodes = (globalForCodes.__upsasIssuedCodes ??= new Map<string, IssuedReset & { forUserId: string }>());
 
+async function persistResetTicket(ticket: ResetTicket): Promise<void> {
+  if (!process.env.DATABASE_URL) return;
+  await prisma.resetTicket.create({
+    data: {
+      id: ticket.id, userId: ticket.userId, codeHash: ticket.codeHash, issuedBy: ticket.issuedBy,
+      issuedAt: new Date(ticket.issuedAt), expiresAt: new Date(ticket.expiresAt),
+      usedAt: ticket.usedAt ? new Date(ticket.usedAt) : null, revokedAt: ticket.revokedAt ? new Date(ticket.revokedAt) : null,
+    },
+  });
+}
+
+async function resetTicketsFor(userId: string): Promise<ResetTicket[]> {
+  if (!process.env.DATABASE_URL) return [];
+  const rows = await prisma.resetTicket.findMany({ where: { userId } });
+  return rows.map((r) => ({
+    id: r.id, userId: r.userId, codeHash: r.codeHash, issuedBy: r.issuedBy,
+    issuedAt: r.issuedAt.toISOString(), expiresAt: r.expiresAt.toISOString(),
+    usedAt: r.usedAt ? r.usedAt.toISOString() : null, revokedAt: r.revokedAt ? r.revokedAt.toISOString() : null,
+  }));
+}
+
 export function takeIssuedCode(byUserId: string): (IssuedReset & { forUserId: string }) | null {
   const value = issuedCodes.get(byUserId) ?? null;
   issuedCodes.delete(byUserId);
   return value;
 }
 
-export function issueResetCode(userId: string, byUserId: string): IssuedReset | null {
+export async function issueResetCode(userId: string, byUserId: string): Promise<IssuedReset | null> {
   const person = findPerson(userId);
   if (!person) return null;
 
   const now = new Date();
-  revokeOutstanding(resetTickets, userId, now);   // only the newest code works
+  if (process.env.DATABASE_URL) await prisma.resetTicket.updateMany({ where: { userId, usedAt: null, revokedAt: null }, data: { revokedAt: now } });
+  else revokeOutstanding(resetTickets, userId, now);
   const { ticket, code } = issueTicket(userId, byUserId, now);
-  resetTickets.push(ticket);
+  await persistResetTicket(ticket);
   issuedCodes.set(byUserId, { code, expiresAt: ticket.expiresAt, forUserId: userId });
   return { code, expiresAt: ticket.expiresAt };
 }
 
-export function outstandingResetFor(userId: string): ResetTicket | null {
+export async function outstandingResetFor(userId: string): Promise<ResetTicket | null> {
   const iso = new Date().toISOString();
-  return resetTickets.find(
+  const tickets = await resetTicketsFor(userId);
+  return tickets.find(
     (t) => t.userId === userId && !t.usedAt && !t.revokedAt && t.expiresAt > iso,
   ) ?? null;
 }
@@ -2192,7 +2215,8 @@ export async function redeemResetCode(
   username: string, code: string, newPassword: string,
 ): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
   const person = findPersonByIdentifier(username.trim());
-  const result = redeem(resetTickets, username, person?.id ?? null, code, new Date());
+  const tickets = await resetTicketsFor(person?.id ?? '');
+  const result = redeem(tickets, username, person?.id ?? null, code, new Date());
   if (!result.ok) return { ok: false, error: result.reason };
   if (!person) return { ok: false, error: result.ok ? 'Unknown account.' : '' };
 
@@ -2200,7 +2224,8 @@ export async function redeemResetCode(
   if (!check.ok) return { ok: false, error: check.problems[0] ?? 'That password is not acceptable.' };
 
   tables.passwords[person.username] = await hashPassword(newPassword);
-  result.ticket.usedAt = new Date().toISOString();
+  if (process.env.DATABASE_URL) await prisma.resetTicket.update({ where: { id: result.ticket.id }, data: { usedAt: new Date() } });
+  else result.ticket.usedAt = new Date().toISOString();
   // A lockout survives a password change otherwise, which would leave someone
   // who has just proved who they are still locked out.
   person.status = person.status === 'SUSPENDED' ? 'SUSPENDED' : 'ACTIVE';
@@ -2221,10 +2246,10 @@ export async function requestResetCode(username: string): Promise<void> {
   if (!email) return;
 
   const now = new Date();
-  revokeOutstanding(resetTickets, person.id, now);
+  if (process.env.DATABASE_URL) await prisma.resetTicket.updateMany({ where: { userId: person.id, usedAt: null, revokedAt: null }, data: { revokedAt: now } });
+  else revokeOutstanding(resetTickets, person.id, now);
   const { ticket, code } = issueTicket(person.id, 'self-service', now);
-  resetTickets.push(ticket);
-  schedulePersist();
+  await persistResetTicket(ticket);
 
   const site = process.env.NEXT_PUBLIC_SITE_URL || 'https://research.idealsoftwaresolutions.com';
   const recoverUrl = `${site}/recover?u=${encodeURIComponent(person.username)}`;
