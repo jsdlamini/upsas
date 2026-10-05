@@ -33,7 +33,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ key: st
   if (key === 'mark-schedule') {
     const rows: ScheduleRow[] = await Promise.all(students.map(async (s) => {
       const project = (await projectOf(s.id))!;
-      const doc = docMarkOf(s.id);
+      const doc = await docMarkOf(s.id);
       const snapshot = computeFinalMark({
         studentId: s.id, cycleId: '2025/2026',
         consultations: toConsultationRecords(s.id),

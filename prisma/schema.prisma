@@ -294,7 +294,6 @@ model ProjectMember {
 
   consultations   Consultation[]
   sheets          AssessorSheet[]
-  documentationMarks DocumentationMark[]
   snapshots       MarkSnapshot[]
   nominations     PresentationNomination[]
 
@@ -534,7 +533,6 @@ model PresentationNomination {
   readinessNote String?
   declinedReason String?
   sheets     AssessorSheet[]
-  moderation Moderation?
 
   @@unique([memberId, componentKey])
 }
@@ -576,30 +574,25 @@ model CriterionScore {
 }
 
 model Moderation {
-  id              String @id @default(uuid())
-  nominationId    String @unique
-  nomination      PresentationNomination @relation(fields: [nominationId], references: [id])
+  id              String @id
+  studentId       String
+  component       String
   moderatorId     String
   rationale       String
   agreedPercentage Decimal @db.Decimal(6, 3)
   moderatedAt     DateTime @default(now())
+
+  @@unique([studentId, component])
 }
 
 model DocumentationMark {
-  id              String @id @default(uuid())
-  memberId        String
-  member          ProjectMember @relation(fields: [memberId], references: [id])
-  rubricVersionId String
+  id              String @id
+  studentId       String @unique
   rawTotal        Int
   rubricMax       Int
-  markedById      String
-  markedAt        DateTime @default(now())
-  moderatorId     String?
-  moderatedRawTotal Int?
-  moderationNote  String?
-  moderatedAt     DateTime?
-
-  @@unique([memberId])
+  markedBy        String
+  moderatedBy     String?
+  agreedRawTotal  Int?
 }
 
 // ──────────────────────────────────────────────── configuration & snapshots

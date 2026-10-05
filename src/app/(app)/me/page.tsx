@@ -46,7 +46,7 @@ async function updateCourse(formData: FormData) {
 }
 
 async function snapshotFor(studentId: string) {
-  const doc = docMarkOf(studentId);
+  const doc = await docMarkOf(studentId);
   return computeFinalMark({
     studentId, cycleId: '2025/2026',
     consultations: toConsultationRecords(studentId),
@@ -81,7 +81,7 @@ export default async function MyProject({
   const project = await projectOf(student.id);
   const rows = consultationsOf(student.id);
   const outcome = evaluateConsultations(toConsultationRecords(student.id), PROFILE_A.consultation);
-  const published = publicationOf(student.id);
+  const published = await publicationOf(student.id);
   const snapshot = published ? (await snapshotFor(student.id)) : null;
   const p1pct = snapshot?.components.find((c) => c.key === 'p1')?.percentage ?? null;
   const p2pct = snapshot?.components.find((c) => c.key === 'p2')?.percentage ?? null;

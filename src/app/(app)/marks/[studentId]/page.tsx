@@ -23,7 +23,7 @@ export default async function MarkSheet({ params }: { params: Promise<{ studentI
       <p className="lede">You are not the supervisor of record for this student.</p></>;
   }
 
-  const doc = docMarkOf(student.id);
+  const doc = await docMarkOf(student.id);
   const input = {
     studentId: student.id, cycleId: '2025/2026',
     consultations: toConsultationRecords(student.id),

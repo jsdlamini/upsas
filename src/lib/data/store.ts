@@ -800,7 +800,11 @@ export const sheetsFor = (studentId: string, component: 'p1' | 'p2'): Sheet[] =>
 export const sheetOf = (assessorId: string, studentId: string, component: 'p1' | 'p2'): Sheet | null =>
   sheets.find((s) => s.assessorId === assessorId && s.studentId === studentId && s.component === component) ?? null;
 
-export const docMarkOf = (studentId: string) => docMarks.find((d) => d.studentId === studentId) ?? null;
+export async function docMarkOf(studentId: string): Promise<DocMark | null> {
+  if (!process.env.DATABASE_URL) return null;
+  const row = await prisma.documentationMark.findUnique({ where: { studentId } });
+  return row ? { studentId: row.studentId, rawTotal: row.rawTotal, rubricMax: row.rubricMax, markedBy: row.markedBy, moderatedBy: row.moderatedBy, agreedRawTotal: row.agreedRawTotal } : null;
+}
 
 /**
  * Session lists for an assessor.
@@ -1481,44 +1485,56 @@ export function addSlots(
   return added;
 }
 
-export const publicationOf = (studentId: string) =>
-  [...publications].reverse().find((p) => p.studentId === studentId) ?? null;
+export async function publicationOf(studentId: string): Promise<Publication | null> {
+  if (!process.env.DATABASE_URL) return null;
+  const rows = await prisma.publication.findMany({ where: { studentId }, orderBy: { publishedAt: 'desc' } });
+  const row = rows[0];
+  return row ? { studentId: row.studentId, finalMark: row.finalMark, grade: row.grade, publishedBy: row.publishedBy, publishedAt: row.publishedAt.toISOString(), supersedes: row.supersedes, reason: row.reason } : null;
+}
 
-export const moderationOf = (studentId: string, component: 'p1' | 'p2') =>
-  moderations.find((m) => m.studentId === studentId && m.component === component) ?? null;
+export async function moderationOf(studentId: string, component: 'p1' | 'p2'): Promise<ModerationRow | null> {
+  if (!process.env.DATABASE_URL) return null;
+  const row = await prisma.moderation.findUnique({ where: { studentId_component: { studentId, component } } });
+  return row ? { studentId: row.studentId, component: row.component as 'p1' | 'p2', moderatorId: row.moderatorId, rationale: row.rationale, agreedPercentage: Number(row.agreedPercentage), moderatedAt: row.moderatedAt.toISOString() } : null;
+}
 
-export function recordModeration(
+export async function recordModeration(
   studentId: string, component: 'p1' | 'p2', moderatorId: string,
   agreedPercentage: number, rationale: string,
-): { ok: true } | { ok: false; error: string } {
+): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!(agreedPercentage >= 0 && agreedPercentage <= 100)) {
     return { ok: false, error: 'Agreed percentage must be between 0 and 100.' };
   }
   if (rationale.trim().length < 10) {
     return { ok: false, error: 'A moderation must record why, in at least a sentence.' };
   }
-  const existing = moderations.findIndex((m) => m.studentId === studentId && m.component === component);
-  const row: ModerationRow = {
-    studentId, component, moderatorId, rationale: rationale.trim(),
-    agreedPercentage, moderatedAt: new Date().toISOString(),
-  };
-  if (existing >= 0) moderations[existing] = row; else moderations.push(row);
-  schedulePersist();
+  if (!process.env.DATABASE_URL) return { ok: false, error: 'No database.' };
+  await prisma.moderation.upsert({
+    where: { studentId_component: { studentId, component } },
+    create: { id: `${studentId}-${component}`, studentId, component, moderatorId, rationale: rationale.trim(), agreedPercentage, moderatedAt: new Date() },
+    update: { moderatorId, rationale: rationale.trim(), agreedPercentage, moderatedAt: new Date() },
+  });
   return { ok: true };
 }
 
 /** Publication is append-only: a correction supersedes, it never overwrites. */
-export function publish(
+export async function publish(
   studentId: string, finalMark: number | null, grade: string | null,
   publishedBy: string, reason: string | null,
-): Publication {
-  const previous = publicationOf(studentId);
+): Promise<Publication> {
+  const previous = await publicationOf(studentId);
   const row: Publication = {
     studentId, finalMark, grade, publishedBy, publishedAt: new Date().toISOString(),
     supersedes: previous ? previous.publishedAt : null, reason,
   };
-  publications.push(row);
-  schedulePersist();
+  if (process.env.DATABASE_URL) {
+    await prisma.publication.create({
+      data: {
+        id: `pub-${studentId}-${Date.now()}`, studentId, finalMark, grade,
+        publishedBy, publishedAt: new Date(row.publishedAt), supersedes: row.supersedes, reason,
+      },
+    });
+  }
   // Grade released — notify the student (best-effort).
   const releasedPerson = findPerson(personIdForStudent(studentId));
   const releasedBody = `Your final mark has been released: ${finalMark ?? '—'}${grade ? ` (${grade})` : ''}.`;

@@ -30,7 +30,7 @@ async function declineStaff(formData: FormData) {
 }
 
 async function snapshotFor(studentId: string) {
-  const doc = docMarkOf(studentId);
+  const doc = await docMarkOf(studentId);
   return computeFinalMark({
     studentId, cycleId: '2025/2026',
     consultations: toConsultationRecords(studentId),

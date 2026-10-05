@@ -12,9 +12,9 @@ import {
 export const dynamic = 'force-dynamic';
 
 async function snapshotFor(studentId: string, computedBy: string) {
-  const doc = docMarkOf(studentId);
-  const mod = (c: 'p1' | 'p2') => {
-    const m = moderationOf(studentId, c);
+  const doc = await docMarkOf(studentId);
+  const mod = async (c: 'p1' | 'p2') => {
+    const m = await moderationOf(studentId, c);
     return m ? { moderation: { moderatorId: m.moderatorId, rationale: m.rationale,
                                agreedPercentage: m.agreedPercentage, moderatedAt: m.moderatedAt } } : {};
   };
@@ -22,8 +22,8 @@ async function snapshotFor(studentId: string, computedBy: string) {
     studentId, cycleId: '2025/2026',
     consultations: toConsultationRecords(studentId),
     presentations: [
-      { componentKey: 'p1', entries: await toAssessorEntries(studentId, 'p1'), ...mod('p1') },
-      { componentKey: 'p2', entries: await toAssessorEntries(studentId, 'p2'), ...mod('p2') },
+      { componentKey: 'p1', entries: await toAssessorEntries(studentId, 'p1'), ...(await mod('p1')) },
+      { componentKey: 'p2', entries: await toAssessorEntries(studentId, 'p2'), ...(await mod('p2')) },
     ],
     ...(doc ? { documentation: {
       rawTotal: doc.rawTotal, rubricMax: doc.rubricMax, rubricVersionId: 'rv-doc-1',
@@ -44,7 +44,7 @@ async function moderate(formData: FormData) {
   const decision = can(principal, 'presentation.moderate', { originatingMarkerId: originating });
   if (!decision.allow) redirect(`/publish?e=${encodeURIComponent(decision.reason)}`);
 
-  const result = recordModeration(studentId, component, principal.userId,
+  const result = await recordModeration(studentId, component, principal.userId,
                                   Number(formData.get('agreed')), String(formData.get('rationale') ?? ''));
   redirect(`/publish?${result.ok ? 'saved=1' : `e=${encodeURIComponent(result.error)}`}`);
 }
@@ -54,7 +54,7 @@ async function release(formData: FormData) {
   const principal = await currentPrincipal();
   if (!principal) redirect('/login');
   const studentId = String(formData.get('studentId'));
-  const doc = docMarkOf(studentId);
+  const doc = await docMarkOf(studentId);
 
   // Separation of duty: whoever awarded a component may not release it.
   const decision = can(principal, 'mark.publish',
@@ -63,7 +63,7 @@ async function release(formData: FormData) {
 
   const snap = (await snapshotFor(studentId, principal.userId));
   if (snap.blocked) redirect('/publish?e=A+blocked+mark+cannot+be+released.');
-  publish(studentId, snap.finalMark, snap.grade, principal.userId, null);
+  await publish(studentId, snap.finalMark, snap.grade, principal.userId, null);
   redirect('/publish?saved=1');
 }
 
@@ -79,13 +79,14 @@ export default async function Publish({
   const { saved, e } = await searchParams;
 
   const rows = await Promise.all((await allocatedStudents()).map(async (s) => ({
-    student: s, snap: await snapshotFor(s.id, principal.userId), published: publicationOf(s.id),
+    student: s, snap: await snapshotFor(s.id, principal.userId), published: await publicationOf(s.id),
+    doc: await docMarkOf(s.id),
   })));
   const needsModeration = (await Promise.all(rows.flatMap(async ({ student }) =>
     (await Promise.all((['p1', 'p2'] as const).map(async (c) => {
       const entries = await toAssessorEntries(student.id, c);
       const panel = aggregatePanel(entries, PROFILE_A.panel);
-      return panel.status === 'MODERATION_REQUIRED' ? { student, component: c, panel, entries } : null;
+      return panel.status === 'MODERATION_REQUIRED' ? { student, component: c, panel, entries, doc: await docMarkOf(student.id) } : null;
     }))).filter((x) => x !== null),
   ))).flat();
 
@@ -107,7 +108,7 @@ export default async function Publish({
           <h2 style={{ fontSize: 15 }}>Moderation queue</h2>
           {needsModeration.map((m) => {
             const entries = m.entries;
-            const doc = docMarkOf(m.student.id);
+            const doc = m.doc;
             return (
               <div className="box" key={`${m.student.id}-${m.component}`} style={{ borderLeftColor: 'var(--pen)' }}>
                 <strong>{m.student.surname}, {m.student.otherNames}</strong> — {m.component.toUpperCase()},
@@ -148,8 +149,7 @@ export default async function Publish({
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ student, snap, published }) => {
-              const doc = docMarkOf(student.id);
+            {rows.map(({ student, snap, published, doc }) => {
               const sod = can(principal, 'mark.publish', doc ? { originatingMarkerId: doc.markedBy } : {});
               return (
                 <tr key={student.id}>
