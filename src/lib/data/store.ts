@@ -2283,6 +2283,8 @@ export async function ensureHydrated(): Promise<void> {
 
 export async function seedPrismaDomain(): Promise<void> {
   if (!process.env.DATABASE_URL) return;
+  const staffIds = new Set<string>();
+  const studentIds = new Set<string>();
   for (const p of allPeople()) {
     const email = p.email ?? `${p.username}@localhost`;
     await prisma.user.upsert({
@@ -2293,6 +2295,7 @@ export async function seedPrismaDomain(): Promise<void> {
     if (p.studentId) {
       const s = findStudent(p.studentId);
       if (!s) continue;
+      studentIds.add(s.id);
       await prisma.studentProfile.upsert({
         where: { id: s.id },
         create: {
@@ -2303,6 +2306,7 @@ export async function seedPrismaDomain(): Promise<void> {
         update: { studentNumber: s.studentNumber, surname: s.surname, otherNames: s.otherNames, programmeName: s.programme, courseCode: s.courseCode, projectId: s.projectId === 'unallocated' ? null : s.projectId, email: s.email ?? null },
       });
     } else {
+      staffIds.add(p.id);
       await prisma.staffProfile.upsert({
         where: { id: p.id },
         create: { id: p.id, userId: p.id, staffNumber: p.username, title: p.fullName, researchAreas: [] },
@@ -2311,6 +2315,9 @@ export async function seedPrismaDomain(): Promise<void> {
     }
   }
   for (const t of topics) {
+    // With demo staff disabled (DISABLE_DEMO=1) the demo topics reference
+    // supervisors who do not exist; skip rather than violate the FK.
+    if (!staffIds.has(t.supervisorId)) continue;
     const data = {
       supervisorId: t.supervisorId, title: t.title, description: t.description,
       prerequisites: t.prerequisites || null, tags: t.tags, capacity: t.capacity,
@@ -2321,6 +2328,8 @@ export async function seedPrismaDomain(): Promise<void> {
     await prisma.topic.upsert({ where: { id: t.id }, create: { id: t.id, ...data }, update: data });
   }
   for (const p of PROJECTS) {
+    if (!staffIds.has(p.supervisorId)) continue;
+    if (p.memberIds.some((m) => !studentIds.has(m))) continue;
     const data = {
       title: p.title, supervisorId: p.supervisorId, memberIds: p.memberIds,
       state: p.state, ethicsStatus: p.ethicsStatus,
@@ -2329,6 +2338,8 @@ export async function seedPrismaDomain(): Promise<void> {
     await prisma.project.upsert({ where: { id: p.id }, create: { id: p.id, ...data }, update: data });
   }
   for (const s of slots) {
+    if (!staffIds.has(s.supervisorId)) continue;
+    if (s.bookedByStudentId && !studentIds.has(s.bookedByStudentId)) continue;
     const data = {
       supervisorId: s.supervisorId, startsAt: new Date(s.startsAt), minutes: s.minutes,
       mode: s.mode, venue: s.venue, bookedByStudentId: s.bookedByStudentId,
