@@ -47,7 +47,6 @@ model AcademicCycle {
   endsOn        DateTime
   periods       AssessmentPeriod[]
   configs       AssessmentConfig[]
-  projects      Project[]
   sessions      PresentationSession[]
   isCurrent     Boolean  @default(false)
 
@@ -72,7 +71,6 @@ model Programme {
   institution   Institution @relation(fields: [institutionId], references: [id])
   code          String  // "BSC_IT"
   name          String  // "BSc Information Technology"
-  students      StudentProfile[]
 
   @@unique([institutionId, code])
 }
@@ -81,7 +79,6 @@ model Course {
   id       String @id @default(uuid())
   code     String @unique // CSC400 / CSC402 / CSC499
   title    String
-  projects Project[]
 }
 
 // ───────────────────────────────────────────────────────── identity (local)
@@ -178,12 +175,16 @@ model RoleAssignment {
 }
 
 model StudentProfile {
-  id            String  @id @default(uuid())
+  id            String  @id
   userId        String  @unique
   user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   studentNumber String  @unique
-  programmeId   String
-  programme     Programme @relation(fields: [programmeId], references: [id])
+  surname       String  @default("")
+  otherNames    String  @default("")
+  programmeName String  @default("")
+  courseCode    String  @default("")
+  projectId     String?
+  email         String?
   memberships   ProjectMember[]
   preferences   TopicPreference[]
 }
@@ -198,7 +199,6 @@ model StaffProfile {
   /// Enforced across all their topics, not per topic.
   supervisionCapacity Int   @default(8)
   topics             Topic[]
-  supervisedProjects Project[]
 }
 
 // ──────────────────────────────────────────────────────── topics & projects
@@ -262,16 +262,14 @@ enum ProjectState {
 
 model Project {
   id           String  @id
-  cycleId      String
-  cycle        AcademicCycle @relation(fields: [cycleId], references: [id])
-  courseId     String
-  course       Course  @relation(fields: [courseId], references: [id])
+  title        String
+  supervisorId String?
+  memberIds    String[] @default([])
+  state        String   @default("REGISTERED")
+  ethicsStatus String   @default("NOT_REQUIRED")
+  contributionFiled Json @default("{}")
   topicId      String?
   topic        Topic?  @relation(fields: [topicId], references: [id])
-  supervisorId String?
-  supervisor   StaffProfile? @relation(fields: [supervisorId], references: [id])
-  title        String
-  state        ProjectState @default(REGISTERED)
   createdAt    DateTime @default(now())
 
   members      ProjectMember[]
