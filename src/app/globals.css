@@ -384,14 +384,14 @@ a{ transition:color .12s ease }
 
 /* ─────────────────────────────────────────────────────── split auth screen */
 
-.auth-split{ display:grid; grid-template-columns:minmax(360px, 460px) 1fr; min-height:100vh }
+.auth-split{ display:grid; grid-template-columns:minmax(440px, 560px) 1fr; min-height:100vh }
 .auth-brand{
   background:
     radial-gradient(1200px 500px at -10% -10%, rgba(110,147,214,.18), transparent 60%),
     linear-gradient(180deg, #F2F5FA 0%, #E9EEF6 100%);
   color:var(--ink-soft); padding:48px 44px; display:flex;
 }
-.auth-brand-inner{ display:flex; flex-direction:column; max-width:380px; width:100% }
+.auth-brand-inner{ display:flex; flex-direction:column; max-width:480px; width:100% }
 .auth-brand .inst{ font:600 15px var(--sans); color:var(--ink); letter-spacing:.02em; margin:0 }
 .auth-brand .unit{ color:var(--muted); font-size:13px; margin:5px 0 0 }
 .auth-brand h2{ font:600 32px/1.15 var(--serif); color:var(--ink); margin:44px 0 14px; border:0; padding:0 }
