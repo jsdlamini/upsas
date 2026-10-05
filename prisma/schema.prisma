@@ -293,7 +293,6 @@ model ProjectMember {
   withdrawnAt          DateTime?
 
   consultations   Consultation[]
-  sheets          AssessorSheet[]
   snapshots       MarkSnapshot[]
   nominations     PresentationNomination[]
 
@@ -485,7 +484,6 @@ model RubricVersion {
   locked     Boolean @default(false)
   createdAt  DateTime @default(now())
   criteria   RubricCriterion[]
-  sheets     AssessorSheet[]
 
   @@unique([rubricId, version])
 }
@@ -498,7 +496,6 @@ model RubricCriterion {
   label           String
   maxMark         Int
   descriptors     Json?
-  scores          CriterionScore[]
 
   @@unique([rubricVersionId, ordinal])
 }
@@ -532,40 +529,30 @@ model PresentationNomination {
   nominatedAt DateTime @default(now())
   readinessNote String?
   declinedReason String?
-  sheets     AssessorSheet[]
 
   @@unique([memberId, componentKey])
 }
 
 /// One assessor's sheet for one student. Submission is the digital signature.
 model AssessorSheet {
-  id             String @id @default(uuid())
-  nominationId   String
-  nomination     PresentationNomination @relation(fields: [nominationId], references: [id])
-  memberId       String
-  member         ProjectMember @relation(fields: [memberId], references: [id])
+  id             String @id
   assessorId     String
+  studentId      String
+  component      String
   rubricVersionId String
-  rubricVersion  RubricVersion @relation(fields: [rubricVersionId], references: [id])
-  /// Persisted at submission alongside rubricMax — never recomputed live.
-  rawTotal       Int?
   rubricMax      Int
   submitted      Boolean @default(false)
   submittedAt    DateTime?
-  attestation    String?
-  unlockedById   String?
-  unlockedAt     DateTime?
   scores         CriterionScore[]
 
-  @@unique([nominationId, assessorId])
+  @@unique([assessorId, studentId, component])
 }
 
 model CriterionScore {
-  id          String @id @default(uuid())
+  id          String @id
   sheetId     String
   sheet       AssessorSheet @relation(fields: [sheetId], references: [id], onDelete: Cascade)
   criterionId String
-  criterion   RubricCriterion @relation(fields: [criterionId], references: [id])
   /// null means "not scored" — never coerce to zero.
   mark        Int?
   comment     String?

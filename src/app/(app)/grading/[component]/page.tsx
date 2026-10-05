@@ -62,7 +62,7 @@ async function saveMarks(formData: FormData) {
     }
 
     const raw = String(value).trim();
-    const result = setMark(principal.userId, studentId, component, criterionId,
+    const result = await setMark(principal.userId, studentId, component, criterionId,
                            raw === '' ? null : Number(raw));
     // Every rejected cell is reported, not only the first. A save that stores
     // eighteen of twenty marks and names one problem teaches an assessor to
@@ -85,7 +85,7 @@ async function submitAll(formData: FormData) {
   const principal = await currentPrincipal();
   if (!principal) redirect('/login');
   const component = String(formData.get('component')) as Component;
-  const n = submitSheet(principal.userId, component, new Date().toISOString());
+  const n = await submitSheet(principal.userId, component, new Date().toISOString());
   await persistNow();
   revalidatePath(`/grading/${component}`);
   redirect(`/grading/${component}?submitted=${n}`);
@@ -112,7 +112,7 @@ export default async function Grading({
   }
 
   const rubric = RUBRICS[component];
-  const mine = assigned.map((id) => sheetOf(principal.userId, id, component));
+  const mine = await Promise.all(assigned.map(async (id) => await sheetOf(principal.userId, id, component)));
   const locked = mine.some((s) => s?.submitted);
   const done = mine.filter((s) => rawTotalOf(s) !== null).length;
 
@@ -128,6 +128,7 @@ export default async function Grading({
     const titles = slot.joint ? [] : await Promise.all(slot.studentIds.map(async (id) => (await projectOf(id))?.title ?? '—'));
     const students = await Promise.all(slot.studentIds.map(async (id) => ({
       id, student: findStudent(id)!, panel: aggregatePanel(await toAssessorEntries(id, component), PROFILE_A.panel),
+      sheet: await sheetOf(principal.userId, id, component),
     })));
     return { slot, project, titles, students };
   }));
@@ -222,8 +223,7 @@ export default async function Grading({
                               {titles.join(' · ')}</>}
                       </td>
                     </tr>
-                    {students.map(({ id, student, panel }) => {
-                      const sheet = sheetOf(principal.userId, id, component);
+                    {students.map(({ id, student, panel, sheet }) => {
                       const total = rawTotalOf(sheet);
                       const who = `${student.surname}, ${student.otherNames}`;
                       rowIndex += 1;

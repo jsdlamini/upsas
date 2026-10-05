@@ -794,11 +794,27 @@ export async function superviseesOf(supervisorId: string): Promise<Student[]> {
 export const consultationsOf = (studentId: string): Consultation[] =>
   consultations.filter((c) => c.studentId === studentId);
 
-export const sheetsFor = (studentId: string, component: 'p1' | 'p2'): Sheet[] =>
-  sheets.filter((s) => s.studentId === studentId && s.component === component);
+function toSheet(row: { assessorId: string; studentId: string; component: string; rubricVersionId: string; rubricMax: number; submitted: boolean; submittedAt: Date | null; scores: Array<{ criterionId: string; mark: number | null }> }): Sheet {
+  const marks: Record<string, number | null> = {};
+  for (const s of row.scores) marks[s.criterionId] = s.mark;
+  return {
+    assessorId: row.assessorId, studentId: row.studentId, component: row.component as 'p1' | 'p2',
+    rubricVersionId: row.rubricVersionId, rubricMax: row.rubricMax, marks,
+    submitted: row.submitted, submittedAt: row.submittedAt ? row.submittedAt.toISOString() : null,
+  };
+}
 
-export const sheetOf = (assessorId: string, studentId: string, component: 'p1' | 'p2'): Sheet | null =>
-  sheets.find((s) => s.assessorId === assessorId && s.studentId === studentId && s.component === component) ?? null;
+export async function sheetsFor(studentId: string, component: 'p1' | 'p2'): Promise<Sheet[]> {
+  if (!process.env.DATABASE_URL) return [];
+  const rows = await prisma.assessorSheet.findMany({ where: { studentId, component }, include: { scores: true } });
+  return rows.map(toSheet);
+}
+
+export async function sheetOf(assessorId: string, studentId: string, component: 'p1' | 'p2'): Promise<Sheet | null> {
+  if (!process.env.DATABASE_URL) return null;
+  const row = await prisma.assessorSheet.findUnique({ where: { assessorId_studentId_component: { assessorId, studentId, component } }, include: { scores: true } });
+  return row ? toSheet(row) : null;
+}
 
 export async function docMarkOf(studentId: string): Promise<DocMark | null> {
   if (!process.env.DATABASE_URL) return null;
@@ -825,29 +841,29 @@ export const sessionsFor = (component: 'p1' | 'p2'): SessionSlot[] =>
 
 /* ---------------------------------------------------------------- mutations */
 
-export function setMark(
+export async function setMark(
   assessorId: string, studentId: string, component: 'p1' | 'p2',
   criterionId: string, value: number | null,
-): { ok: true } | { ok: false; error: string } {
+): Promise<{ ok: true } | { ok: false; error: string }> {
   const rubric = RUBRICS[component];
   const criterion = rubric.criteria.find((c) => c.id === criterionId);
   if (!criterion) return { ok: false, error: 'Unknown criterion.' };
   if (value !== null && (!Number.isInteger(value) || value < 0 || value > criterion.max)) {
     return { ok: false, error: `${criterion.label} must be a whole number between 0 and ${criterion.max}.` };
   }
+  if (!process.env.DATABASE_URL) return { ok: false, error: 'No database.' };
 
-  let sheet = sheetOf(assessorId, studentId, component);
-  if (!sheet) {
-    sheet = { assessorId, studentId, component, rubricVersionId: rubric.versionId,
-              rubricMax: rubric.max, marks: {}, submitted: false, submittedAt: null };
-    sheets.push(sheet);
+  let row = await prisma.assessorSheet.findUnique({ where: { assessorId_studentId_component: { assessorId, studentId, component } } });
+  if (!row) {
+    row = await prisma.assessorSheet.create({ data: { id: `${assessorId}-${studentId}-${component}`, assessorId, studentId, component, rubricVersionId: rubric.versionId, rubricMax: rubric.max, submitted: false, submittedAt: null } });
   }
-  if (sheet.submitted) return { ok: false, error: 'This sheet is submitted. A coordinator must reopen it.' };
-  sheet.marks[criterionId] = value;
-  // First mark against this instrument: it is no longer a draft, so any later
-  // edit forks rather than rewriting the sheet these marks were awarded on.
+  if (row.submitted) return { ok: false, error: 'This sheet is submitted. A coordinator must reopen it.' };
+  await prisma.criterionScore.upsert({
+    where: { sheetId_criterionId: { sheetId: row.id, criterionId } },
+    create: { id: `${row.id}-${criterionId}`, sheetId: row.id, criterionId, mark: value },
+    update: { mark: value },
+  });
   if (value !== null && !rubric.locked) rubric.locked = true;
-  schedulePersist();
   return { ok: true };
 }
 
@@ -993,17 +1009,10 @@ export function addConsultation(studentId: string, periodId: 'SEM1' | 'SEM2', ag
   return c;
 }
 
-export function submitSheet(assessorId: string, component: 'p1' | 'p2', at: string): number {
-  let count = 0;
-  for (const s of sheets) {
-    if (s.assessorId === assessorId && s.component === component && !s.submitted) {
-      s.submitted = true;
-      s.submittedAt = at;
-      count += 1;
-    }
-  }
-  schedulePersist();
-  return count;
+export async function submitSheet(assessorId: string, component: 'p1' | 'p2', at: string): Promise<number> {
+  if (!process.env.DATABASE_URL) return 0;
+  const res = await prisma.assessorSheet.updateMany({ where: { assessorId, component, submitted: false }, data: { submitted: true, submittedAt: new Date(at) } });
+  return res.count;
 }
 
 /* ------------------------------------------------------------------ topics */
@@ -1563,7 +1572,7 @@ export function toConsultationRecords(studentId: string): ConsultationRecord[] {
 
 export async function toAssessorEntries(studentId: string, component: 'p1' | 'p2'): Promise<AssessorEntry[]> {
   const project = await projectOf(studentId);
-  return sheetsFor(studentId, component).map((s) => ({
+  return (await sheetsFor(studentId, component)).map((s) => ({
     assessorId: s.assessorId, rubricVersionId: s.rubricVersionId, rubricMax: s.rubricMax,
     criterionScores: s.marks, submitted: s.submitted,
     isSupervisor: project?.supervisorId === s.assessorId,

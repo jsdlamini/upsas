@@ -63,12 +63,12 @@ export async function POST(request: NextRequest) {
   const decision = can(principal, 'presentation.grade', { memberId: studentId, assignedMemberIds: assigned });
   if (!decision.allow) return NextResponse.json({ ok: false, error: decision.reason }, { status: 403 });
 
-  const result = setMark(principal.userId, studentId, component, criterionId, value);
+  const result = await setMark(principal.userId, studentId, component, criterionId, value);
   if (!result.ok) return NextResponse.json({ ok: false, error: result.error }, { status: 422 });
 
   const outcome = await persistNow();
   const rubric = RUBRICS[component];
-  const total = rawTotalOf(sheetOf(principal.userId, studentId, component));
+  const total = rawTotalOf(await sheetOf(principal.userId, studentId, component));
   const criterion = rubric.criteria.find((c) => c.id === criterionId);
   const student = findStudent(studentId);
 

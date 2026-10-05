@@ -124,7 +124,7 @@ export default async function MarkSheet({ params }: { params: Promise<{ studentI
           <thead><tr><th>Assessor</th><th className="num">Raw of {RUBRICS.p2.max}</th>
             <th className="num">Normalised</th><th>Status</th></tr></thead>
           <tbody>
-            {sheetsFor(student.id, 'p2').map((s) => {
+            {(await sheetsFor(student.id, 'p2')).map((s) => {
               const total = rawTotalOf(s);
               const counted = s.submitted && total !== null;
               return (
