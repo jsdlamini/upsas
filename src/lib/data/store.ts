@@ -1153,7 +1153,8 @@ export async function acceptProposal(topicId: string, supervisorId: string): Pro
   if (!t || !t.studentProposed) return { ok: false, error: 'No such proposal.' };
   if (t.supervisorId !== supervisorId) return { ok: false, error: 'That proposal was not sent to you.' };
   if ((await loadOf(supervisorId)) >= CAPACITY) return { ok: false, error: 'You are at capacity.' };
-  await prisma.topic.update({ where: { id: topicId }, data: { acceptedAt: new Date(), published: true } });
+  const tenantId = await requestTenantId();
+  await prisma.topic.update({ where: { id: topicId, tenantId }, data: { acceptedAt: new Date(), published: true } });
   return { ok: true };
 }
 

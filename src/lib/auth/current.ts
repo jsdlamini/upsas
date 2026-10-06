@@ -128,5 +128,7 @@ export async function currentPrincipal(): Promise<AuthenticatedPrincipal | null>
   if (!person) return null;
   const user = await prisma.user.findUnique({ where: { id: record.userId }, select: { tenantId: true } });
   if (!user) return null;
+  const tenant = await prisma.tenant.findUnique({ where: { id: user.tenantId }, select: { suspendedAt: true } });
+  if (tenant?.suspendedAt) return null; // a suspended tenant signs no one in
   return principalFromSession(record, person.grants, CYCLE, now, user.tenantId);
 }
