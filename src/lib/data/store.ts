@@ -2288,7 +2288,7 @@ export async function seedPrismaDomain(): Promise<void> {
   for (const p of allPeople()) {
     const email = p.email ?? `${p.username}@localhost`;
     await prisma.user.upsert({
-      where: { username: p.username },
+      where: { tenantId_username: { tenantId: 'default', username: p.username } },
       create: { id: p.id, username: p.username, email, fullName: p.fullName, surname: p.surname, status: 'ACTIVE' },
       update: { email, fullName: p.fullName, surname: p.surname },
     });

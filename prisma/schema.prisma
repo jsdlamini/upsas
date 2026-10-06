@@ -19,8 +19,16 @@ datasource db {
 
 // ─────────────────────────────────────────────────────────── institution
 
+model Tenant {
+  id          String    @id
+  name        String
+  createdAt   DateTime  @default(now())
+  suspendedAt DateTime?
+}
+
 model Institution {
   id            String  @id @default("default")
+  tenantId      String  @default("default")
   name          String  @default("")
   location      String  @default("")
   faculty       String  @default("")
@@ -39,6 +47,7 @@ model Institution {
 }
 
 model AcademicCycle {
+  tenantId String @default("default")
   id            String   @id @default(uuid())
   institutionId String
   institution   Institution @relation(fields: [institutionId], references: [id])
@@ -53,6 +62,7 @@ model AcademicCycle {
 }
 
 model AssessmentPeriod {
+  tenantId String @default("default")
   id       String  @id
   cycleId  String
   key      String
@@ -66,6 +76,7 @@ model AssessmentPeriod {
 }
 
 model Programme {
+  tenantId String @default("default")
   id            String  @id @default(uuid())
   institutionId String
   institution   Institution @relation(fields: [institutionId], references: [id])
@@ -76,6 +87,7 @@ model Programme {
 }
 
 model Course {
+  tenantId String @default("default")
   id       String @id @default(uuid())
   code     String @unique // CSC400 / CSC402 / CSC499
   title    String
@@ -92,7 +104,8 @@ enum AccountStatus {
 
 model User {
   id             String        @id @default(uuid())
-  username       String        @unique
+  tenantId       String        @default("default")
+  username       String
   email          String        @unique
   fullName       String
   surname        String
@@ -110,6 +123,8 @@ model User {
   roles          RoleAssignment[]
   studentProfile StudentProfile?
   staffProfile   StaffProfile?
+
+  @@unique([tenantId, username])
 }
 
 /// argon2id only. No federated identity, no external verification — by policy.
@@ -175,6 +190,7 @@ model RoleAssignment {
 }
 
 model StudentProfile {
+  tenantId String @default("default")
   id            String  @id
   userId        String  @unique
   user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -190,6 +206,7 @@ model StudentProfile {
 }
 
 model StaffProfile {
+  tenantId String @default("default")
   id                 String @id
   userId             String @unique
   user               User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -204,6 +221,7 @@ model StaffProfile {
 // ──────────────────────────────────────────────────────── topics & projects
 
 model Topic {
+  tenantId String @default("default")
   id             String  @id
   supervisorId   String
   supervisor     StaffProfile @relation(fields: [supervisorId], references: [id])
@@ -224,6 +242,7 @@ model Topic {
 }
 
 model TopicPreference {
+  tenantId String @default("default")
   id        String @id
   studentId String
   student   StudentProfile @relation(fields: [studentId], references: [id])
@@ -261,6 +280,7 @@ enum ProjectState {
 }
 
 model Project {
+  tenantId String @default("default")
   id           String  @id
   title        String
   supervisorId String?
@@ -281,6 +301,7 @@ model Project {
 
 /// Marks and consultations belong to the STUDENT; artefacts belong to the project.
 model ProjectMember {
+  tenantId String @default("default")
   id                   String @id
   projectId            String
   project              Project @relation(fields: [projectId], references: [id])
@@ -297,6 +318,7 @@ model ProjectMember {
 }
 
 model StateTransition {
+  tenantId String @default("default")
   id         String @id @default(uuid())
   projectId  String
   project    Project @relation(fields: [projectId], references: [id])
@@ -310,6 +332,7 @@ model StateTransition {
 // ───────────────────────────────────────────────────── agreement (e-signed)
 
 model Agreement {
+  tenantId String @default("default")
   id          String @id @default(uuid())
   projectId   String
   project     Project @relation(fields: [projectId], references: [id])
@@ -327,6 +350,7 @@ model Agreement {
 }
 
 model AgreementSignature {
+  tenantId String @default("default")
   id          String @id @default(uuid())
   agreementId String
   agreement   Agreement @relation(fields: [agreementId], references: [id])
@@ -342,6 +366,7 @@ model AgreementSignature {
 // ────────────────────────────────────────────── consultations & attestation
 
 model AvailabilitySlot {
+  tenantId String @default("default")
   id           String @id
   supervisorId String
   startsAt     DateTime
@@ -355,6 +380,7 @@ model AvailabilitySlot {
 }
 
 model Consultation {
+  tenantId String @default("default")
   id           String @id
   studentId    String
   periodId     String
@@ -371,6 +397,7 @@ model Consultation {
 
 /// Replaces the paper register. Append-only: corrections supersede.
 model Attestation {
+  tenantId String @default("default")
   id             String @id @default(uuid())
   consultationId String
   actorId        String
@@ -385,6 +412,7 @@ model Attestation {
 }
 
 model ActionItem {
+  tenantId String @default("default")
   id             String @id @default(uuid())
   consultationId String
   description    String
@@ -396,6 +424,7 @@ model ActionItem {
 // ────────────────────────────────────────────────── deliverables & ethics
 
 model Deliverable {
+  tenantId String @default("default")
   id             String @id
   projectId      String
   kind           String
@@ -412,6 +441,7 @@ model Deliverable {
 }
 
 model EthicsApplication {
+  tenantId String @default("default")
   id          String @id @default(uuid())
   projectId   String
   project     Project @relation(fields: [projectId], references: [id])
@@ -426,6 +456,7 @@ model EthicsApplication {
 // ───────────────────────────────────────────────────────────────── rubrics
 
 model Rubric {
+  tenantId String @default("default")
   id       String @id @default(uuid())
   code     String @unique // P1 / P2 / CONSULT / DOC
   name     String
@@ -436,6 +467,7 @@ model Rubric {
 
 /// Immutable once used. Edits fork a new version; historical scores are untouched.
 model RubricVersion {
+  tenantId String @default("default")
   id         String @id @default(uuid())
   rubricId   String
   rubric     Rubric @relation(fields: [rubricId], references: [id])
@@ -449,6 +481,7 @@ model RubricVersion {
 }
 
 model RubricCriterion {
+  tenantId String @default("default")
   id              String @id @default(uuid())
   rubricVersionId String
   rubricVersion   RubricVersion @relation(fields: [rubricVersionId], references: [id])
@@ -463,6 +496,7 @@ model RubricCriterion {
 // ─────────────────────────────────────────────── presentations & grading
 
 model PresentationSession {
+  tenantId String @default("default")
   id           String @id @default(uuid())
   cycleId      String
   cycle        AcademicCycle @relation(fields: [cycleId], references: [id])
@@ -477,6 +511,7 @@ model PresentationSession {
 }
 
 model PresentationNomination {
+  tenantId String @default("default")
   id         String @id @default(uuid())
   sessionId  String?
   session    PresentationSession? @relation(fields: [sessionId], references: [id])
@@ -495,6 +530,7 @@ model PresentationNomination {
 
 /// One assessor's sheet for one student. Submission is the digital signature.
 model AssessorSheet {
+  tenantId String @default("default")
   id             String @id
   assessorId     String
   studentId      String
@@ -509,6 +545,7 @@ model AssessorSheet {
 }
 
 model CriterionScore {
+  tenantId String @default("default")
   id          String @id
   sheetId     String
   sheet       AssessorSheet @relation(fields: [sheetId], references: [id], onDelete: Cascade)
@@ -521,6 +558,7 @@ model CriterionScore {
 }
 
 model Moderation {
+  tenantId String @default("default")
   id              String @id
   studentId       String
   component       String
@@ -533,6 +571,7 @@ model Moderation {
 }
 
 model DocumentationMark {
+  tenantId String @default("default")
   id              String @id
   studentId       String @unique
   rawTotal        Int
@@ -545,6 +584,7 @@ model DocumentationMark {
 // ──────────────────────────────────────────────── configuration & snapshots
 
 model AssessmentConfig {
+  tenantId String @default("default")
   id           String @id @default(uuid())
   cycleId      String
   cycle        AcademicCycle @relation(fields: [cycleId], references: [id])
@@ -563,6 +603,7 @@ model AssessmentConfig {
 
 /// Immutable. A correction creates a superseding row; nothing is updated.
 model MarkSnapshot {
+  tenantId String @default("default")
   id            String @id @default(uuid())
   memberId      String
   member        ProjectMember @relation(fields: [memberId], references: [id])
@@ -587,6 +628,7 @@ model MarkSnapshot {
 
 /// Append-only, hash-chained. No update or delete path exists in the API.
 model AuditEvent {
+  tenantId String @default("default")
   id           String   @id @default(uuid())
   sequence     BigInt   @unique
   occurredAt   DateTime @default(now())
@@ -607,6 +649,7 @@ model AuditEvent {
 }
 
 model Notification {
+  tenantId String @default("default")
   id        String   @id @default(uuid())
   userId    String
   kind      String
@@ -625,6 +668,7 @@ model Notification {
 // ──────────────────────────────────────────────── working-store migration (A)
 
 model Publication {
+  tenantId String @default("default")
   id          String   @id
   studentId   String
   finalMark   Int?
@@ -638,6 +682,7 @@ model Publication {
 }
 
 model MeetingRequest {
+  tenantId String @default("default")
   id             String   @id
   studentId      String
   supervisorId   String
@@ -652,6 +697,7 @@ model MeetingRequest {
 }
 
 model Enrolment {
+  tenantId String @default("default")
   id            String   @id
   studentId     String   @unique
   status        String
@@ -663,6 +709,7 @@ model Enrolment {
 }
 
 model Extension {
+  tenantId String @default("default")
   id          String   @id
   studentId   String
   deadlineKey String
@@ -676,6 +723,7 @@ model Extension {
 }
 
 model ResetTicket {
+  tenantId String @default("default")
   id        String   @id
   userId    String
   codeHash  String
@@ -690,6 +738,7 @@ model ResetTicket {
 
 model EmailSettings {
   id         String  @id @default("default")
+  tenantId   String  @default("default")
   provider   String  @default("none")
   fromName   String  @default("")
   fromEmail  String  @default("")

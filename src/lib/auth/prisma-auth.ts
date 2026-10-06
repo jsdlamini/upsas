@@ -29,7 +29,7 @@ async function upsertUser(p: Person, hash: string): Promise<void> {
   const status: AccountStatus = (p.status as AccountStatus) || 'ACTIVE';
 
   await prisma.user.upsert({
-    where: { username: p.username },
+    where: { tenantId_username: { tenantId: 'default', username: p.username } },
     create: {
       id: p.id,
       username: p.username,
