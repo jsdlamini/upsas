@@ -1,5 +1,6 @@
 import { hashPassword, checkPassword } from '../auth/password';
 import { prisma } from '../prisma';
+import { requestTenantId } from '../tenant';
 import type { RoleGrant } from '../auth/roles';
 import type { RoleCode } from '../rbac/policy';
 import type { AssessorEntry, ConsultationRecord } from '../assessment/types';
@@ -775,7 +776,8 @@ function toProject(row: { id: string; title: string; supervisorId: string | null
 }
 export async function findProject(id: string): Promise<Project | null> {
   if (!process.env.DATABASE_URL) return null;
-  const row = await prisma.project.findUnique({ where: { id } });
+  const tenantId = await requestTenantId();
+  const row = await prisma.project.findUnique({ where: { id, tenantId } });
   return row ? toProject(row) : null;
 }
 export async function projectOf(studentId: string): Promise<Project | null> {
@@ -1042,34 +1044,40 @@ function toTopic(row: { id: string; supervisorId: string; title: string; descrip
 
 export async function allTopics(): Promise<Topic[]> {
   if (!process.env.DATABASE_URL) return [];
-  const rows = await prisma.topic.findMany({ where: { OR: [{ published: true }, { studentProposed: true }] } });
+  const tenantId = await requestTenantId();
+  const rows = await prisma.topic.findMany({ where: { AND: [{ OR: [{ published: true }, { studentProposed: true }] }, { tenantId }] } });
   return rows.map(toTopic);
 }
 export async function topicsBySupervisor(supervisorId: string): Promise<Topic[]> {
   if (!process.env.DATABASE_URL) return [];
-  const rows = await prisma.topic.findMany({ where: { supervisorId } });
+  const tenantId = await requestTenantId();
+  const rows = await prisma.topic.findMany({ where: { supervisorId, tenantId } });
   return rows.map(toTopic);
 }
 export async function findTopic(id: string): Promise<Topic | null> {
   if (!process.env.DATABASE_URL) return null;
-  const row = await prisma.topic.findUnique({ where: { id } });
+  const tenantId = await requestTenantId();
+  const row = await prisma.topic.findUnique({ where: { id, tenantId } });
   return row ? toTopic(row) : null;
 }
 export async function preferencesOf(studentId: string): Promise<Preference[]> {
   if (!process.env.DATABASE_URL) return [];
-  const rows = await prisma.topicPreference.findMany({ where: { studentId }, orderBy: { rank: 'asc' } });
+  const tenantId = await requestTenantId();
+  const rows = await prisma.topicPreference.findMany({ where: { studentId, tenantId }, orderBy: { rank: 'asc' } });
   return rows.map((r) => ({ studentId: r.studentId, topicId: r.topicId, rank: r.rank }));
 }
 export async function preferencesForTopic(topicId: string): Promise<Preference[]> {
   if (!process.env.DATABASE_URL) return [];
-  const rows = await prisma.topicPreference.findMany({ where: { topicId } });
+  const tenantId = await requestTenantId();
+  const rows = await prisma.topicPreference.findMany({ where: { topicId, tenantId } });
   return rows.map((r) => ({ studentId: r.studentId, topicId: r.topicId, rank: r.rank }));
 }
 
 /** Supervision capacity counts students across all of a supervisor's topics. */
 export async function loadOf(supervisorId: string): Promise<number> {
   if (!process.env.DATABASE_URL) return 0;
-  const rows = await prisma.project.findMany({ where: { supervisorId } });
+  const tenantId = await requestTenantId();
+  const rows = await prisma.project.findMany({ where: { supervisorId, tenantId } });
   return rows.reduce((a, p) => a + p.memberIds.length, 0);
 }
 
@@ -1087,10 +1095,11 @@ export async function addTopic(
     return { ok: false, error: 'Capacity must be between 1 and 6 students.' };
   }
   if (!process.env.DATABASE_URL) return { ok: false, error: 'No database.' };
+  const tenantId = await requestTenantId();
   const id = `t-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
   await prisma.topic.create({
     data: {
-      id, supervisorId, title: title.trim(), description: description.trim(),
+      id, tenantId, supervisorId, title: title.trim(), description: description.trim(),
       prerequisites: prerequisites.trim(), tags: [], capacity, groupSuitable,
       published: true, studentProposed: false, proposedBy: null, acceptedAt: null,
     },
@@ -1118,9 +1127,10 @@ export async function proposeTopic(
     return { ok: false, error: 'A proposal needs a real title and a description of at least a couple of sentences.' };
   }
   if (!process.env.DATABASE_URL) return { ok: false, error: 'No database.' };
+  const tenantId = await requestTenantId();
   await prisma.topic.create({
     data: {
-      id: `t-prop-${Date.now()}`, supervisorId, title: title.trim(), description: description.trim(),
+      id: `t-prop-${Date.now()}`, tenantId, supervisorId, title: title.trim(), description: description.trim(),
       prerequisites: '', tags: [], capacity: 1, groupSuitable: true,
       published: false, studentProposed: true, proposedBy: studentId, acceptedAt: null,
     },
@@ -1142,9 +1152,10 @@ export async function setPreferences(studentId: string, topicIds: string[]): Pro
   if (new Set(chosen).size !== chosen.length) return { ok: false, error: 'Choose three different topics.' };
   if (chosen.length === 0) return { ok: false, error: 'Pick at least one topic.' };
   if (!process.env.DATABASE_URL) return { ok: false, error: 'No database.' };
-  await prisma.topicPreference.deleteMany({ where: { studentId } });
+  const tenantId = await requestTenantId();
+  await prisma.topicPreference.deleteMany({ where: { studentId, tenantId } });
   await prisma.topicPreference.createMany({
-    data: chosen.map((topicId, i) => ({ id: `${studentId}-${topicId}`, studentId, topicId, rank: i + 1 })),
+    data: chosen.map((topicId, i) => ({ id: `${studentId}-${topicId}`, tenantId, studentId, topicId, rank: i + 1 })),
   });
   return { ok: true };
 }
@@ -1161,10 +1172,11 @@ export async function runAllocation(): Promise<{
 }> {
   const assigned: Array<{ studentId: string; studentNumber: string; topicId: string; title: string; supervisorId: string }> = [];
   const unmatched: Array<{ studentId: string; studentNumber: string }> = [];
+  const tenantId = await requestTenantId();
 
   const takenOnTopic = async (topicId: string) => {
     if (!process.env.DATABASE_URL) return 0;
-    const rows = await prisma.project.findMany({ where: { topicId } });
+    const rows = await prisma.project.findMany({ where: { topicId, tenantId } });
     return rows.reduce((a, p) => a + p.memberIds.length, 0);
   };
 
@@ -1184,6 +1196,7 @@ export async function runAllocation(): Promise<{
       await prisma.project.create({
         data: {
           id: projectId,
+          tenantId,
           title: topic.title,
           supervisorId: topic.supervisorId,
           memberIds: [student.id],
