@@ -475,9 +475,9 @@ tables.profileOverrides ??= {};
 const meetingNotices = tables.meetingNotices;
 
 /** Institution profile accessors (back `src/lib/institution.ts`). */
-export async function getStoredInstitution(): Promise<InstitutionProfile | null> {
+export async function getStoredInstitution(tenantId: string): Promise<InstitutionProfile | null> {
   if (!process.env.DATABASE_URL) return null; // build-time prerender has no DB
-  const row = await prisma.institution.findUnique({ where: { id: 'default' } });
+  const row = await prisma.institution.findUnique({ where: { id: tenantId } });
   if (!row) return null;
   return {
     name: row.name, location: row.location, department: row.department,
@@ -486,7 +486,7 @@ export async function getStoredInstitution(): Promise<InstitutionProfile | null>
     configuredAt: row.configuredAt ? row.configuredAt.toISOString() : null,
   };
 }
-export async function setStoredInstitution(v: InstitutionProfile): Promise<void> {
+export async function setStoredInstitution(tenantId: string, v: InstitutionProfile): Promise<void> {
   if (!process.env.DATABASE_URL) return;
   const data = {
     name: v.name, location: v.location, department: v.department,
@@ -494,18 +494,18 @@ export async function setStoredInstitution(v: InstitutionProfile): Promise<void>
     logo: (v.logo ?? undefined) as never,
     configuredAt: v.configuredAt ? new Date(v.configuredAt) : null,
   };
-  await prisma.institution.upsert({ where: { id: 'default' }, create: { id: 'default', ...data }, update: data });
+  await prisma.institution.upsert({ where: { id: tenantId }, create: { id: tenantId, tenantId, ...data }, update: data });
 }
 export async function resetInstitutionForTests(): Promise<void> {
   await prisma.institution.deleteMany({ where: { id: 'default' } });
 }
-export async function institutionProduct(): Promise<string> {
-  const inst = await getStoredInstitution();
+export async function institutionProduct(tenantId: string): Promise<string> {
+  const inst = await getStoredInstitution(tenantId);
   return inst?.productName || 'Research Chain';
 }
-export async function getStoredEmailSettings(): Promise<EmailSettings | null> {
+export async function getStoredEmailSettings(tenantId: string): Promise<EmailSettings | null> {
   if (!process.env.DATABASE_URL) return null;
-  const row = await prisma.emailSettings.findUnique({ where: { id: 'default' } });
+  const row = await prisma.emailSettings.findUnique({ where: { id: tenantId } });
   if (!row) return null;
   return {
     provider: row.provider as EmailProvider, fromName: row.fromName, fromEmail: row.fromEmail,
@@ -513,9 +513,9 @@ export async function getStoredEmailSettings(): Promise<EmailSettings | null> {
     smtpUser: row.smtpUser, smtpPass: row.smtpPass,
   };
 }
-export async function setStoredEmailSettings(v: EmailSettings): Promise<void> {
+export async function setStoredEmailSettings(tenantId: string, v: EmailSettings): Promise<void> {
   if (!process.env.DATABASE_URL) return;
-  await prisma.emailSettings.upsert({ where: { id: 'default' }, create: { id: 'default', ...v }, update: { ...v } });
+  await prisma.emailSettings.upsert({ where: { id: tenantId }, create: { id: tenantId, tenantId, ...v }, update: { ...v } });
 }
 export async function resetEmailForTests(): Promise<void> {
   await prisma.emailSettings.deleteMany({ where: { id: 'default' } });
@@ -1667,13 +1667,13 @@ export async function registerStudent(input: {
     const site = process.env.NEXT_PUBLIC_SITE_URL || 'https://research.idealsoftwaresolutions.com';
     void sendEmail({
       to: input.email.trim().toLowerCase(),
-      subject: `Your ${(await institutionProduct())} account is ready`,
-      body: `Hi ${input.otherNames},\n\nYour account on the ${(await institutionProduct())} is ready. Sign in at ${site}/login with your student number ${number} and the password you chose.\n\nOnce signed in: check your course code, browse and rank topics, and book supervision sessions.\n\nIf you didn't register, you can ignore this message.`,
+      subject: `Your ${(await institutionProduct('default'))} account is ready`,
+      body: `Hi ${input.otherNames},\n\nYour account on the ${(await institutionProduct('default'))} is ready. Sign in at ${site}/login with your student number ${number} and the password you chose.\n\nOnce signed in: check your course code, browse and rank topics, and book supervision sessions.\n\nIf you didn't register, you can ignore this message.`,
       html: `
         <div style="font-family: Inter, -apple-system, sans-serif; color: #0f172a; line-height: 1.6">
           <h2 style="margin: 0 0 12px">Your account is ready</h2>
           <p>Hi ${input.otherNames},</p>
-          <p>Your account on the ${(await institutionProduct())} is ready.</p>
+          <p>Your account on the ${(await institutionProduct('default'))} is ready.</p>
           <p><a href="${site}/login" style="color:#1e40af;font-weight:600">Sign in</a> with your student number <strong>${number}</strong> and the password you chose.</p>
           <p style="color:#64748b;font-size:13px">Once signed in: check your course code, browse and rank topics, and book supervision sessions.</p>
         </div>`,
@@ -1724,7 +1724,7 @@ export async function requestStaffAccount(input: {
     const site = process.env.NEXT_PUBLIC_SITE_URL || 'https://research.idealsoftwaresolutions.com';
     void sendEmail({
       to: input.email.trim(),
-      subject: `Your ${(await institutionProduct())} access request was received`,
+      subject: `Your ${(await institutionProduct('default'))} access request was received`,
       body: `Hi ${fullName},\n\nYour access request has been received and is waiting for a coordinator to approve it. You'll be able to sign in once approved.\n\nIf you didn't request this, you can ignore this message.`,
       html: `
         <div style="font-family: Inter, -apple-system, sans-serif; color: #0f172a; line-height: 1.6">
@@ -2253,7 +2253,7 @@ export async function requestResetCode(username: string): Promise<void> {
   await sendEmail({
     to: email,
     subject: 'Your password reset code',
-    body: `Use this code to reset your ${(await institutionProduct())} password:\n\n${code}\n\nOpen ${recoverUrl} and enter it with your username to choose a new password. It expires in 30 minutes and works once. If you did not ask for this, ignore this message.`,
+    body: `Use this code to reset your ${(await institutionProduct('default'))} password:\n\n${code}\n\nOpen ${recoverUrl} and enter it with your username to choose a new password. It expires in 30 minutes and works once. If you did not ask for this, ignore this message.`,
     html: `
       <div style="font-family: Inter, -apple-system, sans-serif; color: #0f172a; line-height: 1.6">
         <h2 style="margin: 0 0 12px">Reset your password</h2>

@@ -22,7 +22,7 @@ test('saveInstitution validates and persists', async () => {
   assert.equal(ok.ok, true);
   assert.equal(await isConfigured(), true);
   assert.equal((await getInstitution()).name, 'Acme University');
-  assert.ok((await getStoredInstitution())!.configuredAt);
+  assert.ok((await getStoredInstitution('default'))!.configuredAt);
 });
 
 test('saveInstitution rejects a bad accent colour and a bad logo URL', async () => {

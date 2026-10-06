@@ -2,6 +2,7 @@ import {
   getStoredInstitution, setStoredInstitution, type InstitutionProfile,
 } from './data/store';
 import { logoFileExists } from './logo-storage';
+import { requestTenantId } from './tenant';
 
 export type { InstitutionProfile } from './data/store';
 
@@ -24,17 +25,18 @@ export const DEFAULT_INSTITUTION: InstitutionProfile = {
 const ACCENT_RE = /^#[0-9a-fA-F]{6}$/;
 
 export async function getInstitution(): Promise<InstitutionProfile> {
-  return (await getStoredInstitution()) ?? DEFAULT_INSTITUTION;
+  return (await getStoredInstitution(await requestTenantId())) ?? DEFAULT_INSTITUTION;
 }
 
 export async function isConfigured(): Promise<boolean> {
-  return (await getStoredInstitution()) !== null;
+  return (await getStoredInstitution(await requestTenantId())) !== null;
 }
 
 export async function saveInstitution(
   patch: Partial<InstitutionProfile>,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const current = (await getStoredInstitution()) ?? DEFAULT_INSTITUTION;
+  const tenantId = await requestTenantId();
+  const current = (await getStoredInstitution(tenantId)) ?? DEFAULT_INSTITUTION;
   const next: InstitutionProfile = { ...current, ...patch };
 
   if (!next.name.trim() || !next.department.trim()) {
@@ -48,7 +50,7 @@ export async function saveInstitution(
   }
 
   if (next.configuredAt == null) next.configuredAt = new Date().toISOString();
-  await setStoredInstitution(next);
+  await setStoredInstitution(tenantId, next);
   return { ok: true };
 }
 
