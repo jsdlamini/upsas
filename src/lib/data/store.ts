@@ -800,7 +800,8 @@ function toConsultation(row: { id: string; studentId: string; periodId: string; 
 
 export async function consultationsOf(studentId: string): Promise<Consultation[]> {
   if (!process.env.DATABASE_URL) return [];
-  const rows = await prisma.consultation.findMany({ where: { studentId } });
+  const tenantId = await requestTenantId();
+  const rows = await prisma.consultation.findMany({ where: { studentId, tenantId } });
   return rows.map(toConsultation);
 }
 
@@ -816,19 +817,22 @@ function toSheet(row: { assessorId: string; studentId: string; component: string
 
 export async function sheetsFor(studentId: string, component: 'p1' | 'p2'): Promise<Sheet[]> {
   if (!process.env.DATABASE_URL) return [];
-  const rows = await prisma.assessorSheet.findMany({ where: { studentId, component }, include: { scores: true } });
+  const tenantId = await requestTenantId();
+  const rows = await prisma.assessorSheet.findMany({ where: { studentId, component, tenantId }, include: { scores: true } });
   return rows.map(toSheet);
 }
 
 export async function sheetOf(assessorId: string, studentId: string, component: 'p1' | 'p2'): Promise<Sheet | null> {
   if (!process.env.DATABASE_URL) return null;
-  const row = await prisma.assessorSheet.findUnique({ where: { assessorId_studentId_component: { assessorId, studentId, component } }, include: { scores: true } });
+  const tenantId = await requestTenantId();
+  const row = await prisma.assessorSheet.findFirst({ where: { assessorId, studentId, component, tenantId }, include: { scores: true } });
   return row ? toSheet(row) : null;
 }
 
 export async function docMarkOf(studentId: string): Promise<DocMark | null> {
   if (!process.env.DATABASE_URL) return null;
-  const row = await prisma.documentationMark.findUnique({ where: { studentId } });
+  const tenantId = await requestTenantId();
+  const row = await prisma.documentationMark.findUnique({ where: { studentId, tenantId } });
   return row ? { studentId: row.studentId, rawTotal: row.rawTotal, rubricMax: row.rubricMax, markedBy: row.markedBy, moderatedBy: row.moderatedBy, agreedRawTotal: row.agreedRawTotal } : null;
 }
 
@@ -863,14 +867,15 @@ export async function setMark(
   }
   if (!process.env.DATABASE_URL) return { ok: false, error: 'No database.' };
 
-  let row = await prisma.assessorSheet.findUnique({ where: { assessorId_studentId_component: { assessorId, studentId, component } } });
+  const tenantId = await requestTenantId();
+  let row = await prisma.assessorSheet.findFirst({ where: { assessorId, studentId, component, tenantId } });
   if (!row) {
-    row = await prisma.assessorSheet.create({ data: { id: `${assessorId}-${studentId}-${component}`, assessorId, studentId, component, rubricVersionId: rubric.versionId, rubricMax: rubric.max, submitted: false, submittedAt: null } });
+    row = await prisma.assessorSheet.create({ data: { id: `${assessorId}-${studentId}-${component}`, tenantId, assessorId, studentId, component, rubricVersionId: rubric.versionId, rubricMax: rubric.max, submitted: false, submittedAt: null } });
   }
   if (row.submitted) return { ok: false, error: 'This sheet is submitted. A coordinator must reopen it.' };
   await prisma.criterionScore.upsert({
     where: { sheetId_criterionId: { sheetId: row.id, criterionId } },
-    create: { id: `${row.id}-${criterionId}`, sheetId: row.id, criterionId, mark: value },
+    create: { id: `${row.id}-${criterionId}`, tenantId, sheetId: row.id, criterionId, mark: value },
     update: { mark: value },
   });
   if (value !== null && !rubric.locked) rubric.locked = true;
@@ -996,15 +1001,17 @@ export async function gradeConsultation(
   if (rawTotal !== null && (!Number.isInteger(rawTotal) || rawTotal < 0 || rawTotal > c.rubricMax)) {
     return { ok: false, error: `Mark must be a whole number between 0 and ${c.rubricMax}.` };
   }
-  if (process.env.DATABASE_URL) await prisma.consultation.update({ where: { id }, data: { rawTotal } });
+  const tenantId = await requestTenantId();
+  if (process.env.DATABASE_URL) await prisma.consultation.update({ where: { id, tenantId }, data: { rawTotal } });
   void byUserId;
   return { ok: true };
 }
 
 export async function attestConsultation(id: string, role: 'SUPERVISOR' | 'STUDENT'): Promise<void> {
   if (!process.env.DATABASE_URL) return;
-  if (role === 'SUPERVISOR') await prisma.consultation.update({ where: { id }, data: { supervisorAttested: true } });
-  else await prisma.consultation.update({ where: { id }, data: { studentAttested: true } });
+  const tenantId = await requestTenantId();
+  if (role === 'SUPERVISOR') await prisma.consultation.update({ where: { id, tenantId }, data: { supervisorAttested: true } });
+  else await prisma.consultation.update({ where: { id, tenantId }, data: { studentAttested: true } });
 }
 
 export async function addConsultation(studentId: string, periodId: 'SEM1' | 'SEM2', agenda: string): Promise<Consultation> {
@@ -1014,20 +1021,23 @@ export async function addConsultation(studentId: string, periodId: 'SEM1' | 'SEM
     supervisorAttested: false, studentAttested: false, rawTotal: null, rubricMax: 100, agenda,
   };
   if (process.env.DATABASE_URL) {
-    await prisma.consultation.create({ data: { id: c.id, studentId, periodId, heldAt: new Date(c.heldAt), status: c.status, supervisorAttested: false, studentAttested: false, rawTotal: null, rubricMax: 100, agenda } });
+    const tenantId = await requestTenantId();
+    await prisma.consultation.create({ data: { id: c.id, tenantId, studentId, periodId, heldAt: new Date(c.heldAt), status: c.status, supervisorAttested: false, studentAttested: false, rawTotal: null, rubricMax: 100, agenda } });
   }
   return c;
 }
 
 export async function findConsultation(id: string): Promise<Consultation | null> {
   if (!process.env.DATABASE_URL) return null;
-  const row = await prisma.consultation.findUnique({ where: { id } });
+  const tenantId = await requestTenantId();
+  const row = await prisma.consultation.findUnique({ where: { id, tenantId } });
   return row ? toConsultation(row) : null;
 }
 
 export async function submitSheet(assessorId: string, component: 'p1' | 'p2', at: string): Promise<number> {
   if (!process.env.DATABASE_URL) return 0;
-  const res = await prisma.assessorSheet.updateMany({ where: { assessorId, component, submitted: false }, data: { submitted: true, submittedAt: new Date(at) } });
+  const tenantId = await requestTenantId();
+  const res = await prisma.assessorSheet.updateMany({ where: { assessorId, component, submitted: false, tenantId }, data: { submitted: true, submittedAt: new Date(at) } });
   return res.count;
 }
 
@@ -1238,7 +1248,8 @@ function toSlot(row: { id: string; supervisorId: string; startsAt: Date; minutes
 
 export async function slotsOf(supervisorId: string): Promise<Slot[]> {
   if (!process.env.DATABASE_URL) return [];
-  const rows = await prisma.availabilitySlot.findMany({ where: { supervisorId } });
+  const tenantId = await requestTenantId();
+  const rows = await prisma.availabilitySlot.findMany({ where: { supervisorId, tenantId } });
   return rows.map(toSlot).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 }
 export async function openSlotsFor(supervisorId: string, from: string): Promise<Slot[]> {
@@ -1247,12 +1258,14 @@ export async function openSlotsFor(supervisorId: string, from: string): Promise<
 }
 export async function bookingsOf(studentId: string): Promise<Slot[]> {
   if (!process.env.DATABASE_URL) return [];
-  const rows = await prisma.availabilitySlot.findMany({ where: { bookedByStudentId: studentId } });
+  const tenantId = await requestTenantId();
+  const rows = await prisma.availabilitySlot.findMany({ where: { bookedByStudentId: studentId, tenantId } });
   return rows.map(toSlot).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 }
 export async function findSlot(id: string): Promise<Slot | null> {
   if (!process.env.DATABASE_URL) return null;
-  const row = await prisma.availabilitySlot.findUnique({ where: { id } });
+  const tenantId = await requestTenantId();
+  const row = await prisma.availabilitySlot.findUnique({ where: { id, tenantId } });
   return row ? toSlot(row) : null;
 }
 
@@ -1414,7 +1427,8 @@ export async function bookSlot(
   if ((await bookingsOf(studentId)).some((s) => s.startsAt.slice(0, 10) === slot.startsAt.slice(0, 10))) {
     return { ok: false, error: 'You already have a session booked that day.' };
   }
-  await prisma.availabilitySlot.update({ where: { id: slotId }, data: { bookedByStudentId: studentId, agenda: agenda.trim() || 'Consultation', mode, meetingLink: meetingLink.trim() || null, status: 'REQUESTED' } });
+  const tenantId = await requestTenantId();
+  await prisma.availabilitySlot.update({ where: { id: slotId, tenantId }, data: { bookedByStudentId: studentId, agenda: agenda.trim() || 'Consultation', mode, meetingLink: meetingLink.trim() || null, status: 'REQUESTED' } });
   const when = whenLabel(slot.startsAt);
   announce(slot.id, slot.startsAt, [
     {
@@ -1440,7 +1454,8 @@ export async function confirmBooking(slotId: string, supervisorId: string): Prom
   if (!slot) return { ok: false, error: 'No such slot.' };
   if (slot.supervisorId !== supervisorId) return { ok: false, error: 'Not your slot.' };
   if (!slot.bookedByStudentId) return { ok: false, error: 'No booking on this slot.' };
-  await prisma.availabilitySlot.update({ where: { id: slotId }, data: { status: 'CONFIRMED' } });
+  const tenantId = await requestTenantId();
+  await prisma.availabilitySlot.update({ where: { id: slotId, tenantId }, data: { status: 'CONFIRMED' } });
   const confirmedWhen = whenLabel(slot.startsAt);
   announce(slot.id, slot.startsAt, [
     {
@@ -1485,7 +1500,8 @@ export async function declineBooking(slotId: string, supervisorId: string): Prom
   slot.agenda = null;
   slot.status = undefined;
   slot.meetingLink = null;
-  await prisma.availabilitySlot.update({ where: { id: slotId }, data: { bookedByStudentId: null, agenda: null, status: null, meetingLink: null } });
+  const tenantId = await requestTenantId();
+  await prisma.availabilitySlot.update({ where: { id: slotId, tenantId }, data: { bookedByStudentId: null, agenda: null, status: null, meetingLink: null } });
   schedulePersist();
   return { ok: true };
 }
@@ -1517,7 +1533,8 @@ export async function cancelBooking(slotId: string, studentId: string, now: Date
   // Without these a reopened slot kept the last booking's state and link.
   slot.status = undefined;
   slot.meetingLink = null;
-  await prisma.availabilitySlot.update({ where: { id: slotId }, data: { bookedByStudentId: null, agenda: null, status: null, meetingLink: null } });
+  const tenantId = await requestTenantId();
+  await prisma.availabilitySlot.update({ where: { id: slotId, tenantId }, data: { bookedByStudentId: null, agenda: null, status: null, meetingLink: null } });
   schedulePersist();
   return { ok: true };
 }
@@ -1541,14 +1558,16 @@ export function addSlots(
 
 export async function publicationOf(studentId: string): Promise<Publication | null> {
   if (!process.env.DATABASE_URL) return null;
-  const rows = await prisma.publication.findMany({ where: { studentId }, orderBy: { publishedAt: 'desc' } });
+  const tenantId = await requestTenantId();
+  const rows = await prisma.publication.findMany({ where: { studentId, tenantId }, orderBy: { publishedAt: 'desc' } });
   const row = rows[0];
   return row ? { studentId: row.studentId, finalMark: row.finalMark, grade: row.grade, publishedBy: row.publishedBy, publishedAt: row.publishedAt.toISOString(), supersedes: row.supersedes, reason: row.reason } : null;
 }
 
 export async function moderationOf(studentId: string, component: 'p1' | 'p2'): Promise<ModerationRow | null> {
   if (!process.env.DATABASE_URL) return null;
-  const row = await prisma.moderation.findUnique({ where: { studentId_component: { studentId, component } } });
+  const tenantId = await requestTenantId();
+  const row = await prisma.moderation.findFirst({ where: { studentId, component, tenantId } });
   return row ? { studentId: row.studentId, component: row.component as 'p1' | 'p2', moderatorId: row.moderatorId, rationale: row.rationale, agreedPercentage: Number(row.agreedPercentage), moderatedAt: row.moderatedAt.toISOString() } : null;
 }
 
@@ -1563,6 +1582,7 @@ export async function recordModeration(
     return { ok: false, error: 'A moderation must record why, in at least a sentence.' };
   }
   if (!process.env.DATABASE_URL) return { ok: false, error: 'No database.' };
+  const tenantId = await requestTenantId();
   await prisma.moderation.upsert({
     where: { studentId_component: { studentId, component } },
     create: { id: `${studentId}-${component}`, studentId, component, moderatorId, rationale: rationale.trim(), agreedPercentage, moderatedAt: new Date() },
@@ -1582,6 +1602,7 @@ export async function publish(
     supersedes: previous ? previous.publishedAt : null, reason,
   };
   if (process.env.DATABASE_URL) {
+    const tenantId = await requestTenantId();
     await prisma.publication.create({
       data: {
         id: `pub-${studentId}-${Date.now()}`, studentId, finalMark, grade,
@@ -1831,9 +1852,10 @@ export async function requestMeeting(input: {
   if (input.preferredTimes.trim().length < 3) return { ok: false, error: 'Suggest at least one time.' };
   const id = `mr-${Date.now()}`;
   if (process.env.DATABASE_URL) {
+    const tenantId = await requestTenantId();
     await prisma.meetingRequest.create({
       data: {
-        id, studentId: input.studentId, supervisorId: input.supervisorId,
+        id, tenantId, studentId: input.studentId, supervisorId: input.supervisorId,
         agenda: input.agenda.trim(), preferredTimes: input.preferredTimes.trim(),
         status: 'PENDING', requestedAt: new Date(), decidedAt: null,
       },
@@ -1863,17 +1885,20 @@ export async function requestMeeting(input: {
 
 export async function meetingRequestsFor(supervisorId: string): Promise<MeetingRequest[]> {
   if (!process.env.DATABASE_URL) return [];
-  const rows = await prisma.meetingRequest.findMany({ where: { supervisorId } });
+  const tenantId = await requestTenantId();
+  const rows = await prisma.meetingRequest.findMany({ where: { supervisorId, tenantId } });
   return rows.map(toMeetingRequest);
 }
 export async function myMeetingRequests(studentId: string): Promise<MeetingRequest[]> {
   if (!process.env.DATABASE_URL) return [];
-  const rows = await prisma.meetingRequest.findMany({ where: { studentId } });
+  const tenantId = await requestTenantId();
+  const rows = await prisma.meetingRequest.findMany({ where: { studentId, tenantId } });
   return rows.map(toMeetingRequest);
 }
 export async function findMeetingRequest(id: string): Promise<MeetingRequest | null> {
   if (!process.env.DATABASE_URL) return null;
-  const row = await prisma.meetingRequest.findUnique({ where: { id } });
+  const tenantId = await requestTenantId();
+  const row = await prisma.meetingRequest.findUnique({ where: { id, tenantId } });
   return row ? toMeetingRequest(row) : null;
 }
 
@@ -1881,7 +1906,8 @@ export async function decideMeetingRequest(id: string, decision: 'APPROVED' | 'D
   const m = await findMeetingRequest(id);
   if (!m) return { ok: false, error: 'No such request.' };
   if (process.env.DATABASE_URL) {
-    await prisma.meetingRequest.update({ where: { id }, data: { status: decision, decidedAt: new Date() } });
+    const tenantId = await requestTenantId();
+    await prisma.meetingRequest.update({ where: { id, tenantId }, data: { status: decision, decidedAt: new Date() } });
   }
   const approved = decision === 'APPROVED';
   announce(m.id, null, [
@@ -1940,7 +1966,8 @@ function toDeliverable(row: { id: string; projectId: string; kind: string; title
 
 export async function deliverablesFor(projectId: string): Promise<DeliverableRecord[]> {
   if (!process.env.DATABASE_URL) return [];
-  const rows = await prisma.deliverable.findMany({ where: { projectId }, orderBy: { uploadedAt: 'desc' } });
+  const tenantId = await requestTenantId();
+  const rows = await prisma.deliverable.findMany({ where: { projectId, tenantId }, orderBy: { uploadedAt: 'desc' } });
   return rows.map(toDeliverable);
 }
 
@@ -1957,12 +1984,13 @@ export async function uploadDeliverable(input: {
   const project = await findProject(input.projectId);
   if (!project) return { ok: false, error: 'No such project.' };
   if (!process.env.DATABASE_URL) return { ok: false, error: 'No database.' };
-  const existing = await prisma.deliverable.findMany({ where: { projectId: input.projectId, title: input.title.trim() } });
+  const tenantId = await requestTenantId();
+  const existing = await prisma.deliverable.findMany({ where: { projectId: input.projectId, title: input.title.trim(), tenantId } });
   const version = existing.length + 1;
   const id = `del-${input.projectId}-${Date.now().toString(36)}`;
   await prisma.deliverable.create({
     data: {
-      id, projectId: input.projectId, kind: input.kind, title: input.title.trim(), version,
+      id, tenantId, projectId: input.projectId, kind: input.kind, title: input.title.trim(), version,
       mediaType: input.mediaType, byteSize: input.byteSize, sha256: input.sha256,
       scanStatus: input.scanStatus, uploadedById: input.uploadedById, uploadedAt: new Date(),
     },
@@ -2000,7 +2028,8 @@ function toEnrolment(row: { studentId: string; status: string; effectiveFrom: Da
 
 export async function enrolmentOf(studentId: string): Promise<Enrolment> {
   if (!process.env.DATABASE_URL) return defaultEnrolment(studentId, CYCLE_START);
-  const row = await prisma.enrolment.findUnique({ where: { studentId } });
+  const tenantId = await requestTenantId();
+  const row = await prisma.enrolment.findFirst({ where: { studentId, tenantId } });
   return row ? toEnrolment(row) : defaultEnrolment(studentId, CYCLE_START);
 }
 
@@ -2008,7 +2037,8 @@ export const CYCLE_START = '2025-08-01';
 
 export async function nonStandardEnrolments(): Promise<Enrolment[]> {
   if (!process.env.DATABASE_URL) return [];
-  const rows = await prisma.enrolment.findMany({ where: { NOT: { status: 'ACTIVE' } } });
+  const tenantId = await requestTenantId();
+  const rows = await prisma.enrolment.findMany({ where: { AND: [{ NOT: { status: 'ACTIVE' } }, { tenantId }] } });
   return rows.map(toEnrolment);
 }
 
@@ -2066,7 +2096,8 @@ function toDeadline(row: { id: string; cycleId: string; key: string; label: stri
 
 export async function deadlinesFor(cycleId: string = CYCLE): Promise<Deadline[]> {
   if (!process.env.DATABASE_URL) return [];
-  const rows = await prisma.assessmentPeriod.findMany({ where: { cycleId } });
+  const tenantId = await requestTenantId();
+  const rows = await prisma.assessmentPeriod.findMany({ where: { cycleId, tenantId } });
   return rows.map(toDeadline).sort((a, b) => a.dueAt.localeCompare(b.dueAt));
 }
 
@@ -2076,7 +2107,8 @@ export async function publishedDeadlines(cycleId: string = CYCLE): Promise<Deadl
 
 export async function findDeadline(key: string, cycleId: string = CYCLE): Promise<Deadline | null> {
   if (!process.env.DATABASE_URL) return null;
-  const row = await prisma.assessmentPeriod.findUnique({ where: { cycleId_key: { cycleId, key } } });
+  const tenantId = await requestTenantId();
+  const row = await prisma.assessmentPeriod.findFirst({ where: { cycleId, key, tenantId } });
   return row ? toDeadline(row) : null;
 }
 
@@ -2087,9 +2119,10 @@ export async function saveDeadline(
   if (errors.length) return { ok: false, errors };
   if (!process.env.DATABASE_URL) return { ok: false, errors: ['No database.'] };
   const id = `dl-${draft.cycleId.replace(/\W/g, '')}-${draft.key}`;
+  const tenantId = await requestTenantId();
   await prisma.assessmentPeriod.upsert({
     where: { cycleId_key: { cycleId: draft.cycleId, key: draft.key } },
-    create: { id, cycleId: draft.cycleId, key: draft.key, label: draft.label, dueAt: new Date(draft.dueAt), graceMinutes: draft.graceMinutes, published: draft.published, note: draft.note },
+    create: { id, tenantId, cycleId: draft.cycleId, key: draft.key, label: draft.label, dueAt: new Date(draft.dueAt), graceMinutes: draft.graceMinutes, published: draft.published, note: draft.note },
     update: { label: draft.label, dueAt: new Date(draft.dueAt), graceMinutes: draft.graceMinutes, published: draft.published, note: draft.note },
   });
   return { ok: true };
@@ -2097,18 +2130,21 @@ export async function saveDeadline(
 
 export async function removeDeadline(key: string, cycleId: string = CYCLE): Promise<void> {
   if (!process.env.DATABASE_URL) return;
-  await prisma.assessmentPeriod.deleteMany({ where: { cycleId, key } });
+  const tenantId = await requestTenantId();
+  await prisma.assessmentPeriod.deleteMany({ where: { cycleId, key, tenantId } });
 }
 
 export async function extensionFor(studentId: string, deadlineKey: string): Promise<Extension | null> {
   if (!process.env.DATABASE_URL) return null;
-  const row = await prisma.extension.findUnique({ where: { studentId_deadlineKey: { studentId, deadlineKey } } });
+  const tenantId = await requestTenantId();
+  const row = await prisma.extension.findFirst({ where: { studentId, deadlineKey, tenantId } });
   return row ? { id: row.id, studentId: row.studentId, deadlineKey: row.deadlineKey, newDueAt: row.newDueAt.toISOString(), kind: row.kind as Extension['kind'], reason: row.reason, approvedBy: row.approvedBy ?? '', approvedAt: row.approvedAt.toISOString() } : null;
 }
 
 export async function extensionsFor(studentId: string): Promise<Extension[]> {
   if (!process.env.DATABASE_URL) return [];
-  const rows = await prisma.extension.findMany({ where: { studentId } });
+  const tenantId = await requestTenantId();
+  const rows = await prisma.extension.findMany({ where: { studentId, tenantId } });
   return rows.map((row) => ({ id: row.id, studentId: row.studentId, deadlineKey: row.deadlineKey, newDueAt: row.newDueAt.toISOString(), kind: row.kind as Extension['kind'], reason: row.reason, approvedBy: row.approvedBy ?? '', approvedAt: row.approvedAt.toISOString() }));
 }
 
@@ -2120,9 +2156,10 @@ export async function grantExtension(
   if (errors.length) return { ok: false, errors };
   if (!process.env.DATABASE_URL) return { ok: false, errors: ['No database.'] };
   const id = `ext-${draft.studentId}-${draft.deadlineKey}`;
+  const tenantId = await requestTenantId();
   await prisma.extension.upsert({
     where: { studentId_deadlineKey: { studentId: draft.studentId, deadlineKey: draft.deadlineKey } },
-    create: { id, ...draft, approvedAt: new Date() },
+    create: { id, tenantId, ...draft, approvedAt: new Date() },
     update: { ...draft, approvedAt: new Date() },
   });
   return { ok: true };
@@ -2130,7 +2167,8 @@ export async function grantExtension(
 
 export async function withdrawExtension(studentId: string, deadlineKey: string): Promise<void> {
   if (!process.env.DATABASE_URL) return;
-  await prisma.extension.deleteMany({ where: { studentId, deadlineKey } });
+  const tenantId = await requestTenantId();
+  await prisma.extension.deleteMany({ where: { studentId, deadlineKey, tenantId } });
 }
 
 /**
@@ -2167,9 +2205,10 @@ const issuedCodes = (globalForCodes.__upsasIssuedCodes ??= new Map<string, Issue
 
 async function persistResetTicket(ticket: ResetTicket): Promise<void> {
   if (!process.env.DATABASE_URL) return;
+  const tenantId = await requestTenantId();
   await prisma.resetTicket.create({
     data: {
-      id: ticket.id, userId: ticket.userId, codeHash: ticket.codeHash, issuedBy: ticket.issuedBy,
+      id: ticket.id, tenantId, userId: ticket.userId, codeHash: ticket.codeHash, issuedBy: ticket.issuedBy,
       issuedAt: new Date(ticket.issuedAt), expiresAt: new Date(ticket.expiresAt),
       usedAt: ticket.usedAt ? new Date(ticket.usedAt) : null, revokedAt: ticket.revokedAt ? new Date(ticket.revokedAt) : null,
     },
@@ -2178,7 +2217,8 @@ async function persistResetTicket(ticket: ResetTicket): Promise<void> {
 
 async function resetTicketsFor(userId: string): Promise<ResetTicket[]> {
   if (!process.env.DATABASE_URL) return [];
-  const rows = await prisma.resetTicket.findMany({ where: { userId } });
+  const tenantId = await requestTenantId();
+  const rows = await prisma.resetTicket.findMany({ where: { userId, tenantId } });
   return rows.map((r) => ({
     id: r.id, userId: r.userId, codeHash: r.codeHash, issuedBy: r.issuedBy,
     issuedAt: r.issuedAt.toISOString(), expiresAt: r.expiresAt.toISOString(),
@@ -2197,7 +2237,8 @@ export async function issueResetCode(userId: string, byUserId: string): Promise<
   if (!person) return null;
 
   const now = new Date();
-  if (process.env.DATABASE_URL) await prisma.resetTicket.updateMany({ where: { userId, usedAt: null, revokedAt: null }, data: { revokedAt: now } });
+  const tenantId = await requestTenantId();
+  if (process.env.DATABASE_URL) await prisma.resetTicket.updateMany({ where: { userId, usedAt: null, revokedAt: null, tenantId }, data: { revokedAt: now } });
   else revokeOutstanding(resetTickets, userId, now);
   const { ticket, code } = issueTicket(userId, byUserId, now);
   await persistResetTicket(ticket);
@@ -2233,7 +2274,8 @@ export async function redeemResetCode(
   if (!check.ok) return { ok: false, error: check.problems[0] ?? 'That password is not acceptable.' };
 
   tables.passwords[person.username] = await hashPassword(newPassword);
-  if (process.env.DATABASE_URL) await prisma.resetTicket.update({ where: { id: result.ticket.id }, data: { usedAt: new Date() } });
+  const tenantId = await requestTenantId();
+  if (process.env.DATABASE_URL) await prisma.resetTicket.update({ where: { id: result.ticket.id, tenantId }, data: { usedAt: new Date() } });
   else result.ticket.usedAt = new Date().toISOString();
   // A lockout survives a password change otherwise, which would leave someone
   // who has just proved who they are still locked out.
@@ -2255,7 +2297,8 @@ export async function requestResetCode(username: string): Promise<void> {
   if (!email) return;
 
   const now = new Date();
-  if (process.env.DATABASE_URL) await prisma.resetTicket.updateMany({ where: { userId: person.id, usedAt: null, revokedAt: null }, data: { revokedAt: now } });
+  const tenantId = await requestTenantId();
+  if (process.env.DATABASE_URL) await prisma.resetTicket.updateMany({ where: { userId: person.id, usedAt: null, revokedAt: null, tenantId }, data: { revokedAt: now } });
   else revokeOutstanding(resetTickets, person.id, now);
   const { ticket, code } = issueTicket(person.id, 'self-service', now);
   await persistResetTicket(ticket);
