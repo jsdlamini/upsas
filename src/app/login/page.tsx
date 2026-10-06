@@ -237,8 +237,8 @@ export default async function LoginPage({
         {!needsCode && (
           <>
             <p style={{ margin: '0 0 10px' }}>
-              <label>Username
-                <input name="username" defaultValue={u ?? ''} autoComplete="username" autoFocus required />
+              <label>Email
+                <input name="username" type="email" defaultValue={u ?? ''} autoComplete="email" autoFocus required />
               </label>
             </p>
             <p style={{ margin: '0 0 10px' }}>

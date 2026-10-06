@@ -77,8 +77,8 @@ export default async function Recover({
 
           <form action={requestReset}>
             <p>
-              <label htmlFor="req-username">Username, student number or email</label>
-              <input id="req-username" name="username" type="text" autoComplete="username" defaultValue={u ?? ''} required />
+              <label htmlFor="req-username">Email</label>
+              <input id="req-username" name="username" type="email" autoComplete="email" defaultValue={u ?? ''} required />
             </p>
             <p style={{ marginTop: 12 }}>
               <Button type="submit" variant="outline">Email me a reset code</Button>
@@ -90,8 +90,8 @@ export default async function Recover({
 
           <form action={recover}>
             <p>
-              <label htmlFor="username">Username, student number or email</label>
-              <input id="username" name="username" type="text" autoComplete="username" defaultValue={u ?? ''} required />
+              <label htmlFor="username">Email</label>
+              <input id="username" name="username" type="email" autoComplete="email" defaultValue={u ?? ''} required />
             </p>
             <p>
               <label htmlFor="code">Reset code</label>

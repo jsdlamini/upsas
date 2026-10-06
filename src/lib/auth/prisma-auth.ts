@@ -102,7 +102,7 @@ export async function syncOneUserToPrisma(person: Person, hash: string): Promise
 export async function findUserPrisma(identifier: string): Promise<UserRecord | null> {
   const value = identifier.trim().toLowerCase();
   const user = await prisma.user.findFirst({
-    where: { OR: [{ username: value }, { email: value }] },
+    where: { email: value },
     include: { credential: true, totp: true, roles: true },
   });
   if (!user) return null;
@@ -127,7 +127,7 @@ export async function findUserPrisma(identifier: string): Promise<UserRecord | n
 
 export async function totpSecretForPrisma(identifier: string): Promise<string> {
   const value = identifier.trim().toLowerCase();
-  const user = await prisma.user.findFirst({ where: { OR: [{ username: value }, { email: value }] }, include: { totp: true } });
+  const user = await prisma.user.findFirst({ where: { email: value }, include: { totp: true } });
   return user?.totp?.secretEnc ?? '';
 }
 
