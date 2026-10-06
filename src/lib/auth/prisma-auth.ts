@@ -109,6 +109,7 @@ export async function findUserPrisma(identifier: string): Promise<UserRecord | n
 
   return {
     id: user.id,
+    tenantId: user.tenantId,
     username: user.username,
     status: user.status as AccountStatus,
     passwordHash: user.credential?.hash ?? '',

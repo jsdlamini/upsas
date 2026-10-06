@@ -126,5 +126,7 @@ export async function currentPrincipal(): Promise<AuthenticatedPrincipal | null>
 
   const person = findPerson(record.userId);
   if (!person) return null;
-  return principalFromSession(record, person.grants, CYCLE, now);
+  const user = await prisma.user.findUnique({ where: { id: record.userId }, select: { tenantId: true } });
+  if (!user) return null;
+  return principalFromSession(record, person.grants, CYCLE, now, user.tenantId);
 }

@@ -103,7 +103,7 @@ async function signIn(formData: FormData) {
   // In-memory record is the fallback when Postgres is unreachable.
   const record: UserRecord | null = person
     ? {
-        id: person.id, username: person.username, status: person.status ?? 'ACTIVE',
+        id: person.id, tenantId: 'default', username: person.username, status: person.status ?? 'ACTIVE',
         passwordHash: await passwordHashFor(person.username), failedAttempts: 0, lockedUntil: null,
         totpConfirmed: person.totpConfirmed, grants: person.grants,
       }
@@ -129,7 +129,7 @@ async function signIn(formData: FormData) {
           const p = findPersonByIdentifier(u);
           return p
             ? {
-                id: p.id, username: p.username, status: p.status ?? 'ACTIVE',
+                id: p.id, tenantId: 'default', username: p.username, status: p.status ?? 'ACTIVE',
                 passwordHash: await passwordHashFor(p.username), failedAttempts: 0, lockedUntil: null,
                 totpConfirmed: p.totpConfirmed, grants: p.grants,
               }

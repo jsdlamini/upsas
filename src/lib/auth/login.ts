@@ -12,6 +12,7 @@ export type AccountStatus = 'PENDING_APPROVAL' | 'ACTIVE' | 'SUSPENDED' | 'DEACT
 
 export interface UserRecord {
   readonly id: string;
+  readonly tenantId: string;
   readonly username: string;
   readonly status: AccountStatus;
   readonly passwordHash: string;
@@ -26,6 +27,7 @@ export interface AuthenticatedPrincipal extends Principal {
   readonly permissions: readonly Action[];
   readonly cycleId: string;
   readonly mfaSatisfied: boolean;
+  readonly tenantId: string;
 }
 
 export type LoginOutcome =
@@ -143,6 +145,7 @@ export async function login(req: LoginRequest, deps: LoginDeps): Promise<LoginOu
     principal: {
       userId: user.id, roles, resolvedRoles: resolved, permissions,
       cycleId: req.cycleId, mfaSatisfied: requiresMfa(roles) ? true : false,
+      tenantId: user.tenantId,
     },
   };
 }

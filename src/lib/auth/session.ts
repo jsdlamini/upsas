@@ -76,7 +76,7 @@ export function checkSession(record: SessionRecord, token: string, now: Date): S
  * request — this is what makes a mid-session revocation take effect.
  */
 export function principalFromSession(
-  record: SessionRecord, grants: readonly RoleGrant[], cycleId: string, now: Date,
+  record: SessionRecord, grants: readonly RoleGrant[], cycleId: string, now: Date, tenantId: string,
 ): AuthenticatedPrincipal | null {
   const resolved = resolveRoles(grants, cycleId, now);
   const roles = resolved.map((r) => r.role);
@@ -87,5 +87,6 @@ export function principalFromSession(
   return {
     userId: record.userId, roles, resolvedRoles: resolved,
     permissions: permissionsFor(roles), cycleId, mfaSatisfied: record.mfaSatisfied,
+    tenantId,
   };
 }

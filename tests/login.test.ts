@@ -30,7 +30,7 @@ function deps(overrides: Partial<LoginDeps> = {}, sink: unknown[] = []): LoginDe
 
 function user(over: Partial<UserRecord> = {}): UserRecord {
   return {
-    id: 'u-1', username: 'tmahlalela', status: 'ACTIVE', passwordHash: PASSWORD_HASH,
+    id: 'u-1', tenantId: 'default', username: 'tmahlalela', status: 'ACTIVE', passwordHash: PASSWORD_HASH,
     failedAttempts: 0, lockedUntil: null, totpConfirmed: false,
     grants: [grant({ role: 'SUPERVISOR' }), grant({ role: 'ASSESSOR' })],
     ...over,
@@ -192,29 +192,29 @@ test('sessions expire absolutely and on idle', () => {
 
 test('revoking a role takes effect mid-session, without waiting for re-login', () => {
   const s = issueSession('u-1', NOW, false, 'sess-1');
-  const before = principalFromSession(s.record, [grant({ role: 'SUPERVISOR' })], CYCLE, NOW);
+  const before = principalFromSession(s.record, [grant({ role: 'SUPERVISOR' })], CYCLE, NOW, 'default');
   assert.ok(before);
   assert.equal(can(before!, 'consultation.grade', { supervisorId: 'u-1' }).allow, true);
 
   const after = principalFromSession(
-    s.record, [grant({ role: 'SUPERVISOR', revokedAt: '2026-09-14T08:00:00Z' })], CYCLE, NOW,
+    s.record, [grant({ role: 'SUPERVISOR', revokedAt: '2026-09-14T08:00:00Z' })], CYCLE, NOW, 'default',
   );
   assert.equal(after, null, 'a revoked grant must not survive in an open session');
 });
 
 test('a privileged role granted mid-session cannot be used without a second factor', () => {
   const s = issueSession('u-1', NOW, false, 'sess-1'); // signed in without MFA
-  const escalated = principalFromSession(s.record, [grant({ role: 'COORDINATOR' })], CYCLE, NOW);
+  const escalated = principalFromSession(s.record, [grant({ role: 'COORDINATOR' })], CYCLE, NOW, 'default');
   assert.equal(escalated, null);
 
   const withMfa = issueSession('u-1', NOW, true, 'sess-2');
-  assert.ok(principalFromSession(withMfa.record, [grant({ role: 'COORDINATOR' })], CYCLE, NOW));
+  assert.ok(principalFromSession(withMfa.record, [grant({ role: 'COORDINATOR' })], CYCLE, NOW, 'default'));
 });
 
 test('the principal from a session enforces the same separation of duty', () => {
   const s = issueSession('u-1', NOW, false, 'sess-1');
   const p = principalFromSession(
-    s.record, [grant({ role: 'SUPERVISOR' }), grant({ role: 'MODERATOR' })], CYCLE, NOW,
+    s.record, [grant({ role: 'SUPERVISOR' }), grant({ role: 'MODERATOR' })], CYCLE, NOW, 'default',
   )!;
   assert.equal(can(p, 'presentation.moderate', { originatingMarkerId: 'u-1' }).allow, false);
   assert.equal(can(p, 'presentation.moderate', { originatingMarkerId: 'u-2' }).allow, true);
