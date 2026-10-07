@@ -196,6 +196,8 @@ export default async function LoginPage({
             { title: 'Topic selection & agreements', image: '/screenshots/03-topics.png' },
             { title: 'Supervision consultations & register', image: '/screenshots/06-book.png' },
             { title: 'Panel grading & moderation', image: '/screenshots/02-dashboard.png' },
+            { title: 'Presentation marking grid', image: '/screenshots/07-grading.png' },
+            { title: 'Grading criteria & forms', image: '/screenshots/08-rubrics.png' },
             { title: 'Released results & reports', image: '/screenshots/04-people.png' },
           ]} />
           <div className="brand-foot">Cycle {CYCLE} · Accounts held locally — no external sign-in</div>
