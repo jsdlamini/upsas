@@ -94,6 +94,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     tabs.push(['/settings', 'Institution']);
   }
   if (principal.permissions.includes('user.approve')) tabs.push(['/people', 'People']);
+  if (principal.tenantId === 'default' && principal.roles.includes('ADMINISTRATOR')) {
+    tabs.push(['/admin', 'Institutions']);
+  }
   tabs.push(['/reports', 'Reports']);
 
   return (

@@ -272,6 +272,10 @@ export default async function LoginPage({
             held until a coordinator approves them.
           </p>
           <div className="register-options">
+            <a className="register-card" href="/signup">
+              <strong>I run an institution</strong>
+              <span>Create a new private workspace for your institution in a few steps.</span>
+            </a>
             <a className="register-card" href="/register?kind=student">
               <strong>I am a student</strong>
               <span>Register with your student number and start choosing topics.</span>
