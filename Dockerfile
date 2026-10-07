@@ -18,6 +18,10 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends clamav-daemon clamav-freshclam \
     && rm -rf /var/lib/apt/lists/*
 RUN useradd --system --uid 10001 upsas
+# The uploads directory is a mounted volume: create it in the image so Docker
+# seeds the volume with the right owner, and chown so the non-root runtime
+# user can write the uploaded logo there.
+RUN mkdir -p /var/lib/upsas/uploads && chown -R upsas:upsas /var/lib/upsas/uploads
 COPY --from=deps /app/node_modules ./node_modules
 # Copy the Prisma client generated in the build stage (the deps stage installed
 # only production deps, so @prisma/client there is not generated).
