@@ -31,6 +31,14 @@ export interface OutgoingEmail {
 
 export type SendOutcome = 'sent' | 'stubbed' | 'failed';
 
+/** Parse a `Name <email>` env value (RESEND_FROM_EMAIL / RESEND_FROM). */
+function parseFromEnv(value: string | undefined): { name: string; email: string } | null {
+  const raw = value?.trim() || '';
+  const m = raw.match(/^(.*?)\s*<([^>@\s]+@[^>@\s]+)>$/);
+  if (m) return { name: (m[1] ?? '').trim(), email: (m[2] ?? '').trim() };
+  return null;
+}
+
 /**
  * Send through the configured provider (Resend, SMTP, or none). Never throws.
  */
@@ -42,8 +50,12 @@ export async function sendEmail(email: OutgoingEmail): Promise<SendOutcome> {
 
   const settings = await getEmailSettings();
   const product = (await getInstitution()).productName || 'Research Chain';
-  const fromName = settings.fromName || product;
-  const fromEmail = settings.fromEmail || 'no-reply@localhost';
+  // A blank from-email would make Resend reject the message (unverified
+  // domain), so fall back to the env-configured sender before any hardcoded
+  // placeholder.
+  const envFrom = parseFromEnv(process.env.RESEND_FROM_EMAIL || process.env.RESEND_FROM);
+  const fromName = settings.fromName || envFrom?.name || product;
+  const fromEmail = settings.fromEmail || envFrom?.email || 'no-reply@localhost';
   const from = `${fromName} <${fromEmail}>`;
 
   // Testing switch: route every message to one inbox, labelled with its real

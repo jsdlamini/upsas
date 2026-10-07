@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { getInstitution, isConfigured, saveInstitution, type InstitutionProfile } from '@/lib/institution';
 import { saveLogoFile } from '@/lib/logo-storage';
 import { getEmailSettings, saveEmailSettings, type EmailProvider } from '@/lib/email-config';
-import { testEmail } from '@/lib/notifications';
+import { TestEmail } from '@/components/test-email';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,14 +49,6 @@ async function save(formData: FormData) {
 
   revalidatePath('/', 'layout');
   redirect('/');
-}
-
-async function sendTest(formData: FormData) {
-  'use server';
-  const to = String(formData.get('testTo') ?? '').trim();
-  const outcome = await testEmail(to);
-  const msg = outcome === 'sent' ? 'Test email sent — check the inbox.' : `Test email ${outcome}.`;
-  redirect(`/setup?${outcome === 'sent' ? 'ok=' : 'e='}${encodeURIComponent(msg)}`);
 }
 
 export default async function Setup({
@@ -157,13 +149,7 @@ export default async function Setup({
           </div>
         </form>
 
-        <form action={sendTest} style={{ marginTop: 18, borderTop: '1px solid var(--rule)', paddingTop: 16 }}>
-          <span className="field-label">Send a test email to</span>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Input name="testTo" type="email" placeholder="you@example.com" required />
-            <Button variant="outline" type="submit">Send test</Button>
-          </div>
-        </form>
+        <TestEmail defaultTo="" />
       </div>
     </main>
   );
