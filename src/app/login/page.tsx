@@ -164,6 +164,13 @@ async function signIn(formData: FormData) {
         },
       };
 
+  // Resolve the cycle from the account's tenant before authenticating.
+  // `findUser` runs again inside login() and returns the same record; the
+  // second pass is a cheap read (backfill is idempotent).
+  try {
+    const identified = await deps.findUser(username);
+    if (identified) tenantId = identified.tenantId;
+  } catch { /* keep the 'default' fallback */ }
   const cycleId = await currentCycleId(tenantId);
   const outcome = await login(
     { username, password, cycleId, now: new Date(),
