@@ -40,6 +40,7 @@ const MESSAGES: Record<string, string> = {
   PENDING_APPROVAL: 'This account is waiting for a coordinator to approve it.',
   SUSPENDED: 'This account is suspended.',
   DEACTIVATED: 'This account is closed.',
+  LOCKED: 'Too many failed attempts — this account is temporarily locked. Wait a few minutes, then try again.',
   NO_ACTIVE_ROLES: 'This account holds no role for the current cycle, so there is nothing to open.',
   MFA_REQUIRED: 'Password accepted. Now enter the six-digit code from your authenticator — you do not need to retype your password.',
   CHALLENGE_EXPIRED: 'That sign-in attempt expired. Start again.',
@@ -112,19 +113,23 @@ async function signIn(formData: FormData) {
   const deps = usePrisma
     ? {
         findUser: async (u: string) => {
-          let prismaUser = await findUserPrisma(u);
-          if (!prismaUser) {
-            // A student may have registered after the initial sync — sync them
-            // on demand so the Prisma-backed auth can find them.
-            const p = findPersonByIdentifier(u);
-            if (p) {
-              try {
+          let prismaUser: UserRecord | null = null;
+          try {
+            prismaUser = await findUserPrisma(u);
+            // seedPrismaDomain creates identity rows without a password
+            // credential, and a student may have registered after the initial
+            // sync. In either case the Prisma row is incomplete, so backfill it
+            // from the in-memory store (the source of truth for the current
+            // password hash) before verifying.
+            if (!prismaUser || !prismaUser.passwordHash) {
+              const p = findPersonByIdentifier(u);
+              if (p) {
                 await syncOneUserToPrisma(p, await passwordHashFor(p.username));
                 prismaUser = await findUserPrisma(u);
-              } catch { /* fall through to in-memory */ }
+              }
             }
-          }
-          if (prismaUser) return prismaUser;
+          } catch { /* DB unreachable or write failed — fall through to in-memory */ }
+          if (prismaUser && prismaUser.passwordHash) return prismaUser;
           // Last resort: in-memory record (lockout/audit are best-effort here).
           const p = findPersonByIdentifier(u);
           return p
@@ -137,7 +142,11 @@ async function signIn(formData: FormData) {
         },
         recordFailure: recordFailurePrisma,
         recordSuccess: recordSuccessPrisma,
-        audit: recordAuditPrisma,
+        audit: async (e: { action: string; actorId: string | null; entityId: string; detail: Record<string, unknown> }) => {
+          // Best-effort only: an audit write must never swallow the sign-in
+          // outcome, or a failed login would show no error at all.
+          try { await recordAuditPrisma(e); } catch { /* audit is append-only but never blocking */ }
+        },
       }
     : {
         findUser: async () => record,
