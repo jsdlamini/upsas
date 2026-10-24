@@ -68,7 +68,7 @@ export async function createTenant(input: {
     prisma.emailSettings.create({ data: { id: slug, tenantId: slug, provider: 'none' } }),
     prisma.academicCycle.create({
       data: {
-        id: cycleLabel, tenantId: slug, institutionId: slug, label: cycleLabel,
+        tenantId: slug, institutionId: slug, label: cycleLabel,
         startsOn, endsOn, isCurrent: true,
       },
     }),

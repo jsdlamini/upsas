@@ -4,11 +4,14 @@ import type { AuthenticatedPrincipal } from './auth/login';
 /**
  * Academic cycle management.
  *
- * The cycle's `id` IS its label (e.g. "2025/2026"). The codebase has always
- * used the label as the `cycleId` string in role grants, assessment periods
- * and computed marks, so keeping id == label means none of those call sites
- * change their semantics. Labels are therefore immutable once created; dates
- * and the `isCurrent` flag are editable.
+ * The database row has a generated UUID `id`, but the rest of the codebase has
+ * always used the cycle **label** (e.g. "2025/2026") as the `cycleId` string in
+ * role grants, assessment periods and computed marks. `currentCycleId` below
+ * therefore returns the current cycle's label, not its row id, so every
+ * existing `cycleId` call site keeps working unchanged.
+ *
+ * Labels are immutable once created (they are the per-institution unique key);
+ * dates and the `isCurrent` flag are editable.
  */
 
 // Keep in step with `CYCLE` in src/lib/data/store.ts. Defined here rather
@@ -56,21 +59,8 @@ function dbReady(): boolean {
   return Boolean(process.env.DATABASE_URL);
 }
 
+/** The current cycle's label, which is the value the app uses as `cycleId`. */
 export async function currentCycleId(tenantId: string): Promise<string> {
-  if (!dbReady()) return FALLBACK_CYCLE;
-  try {
-    const row = await prisma.academicCycle.findFirst({
-      where: { tenantId, isCurrent: true },
-      select: { id: true },
-      orderBy: { startsOn: 'desc' },
-    });
-    return row?.id ?? FALLBACK_CYCLE;
-  } catch {
-    return FALLBACK_CYCLE;
-  }
-}
-
-export async function currentCycleLabel(tenantId: string): Promise<string> {
   if (!dbReady()) return FALLBACK_CYCLE;
   try {
     const row = await prisma.academicCycle.findFirst({
@@ -82,6 +72,11 @@ export async function currentCycleLabel(tenantId: string): Promise<string> {
   } catch {
     return FALLBACK_CYCLE;
   }
+}
+
+/** Alias for display contexts where "label" is clearer than "id". */
+export async function currentCycleLabel(tenantId: string): Promise<string> {
+  return currentCycleId(tenantId);
 }
 
 export async function listCycles(tenantId: string): Promise<CycleRow[]> {
@@ -119,31 +114,33 @@ export async function createCycle(
   const check = validate(input.label, { startsOn: input.startsOn, endsOn: input.endsOn });
   if (!check.ok) return check;
 
-  const id = input.label.trim();
+  const label = input.label.trim();
   const existing = await prisma.academicCycle.findFirst({
-    where: { institutionId, label: input.label.trim() },
+    where: { tenantId, institutionId, label },
   });
   if (existing) return { ok: false, error: 'A cycle with that label already exists.' };
 
+  let created;
   if (input.isCurrent) {
-    await prisma.$transaction([
+    const [, createdRow] = await prisma.$transaction([
       prisma.academicCycle.updateMany({ where: { tenantId, isCurrent: true }, data: { isCurrent: false } }),
       prisma.academicCycle.create({
         data: {
-          id, tenantId, institutionId, label: input.label.trim(),
+          tenantId, institutionId, label,
           startsOn: input.startsOn, endsOn: input.endsOn, isCurrent: true,
         },
       }),
     ]);
+    created = createdRow;
   } else {
-    await prisma.academicCycle.create({
+    created = await prisma.academicCycle.create({
       data: {
-        id, tenantId, institutionId, label: input.label.trim(),
+        tenantId, institutionId, label,
         startsOn: input.startsOn, endsOn: input.endsOn, isCurrent: false,
       },
     });
   }
-  return { ok: true, id };
+  return { ok: true, id: created.id };
 }
 
 export async function updateCycle(

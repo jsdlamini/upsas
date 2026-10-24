@@ -23,7 +23,7 @@ test('createTenant provisions an isolated, fully-formed tenant', async () => {
   const email = await prisma.emailSettings.findUnique({ where: { id: 'testcoast' } });
   assert.equal(email?.tenantId, 'testcoast');
 
-  const cycle = await prisma.academicCycle.findUnique({ where: { id: '2025/2026' } });
+  const cycle = await prisma.academicCycle.findFirst({ where: { tenantId: 'testcoast', label: '2025/2026' } });
   assert.ok(cycle);
   assert.equal(cycle.tenantId, 'testcoast');
   assert.equal(cycle.institutionId, 'testcoast');
