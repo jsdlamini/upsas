@@ -58,7 +58,7 @@ export async function createTenant(input: {
     prisma.user.create({
       data: {
         id: userId, tenantId: slug, username, email,
-        fullName: adminName, surname: adminSurname, status: 'ACTIVE',
+        fullName: `${adminName} ${adminSurname}`, surname: adminSurname, status: 'ACTIVE',
         credential: { create: { hash } },
         roles: {
           create: [

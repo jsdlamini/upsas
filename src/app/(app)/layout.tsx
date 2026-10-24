@@ -5,8 +5,8 @@ import { sectionOf } from '@/lib/nav/section';
 import { MeetingNotices } from '@/components/meeting-notices';
 import { NotificationBell } from '@/components/notification-bell';
 import type { ReactNode } from 'react';
-import { currentPrincipal, destroySession, COOKIE } from '@/lib/auth/current';
-import { findPerson, noticesFor, persistenceHealth } from '@/lib/data/store';
+import { currentPrincipal, destroySession, COOKIE, identityFor } from '@/lib/auth/current';
+import { noticesFor, persistenceHealth } from '@/lib/data/store';
 import { getInstitution, monogramText, logoUrl } from '@/lib/institution';
 
 export const dynamic = 'force-dynamic';
@@ -69,7 +69,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       </main>
     );
   }
-  const person = findPerson(principal.userId);
+  const person = await identityFor(principal.userId);
   const inst = await getInstitution();
   const mono = await monogramText();
   const logo = await logoUrl();

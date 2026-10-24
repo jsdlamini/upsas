@@ -2,12 +2,12 @@ import { redirect } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { STATUS_LABEL } from '@/lib/enrolment/status';
-import { currentPrincipal } from '@/lib/auth/current';
+import { currentPrincipal, identityFor } from '@/lib/auth/current';
 import { computeFinalMark, PROFILE_A } from '@/lib/assessment';
 import {
   enrolmentOf,
   allocatedStudents, superviseesOf, projectOf, consultationsOf, docMarkOf,
-  toConsultationRecords, toAssessorEntries, findPerson,
+  toConsultationRecords, toAssessorEntries,
   pendingStaffRequests, approveStaffAccount, declineStaffAccount,
 } from '@/lib/data/store';
 
@@ -192,7 +192,7 @@ export default async function Dashboard({
         </div>
       )}
       <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>
-        Signed in as {findPerson(principal.userId)?.fullName}. You see{' '}
+        Signed in as {(await identityFor(principal.userId))?.fullName}. You see{' '}
         {isCoordinator ? 'the whole cohort because you hold COORDINATOR' : 'only your own supervisees'}.
       </p>
     </>

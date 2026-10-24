@@ -1,4 +1,5 @@
 import { prisma } from '../prisma';
+import { Prisma } from '@prisma/client';
 import type { UserRecord, AccountStatus } from './login';
 import type { RoleGrant } from './roles';
 import type { RoleCode } from '../rbac/policy';
@@ -99,14 +100,10 @@ export async function syncOneUserToPrisma(person: Person, hash: string): Promise
   await upsertUser(person, hash);
 }
 
-export async function findUserPrisma(identifier: string): Promise<UserRecord | null> {
-  const value = identifier.trim().toLowerCase();
-  const user = await prisma.user.findFirst({
-    where: { email: value },
-    include: { credential: true, totp: true, roles: true },
-  });
-  if (!user) return null;
+const identityInclude = { credential: true, totp: true, roles: true } as const;
+type IdentityUser = Prisma.UserGetPayload<{ include: typeof identityInclude }>;
 
+function toUserRecord(user: IdentityUser): UserRecord {
   return {
     id: user.id,
     tenantId: user.tenantId,
@@ -123,6 +120,18 @@ export async function findUserPrisma(identifier: string): Promise<UserRecord | n
       revokedAt: r.revokedAt ? r.revokedAt.toISOString() : null,
     })) as RoleGrant[],
   };
+}
+
+export async function findUserPrisma(identifier: string): Promise<UserRecord | null> {
+  const value = identifier.trim().toLowerCase();
+  const user = await prisma.user.findFirst({ where: { email: value }, include: identityInclude });
+  return user ? toUserRecord(user) : null;
+}
+
+/** Identity + grants by primary key, for users that exist only in Postgres. */
+export async function findUserPrismaById(id: string): Promise<UserRecord | null> {
+  const user = await prisma.user.findUnique({ where: { id }, include: identityInclude });
+  return user ? toUserRecord(user) : null;
 }
 
 export async function totpSecretForPrisma(identifier: string): Promise<string> {
