@@ -8,6 +8,22 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: upsas
+          POSTGRES_PASSWORD: upsaspass
+          POSTGRES_DB: upsas
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U upsas -d upsas"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -15,9 +31,27 @@ jobs:
           node-version: '22'
           cache: npm
 
+      # The suite is driven by `tsx --env-file=.env` and the Prisma client /
+      # migrations read DATABASE_URL. .env is gitignored (it holds secrets in
+      # local development), so reconstruct a CI-only one pointing at the
+      # Postgres service above. SESSION_SECRET and TOTP_ENC_KEY are no longer
+      # read by the code but kept for parity with .env.example; the blocklist
+      # path is a committed fixture.
+      - name: Prepare environment
+        run: |
+          cat > .env <<'EOF'
+          DATABASE_URL=postgresql://upsas:upsaspass@localhost:5432/upsas
+          SESSION_SECRET=ci-session-secret
+          TOTP_ENC_KEY=ci-totp-key
+          PASSWORD_BLOCKLIST_PATH=./data/password-blocklist.txt
+          EOF
+
       # postinstall runs `prisma generate`; without a client the suite cannot
       # even import src/lib/prisma.
       - run: npm ci
+
+      - name: Migrate database
+        run: npx prisma migrate deploy
 
       - name: Typecheck
         run: npm run typecheck
@@ -28,7 +62,7 @@ jobs:
       # The seed asserts every rubric's criteria sum to its declared maximum.
       # A rubric that no longer adds up should fail here, not in an exam board.
       - name: Rubric integrity
-        run: npx tsx prisma/seed.ts --check || true
+        run: npx tsx prisma/seed.ts --check
 
       - name: Production build
         run: npm run build
