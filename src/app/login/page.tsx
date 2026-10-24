@@ -5,7 +5,8 @@ import { createSession, COOKIE, currentPrincipal } from '@/lib/auth/current';
 import { verifyTotp } from '@/lib/auth/totp';
 import { checkLoginRate } from '@/lib/auth/rate-limit';
 import { randomBytes } from 'node:crypto';
-import { CYCLE, passwordHashFor, findPersonByIdentifier, allPeople } from '@/lib/data/store';
+import { passwordHashFor, findPersonByIdentifier, allPeople } from '@/lib/data/store';
+import { currentCycleId, currentCycleLabel } from '@/lib/cycles';
 import { getInstitution, monogramText, logoUrl } from '@/lib/institution';
 import { FeatureCarousel } from '@/components/feature-carousel';
 import {
@@ -88,6 +89,9 @@ async function signIn(formData: FormData) {
     redirect(`/login?e=RATE_LIMITED${carry}`);
   }
 
+  // The cycle is resolved from the tenant of the account once it is found.
+  let tenantId = 'default';
+
   const person = findPersonByIdentifier(username);
   let totpSecret = person?.totpSecret ?? '';
   let usePrisma = false;
@@ -129,7 +133,10 @@ async function signIn(formData: FormData) {
               }
             }
           } catch { /* DB unreachable or write failed — fall through to in-memory */ }
-          if (prismaUser && prismaUser.passwordHash) return prismaUser;
+          if (prismaUser && prismaUser.passwordHash) {
+            tenantId = prismaUser.tenantId;
+            return prismaUser;
+          }
           // Last resort: in-memory record (lockout/audit are best-effort here).
           const p = findPersonByIdentifier(u);
           return p
@@ -157,8 +164,9 @@ async function signIn(formData: FormData) {
         },
       };
 
+  const cycleId = await currentCycleId(tenantId);
   const outcome = await login(
-    { username, password, cycleId: CYCLE, now: new Date(),
+    { username, password, cycleId, now: new Date(),
       passwordVerified: firstFactorDone,
       mfaVerified: firstFactorDone && verifyTotp(totpSecret, code) },
     deps,
@@ -191,6 +199,7 @@ export default async function LoginPage({
   const inst = await getInstitution();
   const mono = await monogramText();
   const logo = await logoUrl();
+  const cycleLabel = await currentCycleLabel('default');
 
   return (
     <div className="auth-split">
@@ -209,7 +218,7 @@ export default async function LoginPage({
             { title: 'Grading criteria & forms', image: '/screenshots/08-rubrics.png' },
             { title: 'Released results & reports', image: '/screenshots/04-people.png' },
           ]} />
-          <div className="brand-foot">Cycle {CYCLE} · Accounts held locally — no external sign-in</div>
+          <div className="brand-foot">Cycle {cycleLabel} · Accounts held locally — no external sign-in</div>
         </div>
       </aside>
       <div className="auth-main">
@@ -228,7 +237,7 @@ export default async function LoginPage({
       <p className="lede">
         {needsCode
           ? 'Your password was accepted. This role needs a second factor.'
-          : `Cycle ${CYCLE}. Accounts are held locally — there is no external sign-in.`}
+          : `Cycle ${cycleLabel}. Accounts are held locally — there is no external sign-in.`}
       </p>
 
       {!needsCode && (

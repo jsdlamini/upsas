@@ -1,6 +1,7 @@
 import { hashPassword, checkPassword } from '../auth/password';
 import { prisma } from '../prisma';
 import { requestTenantId } from '../tenant';
+import { currentCycleId } from '../cycles';
 import type { RoleGrant } from '../auth/roles';
 import type { RoleCode } from '../rbac/policy';
 import type { AssessorEntry, ConsultationRecord } from '../assessment/types';
@@ -2095,21 +2096,23 @@ function toDeadline(row: { id: string; cycleId: string; key: string; label: stri
   return { id: row.id, cycleId: row.cycleId, key: row.key, label: row.label, dueAt: row.dueAt.toISOString(), graceMinutes: row.graceMinutes, published: row.published, note: row.note };
 }
 
-export async function deadlinesFor(cycleId: string = CYCLE): Promise<Deadline[]> {
+export async function deadlinesFor(cycleId?: string): Promise<Deadline[]> {
   if (!process.env.DATABASE_URL) return [];
   const tenantId = await requestTenantId();
-  const rows = await prisma.assessmentPeriod.findMany({ where: { cycleId, tenantId } });
+  const resolved = cycleId ?? (await currentCycleId(tenantId));
+  const rows = await prisma.assessmentPeriod.findMany({ where: { cycleId: resolved, tenantId } });
   return rows.map(toDeadline).sort((a, b) => a.dueAt.localeCompare(b.dueAt));
 }
 
-export async function publishedDeadlines(cycleId: string = CYCLE): Promise<Deadline[]> {
+export async function publishedDeadlines(cycleId?: string): Promise<Deadline[]> {
   return (await deadlinesFor(cycleId)).filter((d) => d.published);
 }
 
-export async function findDeadline(key: string, cycleId: string = CYCLE): Promise<Deadline | null> {
+export async function findDeadline(key: string, cycleId?: string): Promise<Deadline | null> {
   if (!process.env.DATABASE_URL) return null;
   const tenantId = await requestTenantId();
-  const row = await prisma.assessmentPeriod.findFirst({ where: { cycleId, key, tenantId } });
+  const resolved = cycleId ?? (await currentCycleId(tenantId));
+  const row = await prisma.assessmentPeriod.findFirst({ where: { cycleId: resolved, key, tenantId } });
   return row ? toDeadline(row) : null;
 }
 
@@ -2129,10 +2132,11 @@ export async function saveDeadline(
   return { ok: true };
 }
 
-export async function removeDeadline(key: string, cycleId: string = CYCLE): Promise<void> {
+export async function removeDeadline(key: string, cycleId?: string): Promise<void> {
   if (!process.env.DATABASE_URL) return;
   const tenantId = await requestTenantId();
-  await prisma.assessmentPeriod.deleteMany({ where: { cycleId, key, tenantId } });
+  const resolved = cycleId ?? (await currentCycleId(tenantId));
+  await prisma.assessmentPeriod.deleteMany({ where: { cycleId: resolved, key, tenantId } });
 }
 
 export async function extensionFor(studentId: string, deadlineKey: string): Promise<Extension | null> {

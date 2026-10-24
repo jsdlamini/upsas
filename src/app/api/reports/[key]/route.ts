@@ -35,7 +35,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ key: st
       const project = (await projectOf(s.id))!;
       const doc = await docMarkOf(s.id);
       const snapshot = computeFinalMark({
-        studentId: s.id, cycleId: '2025/2026',
+        studentId: s.id, cycleId: principal.cycleId,
         consultations: await toConsultationRecords(s.id),
         presentations: [
           { componentKey: 'p1', entries: await toAssessorEntries(s.id, 'p1') },
@@ -57,7 +57,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ key: st
       };
     }));
     content = buildMarkSchedule(rows);
-    filename = 'mark-schedule-2025-2026.csv';
+    filename = `mark-schedule-${principal.cycleId.replace(/\W/g, '-')}.csv`;
   } else if (key === 'consultation-register') {
     const rows: RegisterRow[] = (await Promise.all(students.map(async (s) => {
       const project = (await projectOf(s.id))!;
@@ -83,7 +83,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ key: st
   try {
     manifest = buildManifest({
       reportKey: key, generatedBy: principal.userId, generatedAt: now.toISOString(),
-      cycleId: '2025/2026',
+      cycleId: principal.cycleId,
       scopeDescription: isCoordinator ? 'Whole cycle' : 'Own supervisees',
       rowCount: content.trim().split('\r\n').length - 1,
       configIds: [PROFILE_A.id], snapshotIds: students.map((s) => `snap-${s.studentNumber}`),

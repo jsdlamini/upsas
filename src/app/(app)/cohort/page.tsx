@@ -4,8 +4,9 @@ import { Badge } from '@/components/ui/badge';
 import { revalidatePath } from 'next/cache';
 import { currentPrincipal } from '@/lib/auth/current';
 import { can } from '@/lib/rbac/policy';
+import { currentCycleId } from '@/lib/cycles';
 import {
-  CYCLE, STUDENTS, findStudent, findPerson, allPeople,
+  STUDENTS, findStudent, findPerson, allPeople,
   enrolmentOf, setEnrolment, deadlinesFor, saveDeadline, removeDeadline,
   extensionFor, extensionsFor, grantExtension, withdrawExtension, deadlineStatusFor,
   issueResetCode, takeIssuedCode, outstandingResetFor, emailOf, setContactEmail,
@@ -92,9 +93,9 @@ async function changeEnrolment(formData: FormData) {
 
 async function upsertDeadline(formData: FormData) {
   'use server';
-  await guard();
+  const principal = await guard();
   const result = await saveDeadline({
-    cycleId: CYCLE,
+    cycleId: await currentCycleId(principal.tenantId),
     key: String(formData.get('key') ?? '').trim().toLowerCase(),
     label: String(formData.get('label') ?? '').trim(),
     dueAt: fromLocalInput(String(formData.get('dueAt') ?? '')),
@@ -109,8 +110,8 @@ async function upsertDeadline(formData: FormData) {
 
 async function dropDeadline(formData: FormData) {
   'use server';
-  await guard();
-  removeDeadline(String(formData.get('key')));
+  const principal = await guard();
+  removeDeadline(String(formData.get('key')), await currentCycleId(principal.tenantId));
   revalidatePath('/cohort');
   back('deadlines', '&done=' + encodeURIComponent('Deadline removed'));
 }
@@ -183,7 +184,7 @@ export default async function Cohort({
   let errors: string[] = [];
   if (e) { try { const parsed: unknown = JSON.parse(e); if (Array.isArray(parsed)) errors = parsed.map(String); } catch { errors = [e]; } }
 
-  const deadlines = await deadlinesFor();
+  const deadlines = await deadlinesFor(await currentCycleId(principal.tenantId));
   const code = issued ? takeIssuedCode(principal.userId) : null;
 
   const enrolmentsMap = new Map<string, Enrolment>();
@@ -334,7 +335,7 @@ export default async function Cohort({
               </thead>
               <tbody>
                 {deadlines.length === 0 && (
-                  <tr><td colSpan={5} className="muted">No dates set for {CYCLE} yet.</td></tr>
+                  <tr><td colSpan={5} className="muted">No dates set for {await currentCycleId(principal.tenantId)} yet.</td></tr>
                 )}
                 {deadlines.map((deadline) => (
                   <tr key={deadline.key}>

@@ -45,10 +45,10 @@ async function updateCourse(formData: FormData) {
   redirect(`/me?toast=${encodeURIComponent(result.ok ? 'Course code updated.' : result.error)}`);
 }
 
-async function snapshotFor(studentId: string) {
+async function snapshotFor(studentId: string, cycleId: string) {
   const doc = await docMarkOf(studentId);
   return computeFinalMark({
-    studentId, cycleId: '2025/2026',
+    studentId, cycleId,
     consultations: await toConsultationRecords(studentId),
     presentations: [
       { componentKey: 'p1', entries: await toAssessorEntries(studentId, 'p1') },
@@ -82,7 +82,7 @@ export default async function MyProject({
   const rows = await consultationsOf(student.id);
   const outcome = evaluateConsultations(await toConsultationRecords(student.id), PROFILE_A.consultation);
   const published = await publicationOf(student.id);
-  const snapshot = published ? (await snapshotFor(student.id)) : null;
+  const snapshot = published ? (await snapshotFor(student.id, principal.cycleId)) : null;
   const p1pct = snapshot?.components.find((c) => c.key === 'p1')?.percentage ?? null;
   const p2pct = snapshot?.components.find((c) => c.key === 'p2')?.percentage ?? null;
   const awaiting = rows.filter((c) => c.status === 'COMPLETED' && c.supervisorAttested && !c.studentAttested);

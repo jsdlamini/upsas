@@ -1,5 +1,4 @@
 import { prisma } from './prisma';
-import { CYCLE } from './data/store';
 import type { AuthenticatedPrincipal } from './auth/login';
 
 /**
@@ -11,6 +10,10 @@ import type { AuthenticatedPrincipal } from './auth/login';
  * change their semantics. Labels are therefore immutable once created; dates
  * and the `isCurrent` flag are editable.
  */
+
+// Keep in step with `CYCLE` in src/lib/data/store.ts. Defined here rather
+// than imported so this module never creates an import cycle with the store.
+const FALLBACK_CYCLE = '2025/2026';
 
 export interface CycleRow {
   id: string;
@@ -54,30 +57,30 @@ function dbReady(): boolean {
 }
 
 export async function currentCycleId(tenantId: string): Promise<string> {
-  if (!dbReady()) return CYCLE;
+  if (!dbReady()) return FALLBACK_CYCLE;
   try {
     const row = await prisma.academicCycle.findFirst({
       where: { tenantId, isCurrent: true },
       select: { id: true },
       orderBy: { startsOn: 'desc' },
     });
-    return row?.id ?? CYCLE;
+    return row?.id ?? FALLBACK_CYCLE;
   } catch {
-    return CYCLE;
+    return FALLBACK_CYCLE;
   }
 }
 
 export async function currentCycleLabel(tenantId: string): Promise<string> {
-  if (!dbReady()) return CYCLE;
+  if (!dbReady()) return FALLBACK_CYCLE;
   try {
     const row = await prisma.academicCycle.findFirst({
       where: { tenantId, isCurrent: true },
       select: { label: true },
       orderBy: { startsOn: 'desc' },
     });
-    return row?.label ?? CYCLE;
+    return row?.label ?? FALLBACK_CYCLE;
   } catch {
-    return CYCLE;
+    return FALLBACK_CYCLE;
   }
 }
 
