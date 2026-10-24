@@ -1,5 +1,6 @@
 import { prisma } from './prisma';
 import { hashPassword } from './auth/password';
+import { deriveCycleDates } from './cycles';
 
 const SLUG_RE = /^[a-z0-9-]{2,40}$/;
 const RESERVED = new Set([
@@ -24,6 +25,9 @@ export async function createTenant(input: {
   adminEmail: string;
   adminUsername: string;
   adminPassword: string;
+  cycleLabel?: string;
+  cycleStartsOn?: string;
+  cycleEndsOn?: string;
 }): Promise<{ ok: true; tenantId: string } | { ok: false; error: string }> {
   const name = input.name.trim();
   const slug = input.slug.trim().toLowerCase();
@@ -31,6 +35,7 @@ export async function createTenant(input: {
   const username = input.adminUsername.trim().toLowerCase();
   const adminName = input.adminName.trim();
   const adminSurname = input.adminSurname.trim();
+  const cycleLabel = input.cycleLabel?.trim() || '2025/2026';
 
   if (name.length < 2) return { ok: false, error: 'Give the institution a name.' };
   if (!SLUG_RE.test(slug)) return { ok: false, error: 'The slug must be 2–40 lowercase letters, numbers or hyphens.' };
@@ -50,11 +55,23 @@ export async function createTenant(input: {
   const hash = await hashPassword(input.adminPassword);
   const now = new Date();
   const userId = `u-${slug}-admin`;
+  const fallback = deriveCycleDates(cycleLabel);
+  const startsOn = input.cycleStartsOn ? new Date(`${input.cycleStartsOn}T00:00:00Z`) : fallback.startsOn;
+  const endsOn = input.cycleEndsOn ? new Date(`${input.cycleEndsOn}T00:00:00Z`) : fallback.endsOn;
+  if (Number.isNaN(startsOn.getTime()) || Number.isNaN(endsOn.getTime()) || startsOn >= endsOn) {
+    return { ok: false, error: 'Give the academic cycle a valid start and end date.' };
+  }
 
   await prisma.$transaction([
     prisma.tenant.create({ data: { id: slug, name, createdAt: now } }),
     prisma.institution.create({ data: { id: slug, tenantId: slug, name, productName: name } }),
     prisma.emailSettings.create({ data: { id: slug, tenantId: slug, provider: 'none' } }),
+    prisma.academicCycle.create({
+      data: {
+        id: cycleLabel, tenantId: slug, institutionId: slug, label: cycleLabel,
+        startsOn, endsOn, isCurrent: true,
+      },
+    }),
     prisma.user.create({
       data: {
         id: userId, tenantId: slug, username, email,
@@ -62,7 +79,7 @@ export async function createTenant(input: {
         credential: { create: { hash } },
         roles: {
           create: [
-            { role: 'COORDINATOR', cycleId: '2025/2026', grantedBy: 'signup', grantedAt: now },
+            { role: 'COORDINATOR', cycleId: cycleLabel, grantedBy: 'signup', grantedAt: now },
             { role: 'ADMINISTRATOR', cycleId: null, grantedBy: 'signup', grantedAt: now },
           ],
         },
