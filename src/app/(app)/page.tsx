@@ -79,10 +79,10 @@ export default async function Dashboard({
     <>
       <h1 className="page">{isCoordinator ? 'Cohort' : 'My supervisees'}</h1>
       <p className="lede">
-        {students.length} students in {byProject.size} projects
+        {students.length} students across {byProject.size} project{byProject.size === 1 ? '' : 's'}
         {[...byProject.values()].filter((m) => m.length > 1).length > 0 &&
-          `, ${[...byProject.values()].filter((m) => m.length > 1).length} of them pairs`}.
-        Marks are computed live from the engine; nothing on this page is stored.
+          `, including ${[...byProject.values()].filter((m) => m.length > 1).length} joint project${[...byProject.values()].filter((m) => m.length > 1).length === 1 ? '' : 's'}`}.
+        Figures are computed live from the assessment engine, so what you see is always current.
       </p>
 
       {approved && <div className="notice">Account activated — that staff member can now sign in.</div>}
@@ -178,8 +178,8 @@ export default async function Dashboard({
                         {!snap.blocked && snap.flags.length === 0 && (
                           <span className="flag ok">No flags.</span>
                         )}
-                        {snap.flags.map((f) => (
-                          <span className={f.blocking ? 'flag red' : 'flag amber'} key={f.code}>{f.message}</span>
+                        {snap.flags.map((f, fi) => (
+                          <span className={f.blocking ? 'flag red' : 'flag amber'} key={`${f.code}-${fi}`}>{f.message}</span>
                         ))}
                         {!contribution && <span className="flag amber">Contribution statement not filed.</span>}
                         <a href={`/marks/${s.studentNumber}`} style={{ fontSize: 12 }}>Open breakdown</a>

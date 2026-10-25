@@ -94,7 +94,7 @@ async function save(formData: FormData) {
       department: String(formData.get('department') ?? '').trim(),
       productName: String(formData.get('productName') ?? '').trim(),
       monogram: String(formData.get('monogram') ?? '').trim(),
-      accentColor: String(formData.get('accentColor') ?? '#2E5AC8').trim(),
+      accentColor: String(formData.get('accentColor') ?? '#6633E6').trim(),
     };
 
     const file = formData.get('logoFile');
@@ -160,7 +160,10 @@ export default async function Settings({
   return (
     <>
       <h1 className="page">Institution settings</h1>
-      <p className="lede">Enter your institution's details below to set your branding across the app.</p>
+      <p className="lede">
+        Your institution's identity, email delivery, and the academic cycles everything else hangs
+        from. Changes apply across the whole workspace immediately.
+      </p>
 
       <FlashToast flashes={flashes} keys={keys} />
 
@@ -199,7 +202,7 @@ export default async function Settings({
           </label>
           <label className="field">
             <span className="field-label">Accent colour</span>
-            <Input name="accentColor" type="color" defaultValue={inst.accentColor || '#2E5AC8'} style={{ width: 60, height: 40, padding: 2 }} />
+            <Input name="accentColor" type="color" defaultValue={inst.accentColor || '#6633E6'} style={{ width: 60, height: 40, padding: 2 }} />
           </label>
           <div className="field">
             <span className="field-label">Logo</span>
@@ -223,28 +226,36 @@ export default async function Settings({
         <TestEmail defaultTo={findPerson(principal.userId)?.email ?? ''} />
       </div>
 
-      <div className="box" style={{ maxWidth: 560, marginTop: 24 }}>
+      <div className="box" style={{ maxWidth: 640, marginTop: 24 }}>
         <h2 style={{ fontSize: 16, margin: '0 0 4px' }}>Academic cycles</h2>
         <p className="muted" style={{ fontSize: 12.5, margin: '0 0 14px' }}>
-          The current cycle scopes roles and deadlines. Labels are fixed once created. Cycles can
-          only be deleted when nothing references them — role grants, deadlines, presentation
-          sessions and marks must be moved or removed first.
+          The current cycle scopes role grants and deadlines for everyone. Labels are fixed once
+          created. A cycle can only be deleted once nothing refers to it — role grants, deadlines,
+          presentation sessions and marks must be moved or removed first.
         </p>
 
-        {cycles.length === 0 && <p className="muted">No cycles yet.</p>}
+        {cycles.length === 0 && (
+          <div className="empty" style={{ marginBottom: 18 }}>
+            <strong>No cycles yet</strong>
+            Create your first cycle below — for example 2025/2026, running 1 August 2025 to
+            31 July 2026.
+          </div>
+        )}
         <ul style={{ listStyle: 'none', margin: '0 0 18px', padding: 0 }}>
           {cycles.map((c) => (
-            <li key={c.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--rule)' }}>
+            <li key={c.id} style={{
+              padding: '14px 0', borderBottom: '1px solid var(--rule)',
+            }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <strong className="mono">{c.label}</strong>
-                {c.isCurrent && <Badge>Current</Badge>}
+                <strong className="mono" style={{ fontSize: 14 }}>{c.label}</strong>
+                {c.isCurrent ? <Badge variant="success">Current</Badge> : <Badge>Past</Badge>}
                 <span className="muted" style={{ fontSize: 12.5 }}>
                   {new Date(c.startsOn).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}
                   {' → '}
                   {new Date(c.endsOn).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}
                 </span>
               </div>
-              <form action={updateCycleAction} style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap', alignItems: 'end' }}>
+              <form action={updateCycleAction} style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap', alignItems: 'end' }}>
                 <input type="hidden" name="id" value={c.id} />
                 <label className="field" style={{ margin: 0 }}>
                   <span className="field-label">Starts</span>
@@ -254,15 +265,17 @@ export default async function Settings({
                   <span className="field-label">Ends</span>
                   <Input name="endsOn" type="date" defaultValue={c.endsOn.slice(0, 10)} />
                 </label>
-                <Button type="submit" variant="ghost">Save dates</Button>
+                <Button type="submit" variant="outline">Save dates</Button>
               </form>
-              {!c.isCurrent && (
-                <form action={setCurrentCycleAction} style={{ marginTop: 8 }}>
-                  <input type="hidden" name="id" value={c.id} />
-                  <Button type="submit" variant="ghost">Make current</Button>
-                </form>
-              )}
-              {!c.isCurrent && <DeleteCycleButton id={c.id} label={c.label} action={deleteCycleAction} />}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                {!c.isCurrent && (
+                  <form action={setCurrentCycleAction} style={{ marginTop: 10 }}>
+                    <input type="hidden" name="id" value={c.id} />
+                    <Button type="submit" variant="outline">Make current</Button>
+                  </form>
+                )}
+                {!c.isCurrent && <DeleteCycleButton id={c.id} label={c.label} action={deleteCycleAction} />}
+              </div>
             </li>
           ))}
         </ul>
@@ -272,6 +285,10 @@ export default async function Settings({
             <span className="field-label">New cycle label</span>
             <Input name="label" type="text" required placeholder="e.g. 2026/2027" />
           </label>
+          <label className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'end' }}>
+            <input name="isCurrent" type="checkbox" style={{ width: 16, accentColor: 'var(--accent)' }} />
+            <span className="field-label" style={{ marginBottom: 0 }}>Make this the current cycle</span>
+          </label>
           <label className="field">
             <span className="field-label">Starts</span>
             <Input name="startsOn" type="date" required />
@@ -279,10 +296,6 @@ export default async function Settings({
           <label className="field">
             <span className="field-label">Ends</span>
             <Input name="endsOn" type="date" required />
-          </label>
-          <label className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <input name="isCurrent" type="checkbox" style={{ width: 16 }} />
-            <span className="field-label">Make this the current cycle</span>
           </label>
           <div>
             <Button type="submit">Add cycle</Button>

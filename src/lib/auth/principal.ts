@@ -19,9 +19,18 @@ export async function principalForSessionRecord(
   const person = findPerson(record.userId);
   let grants: readonly RoleGrant[] = person?.grants ?? [];
   if (!person) {
+    // In-memory mode has no identity table: only seeded people hold sessions.
+    if (!process.env.DATABASE_URL) return null;
     const identity = await findUserPrismaById(record.userId);
     if (!identity) return null;
     grants = identity.grants;
+  }
+
+  // No database means the single-tenant in-memory store: the session was
+  // created there with tenant 'default', so resolve against that directly.
+  if (!process.env.DATABASE_URL) {
+    const cycleId = await currentCycleId('default');
+    return principalFromSession(record, grants, cycleId, now, 'default');
   }
 
   const user = await prisma.user.findUnique({ where: { id: record.userId }, select: { tenantId: true } });

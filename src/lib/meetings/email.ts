@@ -95,7 +95,7 @@ export async function renderNoticeEmail(
       <p style="margin:0 0 12px;">Hello ${escapeHtml(firstName)},</p>
       <p style="margin:0 0 20px;color:#2C3A4C;">${escapeHtml(notice.body)}</p>
       <a href="${escapeHtml(openUrl)}"
-         style="display:inline-block;background:#2E5AC8;color:#FFFFFF;text-decoration:none;font-weight:600;
+         style="display:inline-block;background:#6633E6;color:#FFFFFF;text-decoration:none;font-weight:600;
                 font-size:15px;padding:12px 20px;border-radius:8px;">${escapeHtml(button)}</a>
       <p style="margin:18px 0 0;font-size:12.5px;color:#5A6679;">
         Or paste this into your browser:<br>

@@ -20,7 +20,7 @@ async function save(formData: FormData) {
     department: String(formData.get('department') ?? '').trim(),
     productName: String(formData.get('productName') ?? '').trim(),
     monogram: String(formData.get('monogram') ?? '').trim(),
-    accentColor: String(formData.get('accentColor') ?? '#2E5AC8').trim(),
+    accentColor: String(formData.get('accentColor') ?? '#6633E6').trim(),
   };
 
   const file = formData.get('logoFile');
@@ -94,7 +94,7 @@ export default async function Setup({
           </label>
           <label className="field">
             <span className="field-label">Accent colour</span>
-            <Input name="accentColor" type="color" defaultValue={inst.accentColor || '#2E5AC8'} style={{ width: 60, height: 40, padding: 2 }} />
+            <Input name="accentColor" type="color" defaultValue={inst.accentColor || '#6633E6'} style={{ width: 60, height: 40, padding: 2 }} />
           </label>
           <div className="field">
             <span className="field-label">Logo</span>

@@ -66,9 +66,9 @@ export default async function MarkSheet({ params }: { params: Promise<{ studentI
         <span style={{ font: '24px ui-serif,Georgia,serif', marginLeft: 14 }}>{a.grade ?? ''}</span>
         <div className="muted" style={{ marginTop: 8 }}>
           {a.blocked
-            ? a.flags.filter((f) => f.blocking).map((f) => <span className="flag red" key={f.code}>{f.message}</span>)
+            ? a.flags.filter((f) => f.blocking).map((f) => <span className="flag red" key={`b-${f.code}-${f.message}`}>{f.message}</span>)
             : 'No blocking flags. Awaiting coordinator release.'}
-          {a.flags.filter((f) => !f.blocking).map((f) => <span className="flag amber" key={f.code}>{f.message}</span>)}
+          {a.flags.filter((f) => !f.blocking).map((f) => <span className="flag amber" key={`w-${f.code}-${f.message}`}>{f.message}</span>)}
         </div>
       </div>
 

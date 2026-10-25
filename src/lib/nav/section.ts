@@ -12,6 +12,9 @@ export function sectionOf(path: string): string {
   if (path.startsWith('/grading') || path.startsWith('/marks') || path.startsWith('/rubrics')) return 'grading';
   if (path.startsWith('/publish')) return 'publish';
   if (path.startsWith('/reports')) return 'reports';
+  // Governance: institution settings, account approvals, the host console.
+  if (path.startsWith('/settings') || path.startsWith('/people')
+      || path.startsWith('/admin') || path.startsWith('/account')) return 'admin';
   return 'home';
 }
 

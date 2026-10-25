@@ -34,8 +34,8 @@ export const viewport: Viewport = {
   // stylesheet pads with env(safe-area-inset-*).
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#0F1B2D' },
-    { media: '(prefers-color-scheme: dark)', color: '#0A111A' },
+    { media: '(prefers-color-scheme: light)', color: '#14102C' },
+    { media: '(prefers-color-scheme: dark)', color: '#0F0C24' },
   ],
 };
 
@@ -52,7 +52,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   }
 
   return (
-    <html lang="en" suppressHydrationWarning style={{ '--accent': inst.accentColor } as React.CSSProperties}>
+    <html lang="en" suppressHydrationWarning style={{ '--brand-accent': inst.accentColor } as React.CSSProperties}>
       <head>
         {/* Set the theme before first paint, so there is no flash of the wrong
             scheme. Saved choice wins; otherwise the OS preference. */}

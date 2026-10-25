@@ -30,7 +30,10 @@ export default async function AdminPage() {
   return (
     <main style={{ padding: '32px 24px', maxWidth: 960, margin: '0 auto' }}>
       <h1 className="page">Institutions</h1>
-      <p className="lede">Host console — every tenant on the platform.</p>
+      <p className="lede">
+        Every workspace hosted on this server — who runs it, how many people it holds, and whether
+        it is currently active.
+      </p>
 
       <div style={{ display: 'flex', gap: 12, margin: '20px 0' }}>
         <a href="/signup"><Button variant="outline" type="button">Create an institution</Button></a>
