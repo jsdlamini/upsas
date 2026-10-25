@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { cookies, headers } from 'next/headers';
 import { NavLinks } from '@/components/nav-links';
@@ -107,7 +108,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             shell opens on the same connections the rest of the app is built for. */}
         <input className="nav-toggle" type="checkbox" id="nav-toggle" aria-label="Show navigation" />
         <div className="brand">
-          <span className="mark">{logo ? <img src={logo} alt="" className="rail-logo" /> : <span className="logo">{mono}</span>} {inst.name}</span>
+          <Link href="/welcome" className="mark brand-link" aria-label={`${inst.name || 'Institution'} — welcome page`}>
+            {logo ? <img src={logo} alt="" className="rail-logo" /> : <span className="logo">{mono}</span>} {inst.name}
+          </Link>
           <span className="sub">{inst.department}<br />Research project supervision</span>
           <NotificationBell userId={principal.userId} />
           <label className="nav-toggle-btn" htmlFor="nav-toggle">Menu</label>
