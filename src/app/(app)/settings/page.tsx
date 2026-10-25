@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation';
+import { redirect, unstable_rethrow } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,7 +27,7 @@ function parseDate(value: string): Date | null {
 async function cycleGate() {
   const p = await currentPrincipal();
   if (!p) redirect('/login');
-  if (!canManageCycles(p)) redirect('/settings?e=Not+permitted');
+  if (!canManageCycles(p)) redirect('/settings?e=' + encodeURIComponent('Not permitted'));
   return p;
 }
 
@@ -73,45 +73,51 @@ async function save(formData: FormData) {
   'use server';
   const p = await currentPrincipal();
   if (!p) redirect('/login');
-  if (!can(p, 'config.edit').allow) redirect('/settings?e=Not+permitted');
+  if (!can(p, 'config.edit').allow) redirect('/settings?e=' + encodeURIComponent('Not permitted'));
 
-  const patch: Partial<InstitutionProfile> = {
-    name: String(formData.get('name') ?? '').trim(),
-    location: String(formData.get('location') ?? '').trim(),
-    department: String(formData.get('department') ?? '').trim(),
-    productName: String(formData.get('productName') ?? '').trim(),
-    monogram: String(formData.get('monogram') ?? '').trim(),
-    accentColor: String(formData.get('accentColor') ?? '#2E5AC8').trim(),
-  };
+  try {
+    const patch: Partial<InstitutionProfile> = {
+      name: String(formData.get('name') ?? '').trim(),
+      location: String(formData.get('location') ?? '').trim(),
+      department: String(formData.get('department') ?? '').trim(),
+      productName: String(formData.get('productName') ?? '').trim(),
+      monogram: String(formData.get('monogram') ?? '').trim(),
+      accentColor: String(formData.get('accentColor') ?? '#2E5AC8').trim(),
+    };
 
-  const file = formData.get('logoFile');
-  const url = String(formData.get('logoUrl') ?? '').trim();
-  if (file instanceof File && file.size > 0) {
-    patch.logo = { kind: 'file', fileId: await saveLogoFile(new Uint8Array(await file.arrayBuffer()), file.type) };
-  } else if (url) {
-    patch.logo = { kind: 'url', url };
-  } else {
-    patch.logo = null;
+    const file = formData.get('logoFile');
+    const url = String(formData.get('logoUrl') ?? '').trim();
+    if (file instanceof File && file.size > 0) {
+      patch.logo = { kind: 'file', fileId: await saveLogoFile(new Uint8Array(await file.arrayBuffer()), file.type) };
+    } else if (url) {
+      patch.logo = { kind: 'url', url };
+    } else {
+      patch.logo = null;
+    }
+
+    const res = await saveInstitution(patch);
+    if (!res.ok) redirect(`/settings?e=${encodeURIComponent(res.error)}`);
+
+    const emailRes = await saveEmailSettings({
+      provider: String(formData.get('emailProvider') ?? 'none') as EmailProvider,
+      fromName: String(formData.get('fromName') ?? '').trim(),
+      fromEmail: String(formData.get('fromEmail') ?? '').trim(),
+      smtpHost: String(formData.get('smtpHost') ?? '').trim(),
+      smtpPort: Number(formData.get('smtpPort') ?? 587),
+      smtpSecure: formData.get('smtpSecure') === 'on',
+      smtpUser: String(formData.get('smtpUser') ?? '').trim(),
+      smtpPass: String(formData.get('smtpPass') ?? ''),
+    });
+    if (!emailRes.ok) redirect(`/settings?e=${encodeURIComponent(emailRes.error)}`);
+
+    revalidatePath('/settings');
+    revalidatePath('/', 'layout');
+    redirect('/settings?saved=1');
+  } catch (error) {
+    unstable_rethrow(error);
+    console.error('[settings] save institution failed', error);
+    redirect('/settings?e=' + encodeURIComponent('Could not save your changes. Please try again.'));
   }
-
-  const res = await saveInstitution(patch);
-  if (!res.ok) redirect(`/settings?e=${encodeURIComponent(res.error)}`);
-
-  const emailRes = await saveEmailSettings({
-    provider: String(formData.get('emailProvider') ?? 'none') as EmailProvider,
-    fromName: String(formData.get('fromName') ?? '').trim(),
-    fromEmail: String(formData.get('fromEmail') ?? '').trim(),
-    smtpHost: String(formData.get('smtpHost') ?? '').trim(),
-    smtpPort: Number(formData.get('smtpPort') ?? 587),
-    smtpSecure: formData.get('smtpSecure') === 'on',
-    smtpUser: String(formData.get('smtpUser') ?? '').trim(),
-    smtpPass: String(formData.get('smtpPass') ?? ''),
-  });
-  if (!emailRes.ok) redirect(`/settings?e=${encodeURIComponent(emailRes.error)}`);
-
-  revalidatePath('/settings');
-  revalidatePath('/', 'layout');
-  redirect('/settings?saved=1');
 }
 
 export default async function Settings({
