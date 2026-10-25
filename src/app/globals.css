@@ -8,43 +8,78 @@
  */
 
 :root{
-  /* structure */
-  --ink:        #0F1B2D;
-  --ink-soft:   #3A4657;
-  --muted:      #5A6679;   /* AA at 11.5px on --canvas */
-  --canvas:     #F4F6F9;
+  /* ── structure ─────────────────────────────────────────────── */
+  --ink:        #16122D;   /* violet-ink: headings & body               */
+  --ink-soft:   #403A63;
+  --muted:      #5B5578;   /* AA 6.5:1 on --canvas                      */
+  --canvas:     #F7F6FB;   /* paper with a violet cast                  */
   --surface:    #FFFFFF;
-  --rule:       #DFE5EC;
-  --rule-soft:  #ECF0F4;
-  --rail:       #0F1B2D;
-  --rail-line:  #26354B;
+  --rule:       #E4E1F0;
+  --rule-soft:  #EEEBF7;
+  --rail:       #16122D;   /* the navigation rail stays dark in both themes */
+  --rail-line:  #3A3170;   /* decorative hairline (exempt from 3:1)     */
 
-  /* meaning */
-  --accent:     #2E5AC8;
-  --accent-dim: #E9EFFA;
-  --moss:       #2E7D5B;
+  /* ── meaning: interaction ──────────────────────────────────── */
+  --accent:     #6633E6;   /* signature violet — 6.6:1 on --surface     */
+  --accent-contrast: #FFFFFF;  /* text/icons sitting on --accent    */
+  --accent-hover:    #5627CE;
+  --accent-dim: #EFEBFD;   /* washes, selected rows, chip fills         */
+  --glow:       #7C4DFF;   /* decorative violet: halos, gradients only  */
+
+  /* ── meaning: quantum secondary spectrum ───────────────────── */
+  --cyan:        #0E7490;  /* text-safe cyan (5.4:1 on surface)         */
+  --cyan-bright: #06B6D4;  /* decorative only                           */
+  --magenta:     #A21CAF;  /* text-safe magenta (6.3:1 on surface)      */
+  --magenta-bright: #C026D3; /* decorative only                         */
+
+  /* ── meaning: status (semantic — do NOT repurpose) ─────────── */
+  --moss:       #2A7553;   /* pass / no flags                           */
   --moss-dim:   #E7F3ED;
-  --ochre:      #8A5A12;   /* AA on --ochre-dim */
+  --ochre:      #8A5A12;   /* attention / below minimum                 */
   --ochre-dim:  #FBF3E3;
-  --rust:       #B23B35;
+  --rust:       #B23B35;   /* blocking / overdue                        */
   --rust-dim:   #FCEBEA;
   --caution:    #B7791F;
-  --seal:       #0F1B2D;
+  --seal:       #16122D;
 
-  /* polish */
+  /* ── section spectrum ("spectral lines") ─────────────────────
+     One line per app area. Wire into the existing [data-section]
+     blocks as --section; the colour-mix derivations follow.     */
+  --sec-home:          #1A5E96;   /* supervisees / dashboard        */
+  --sec-topics:        #7231E8;   /* the topic pool — signature     */
+  --sec-book:          #0E7490;   /* slots & availability           */
+  --sec-consultations: #17755B;   /* the register                   */
+  --sec-grading:       #4438C8;   /* marking                        */
+  --sec-publish:       #A62B8A;   /* moderation & release           */
+  --sec-reports:       #4E4880;   /* the archive                    */
+
+  /* ── polish ────────────────────────────────────────────────── */
   --radius:     8px;
   --radius-sm:  6px;
-  --shadow-sm:  0 1px 2px rgba(15, 27, 45, .05), 0 1px 3px rgba(15, 27, 45, .04);
-  --shadow:     0 1px 3px rgba(15, 27, 45, .07), 0 4px 16px rgba(15, 27, 45, .06);
+  --shadow-sm:  0 1px 2px rgba(22, 18, 45, .05), 0 1px 3px rgba(22, 18, 45, .04);
+  --shadow:     0 1px 3px rgba(22, 18, 45, .07), 0 4px 16px rgba(22, 18, 45, .06);
+  --glow-ring:  0 0 0 3px rgba(124, 77, 255, .22);   /* focus ring on light */
+  --glow-soft:  0 0 24px rgba(124, 77, 255, .16);    /* halo behind raised cards on light */
 
-  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --sans:  ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --serif: ui-serif, Georgia, "Times New Roman", serif;
-  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  --mono:  ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
 
-  --field-line: #9AA7B6;   /* 3:1 against surface and canvas (WCAG 1.4.11) */
-  --placeholder:#6E7A88;
+  --field-line: #8B85A6;   /* 3:1 against surface and canvas (WCAG 1.4.11) */
+  --placeholder:#6D6789;
 
   --rail-w: 248px;
+
+  /* ── quantum decorative layers (new, additive) ───────────────
+     Use ONLY on brand surfaces: .auth-brand, empty states, the
+     rail footer, section dividers. Never behind table data.     */
+  --q-dot-grid:  radial-gradient(rgba(102, 51, 230, .10) 1px, transparent 1.6px) 0 0 / 24px 24px;
+  --q-dot-grid-dark: radial-gradient(rgba(168, 139, 250, .12) 1px, transparent 1.6px) 0 0 / 24px 24px;
+  --q-halo-a:    rgba(124, 77, 255, .16);   /* violet halo stop  */
+  --q-halo-b:    rgba(6, 182, 212, .14);    /* cyan halo stop    */
+  --q-spectrum:  linear-gradient(90deg,
+                   #1A5E96 0%, #0E7490 16%, #17755B 33%, #4438C8 50%,
+                   #7231E8 67%, #A62B8A 84%, #4E4880 100%);
 }
 
 *{ box-sizing:border-box }
@@ -85,8 +120,8 @@ a:hover{ text-decoration:underline }
   color:#C6D0DB; text-decoration:none; font-size:13.5px; font-weight:500;
   border-left:2px solid transparent; border-radius:0 2px 2px 0;
 }
-.rail nav a:hover{ background:#18273A; color:#fff; text-decoration:none }
-.rail nav a.on{ background:#18273A; color:#fff; border-left-color:#6E93D6 }
+.rail nav a:hover{ background:#241E4E; color:#fff; text-decoration:none }
+.rail nav a.on{ background:#241E4E; color:#fff; border-left-color:#A88BFA }
 
 .rail .foot{ padding:14px 20px 18px; border-top:1px solid var(--rail-line); font-size:12px }
 .rail .foot .who{ color:#fff; font-weight:600; font-size:13px }
@@ -94,7 +129,7 @@ a:hover{ text-decoration:underline }
 .rail .foot form{ margin-top:9px }
 .rail .foot button.link{
   background:none; border:0; padding:0; cursor:pointer;
-  color:#8FAEDD; font:inherit; font-size:12px;
+  color:#B79CFF; font:inherit; font-size:12px;
 }
 .rail .foot button.link:hover{ text-decoration:underline }
 
@@ -191,11 +226,11 @@ input.mark{ -moz-appearance:textfield; appearance:textfield }
   padding:9px 18px; font:600 13.5px/1.3 var(--sans); cursor:pointer;
   transition:background .15s ease, border-color .15s ease, box-shadow .15s ease, transform .1s ease;
 }
-.btn:hover{ background:#2450B0; border-color:#2450B0 }
+.btn:hover{ background:var(--accent-hover); border-color:var(--accent-hover) }
 .btn:active{ transform:translateY(1px) }
 .btn.ghost{ background:var(--surface); color:var(--accent) }
 .btn.ghost:hover{ background:var(--accent-dim); box-shadow:none }
-.btn:disabled{ background:#E4E8ED; border-color:#D4DAE1; color:#9AA6B2; cursor:not-allowed; box-shadow:none }
+.btn:disabled{ background:#E7E4F2; border-color:#D9D5EA; color:#9A94B8; cursor:not-allowed; box-shadow:none }
 
 /* ──────────────────────────────────────────────────── status colour */
 
@@ -370,7 +405,7 @@ a{ transition:color .12s ease }
   .rail{ width:100%; flex:none; height:auto; position:sticky }
   .rail nav{ display:flex; flex-wrap:wrap; gap:2px; padding:8px 12px }
   .rail nav a{ border-left:0; border-bottom:2px solid transparent; margin:0 }
-  .rail nav a.on{ border-left:0; border-bottom-color:#6E93D6 }
+  .rail nav a.on{ border-left:0; border-bottom-color:#A88BFA }
   .rail .brand{ padding:14px 16px 10px }
     main{ padding:18px 16px 48px }
   .auth{ padding:32px 16px }
@@ -386,9 +421,7 @@ a{ transition:color .12s ease }
 
 .auth-split{ display:grid; grid-template-columns:minmax(540px, 660px) 1fr; min-height:100vh }
 .auth-brand{
-  background:
-    radial-gradient(1200px 500px at -10% -10%, rgba(110,147,214,.18), transparent 60%),
-    linear-gradient(180deg, #F2F5FA 0%, #E9EEF6 100%);
+  background:linear-gradient(165deg, #F6F5FC 0%, #F0EEF9 62%, #EBE9F6 100%);
   color:var(--ink-soft); padding:48px 44px; display:flex;
 }
 .auth-brand-inner{ display:flex; flex-direction:column; max-width:580px; width:100% }
@@ -400,7 +433,7 @@ a{ transition:color .12s ease }
 .brand-points li{ position:relative; padding:9px 0 9px 26px; color:var(--ink-soft); font-size:13.5px;
   border-bottom:1px solid var(--rule) }
 .brand-points li::before{ content:""; position:absolute; left:2px; top:16px; width:8px; height:8px;
-  border-radius:50%; background:#6E93D6 }
+  border-radius:50%; background:var(--accent) }
 .brand-foot{ margin-top:auto; font-size:12px; color:var(--muted); padding-top:24px }
 
 .auth-main{ display:flex; align-items:center; justify-content:center; padding:48px 44px }
@@ -418,10 +451,10 @@ a{ transition:color .12s ease }
 .brand-logo-quantum{
   display:inline-flex; align-items:center; justify-content:center; width:64px; height:64px;
   border-radius:16px; color:#fff; margin-bottom:16px;
-  box-shadow:0 10px 26px rgba(46,90,200,.25);
+  box-shadow:0 10px 26px rgba(102,51,230,.30);
   background:
     radial-gradient(120% 120% at 25% 0%, rgba(255,255,255,.22), transparent 48%),
-    linear-gradient(140deg, #2E5AC8, #5B43BF)
+    linear-gradient(140deg, var(--glow), var(--accent))
 }
 .brand-logo-quantum svg{ width:100%; height:100%; display:block }
 .brand-logo-img{ width:46px; height:46px; object-fit:cover; border-radius:12px; margin-bottom:20px; display:block }
@@ -472,18 +505,18 @@ a{ transition:color .12s ease }
   padding:5px 9px; margin:-5px -9px; border-radius:var(--radius-sm);
   transition:background .12s ease, color .12s ease;
 }
-.rail .brand a.brand-link:hover{ background:#18273A; color:#fff; text-decoration:none }
-.rail .brand a.brand-link:focus-visible{ outline:2px solid #8FAEDD; outline-offset:2px }
+.rail .brand a.brand-link:hover{ background:#241E4E; color:#fff; text-decoration:none }
+.rail .brand a.brand-link:focus-visible{ outline:2px solid #B79CFF; outline-offset:2px }
 .rail .brand .logo{
   width:30px; height:30px; border-radius:8px; background:var(--accent); color:#fff;
   display:inline-flex; align-items:center; justify-content:center;
   font:700 12px var(--sans); letter-spacing:.03em
 }
-.rail nav a.on{ background:linear-gradient(90deg, rgba(110,147,214,.18), transparent); font-weight:600 }
+.rail nav a.on{ background:linear-gradient(90deg, rgba(139,92,246,.20), transparent); font-weight:600 }
 
 .rail .foot{ display:flex; align-items:center; gap:10px }
 .avatar{
-  width:34px; height:34px; border-radius:50%; background:#2E5AC8; color:#fff;
+  width:34px; height:34px; border-radius:50%; background:var(--accent); color:#fff;
   display:inline-flex; align-items:center; justify-content:center;
   font:600 13px var(--sans); flex:0 0 auto
 }
@@ -565,9 +598,9 @@ h2{ font-size:14px; letter-spacing:.02em; text-transform:uppercase; color:var(--
   position:absolute; width:1px; height:1px; padding:0; margin:-1px;
   overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;
 }
-:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
-.btn:focus-visible{ outline:2px solid var(--ink); outline-offset:2px }
-.rail nav a:focus-visible{ outline:2px solid #8FAEDD; outline-offset:-2px }
+:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; box-shadow:var(--glow-ring) }
+.btn:focus-visible{ outline:2px solid var(--ink); outline-offset:2px; box-shadow:var(--glow-ring) }
+.rail nav a:focus-visible{ outline:2px solid #B79CFF; outline-offset:-2px }
 
 /* A field the server rejected, named in the error list above the sheet. */
 input[aria-invalid="true"], select[aria-invalid="true"]{
@@ -608,14 +641,14 @@ input[aria-invalid="true"]:focus{ box-shadow:0 0 0 3px var(--rust-dim) }
     display:inline-flex; align-items:center; gap:8px;
     min-height:44px; padding:0 14px; cursor:pointer;
     color:#C6D0DB; font:600 13px/1 var(--sans);
-    background:#18273A; border:1px solid var(--rail-line); border-radius:var(--radius-sm);
+    background:#241E4E; border:1px solid var(--rail-line); border-radius:var(--radius-sm);
   }
   .nav-toggle-btn::before{
     content:""; width:15px; height:2px; background:currentColor;
     box-shadow:0 5px 0 currentColor, 0 -5px 0 currentColor;
   }
-  .nav-toggle:focus-visible ~ .brand .nav-toggle-btn{ outline:2px solid #8FAEDD; outline-offset:2px }
-  .nav-toggle:checked ~ .brand .nav-toggle-btn{ background:#22344B; color:#fff }
+  .nav-toggle:focus-visible ~ .brand .nav-toggle-btn{ outline:2px solid #B79CFF; outline-offset:2px }
+  .nav-toggle:checked ~ .brand .nav-toggle-btn{ background:#2C2458; color:#fff }
 
   /* Collapsed by default; the checkbox reveals both the links and the
      identity block. Sign-out used to be display:none below 900px, which left
@@ -632,7 +665,7 @@ input[aria-invalid="true"]:focus{ box-shadow:0 0 0 3px var(--rust-dim) }
     border-left:0; margin:0 0 2px;
     min-height:44px; display:flex; align-items:center;   /* touch target */
   }
-  .rail nav a.on{ border-left:0; background:#1D3049 }
+  .rail nav a.on{ border-left:0; background:#241E4E }
 
   main{ padding:18px 16px 48px }
   .auth{ padding:32px 16px }
@@ -661,7 +694,7 @@ input[aria-invalid="true"]:focus{ box-shadow:0 0 0 3px var(--rust-dim) }
   table.grid td.stud, table.grid thead th.stud{
     position:sticky; left:0; z-index:3;
     background:var(--surface); border-right:1px solid var(--rule);
-    box-shadow:2px 0 0 rgba(15,27,45,.05);
+    box-shadow:2px 0 0 rgba(22,18,45,.05);
     max-width:142px;
   }
   table.grid thead th.stud{ background:#F4F6F9; z-index:4 }
@@ -716,64 +749,91 @@ form[data-dirty="1"] .actionbar .dirty{ display:inline-block }
 /* Every colour was already a token, so the dark scheme is a second set of
    values rather than a second stylesheet. */
 [data-theme="dark"]{
-  --ink:        #E8EDF4;
-  --ink-soft:   #B7C2D0;
-  --muted:      #93A1B2;
-  --canvas:     #0C131C;
-  --surface:    #141D29;
-  --rule:       #26313F;
-  --rule-soft:  #1D2734;
-  --rail:       #0A111A;
-  --rail-line:  #1F2B3B;
+  /* structure */
+  --ink:        #EAE7F6;
+  --ink-soft:   #BFB9DC;
+  --muted:      #9D97BE;
+  --canvas:     #0B0E1D;   /* deep-space violet night                   */
+  --surface:    #141831;
+  --rule:       #2B2F55;
+  --rule-soft:  #1F2340;
+  --rail:       #080A17;
+  --rail-line:  #2E3363;   /* decorative hairline (exempt from 3:1)     */
 
-  --accent:     #7CA2EA;
-  --accent-dim: #1B2942;
+  /* interaction */
+  --accent:     #A88BFA;   /* 6.4:1 on --surface                        */
+  --accent-contrast: #16122D;  /* DARK text on the bright accent button */
+  --accent-hover:    #BCA5FF;
+  --accent-dim: #251E4D;
+  --glow:       #8B5CF6;
+
+  /* quantum secondary spectrum */
+  --cyan:        #67E8F9;
+  --cyan-bright: #22D3EE;
+  --magenta:     #E879F9;
+  --magenta-bright: #E879F9;
+
+  /* status (semantic) */
   --moss:       #6FCB9F;
   --moss-dim:   #14291F;
   --ochre:      #E0B25C;
   --ochre-dim:  #2C2413;
   --rust:       #EE8983;
   --rust-dim:   #2E1817;
-  --seal:       #E8EDF4;
+  --caution:    #E0B25C;
+  --seal:       #EAE7F6;
 
-  --field-line: #3B495B;
-  --placeholder:#8492A4;
+  /* section spectrum — bright spectral lines on the night canvas */
+  --sec-home:          #7FC5EE;
+  --sec-topics:        #B79CFF;
+  --sec-book:          #62D3E6;
+  --sec-consultations: #6FCB9F;
+  --sec-grading:       #A3A9FF;
+  --sec-publish:       #EC8FCC;
+  --sec-reports:       #ABA6D6;
 
-  --shadow-sm:  0 1px 2px rgba(0,0,0,.4);
-  --shadow:     0 1px 3px rgba(0,0,0,.45), 0 4px 16px rgba(0,0,0,.35);
+  /* polish */
+  --shadow-sm:  0 1px 2px rgba(0, 0, 0, .4);
+  --shadow:     0 1px 3px rgba(0, 0, 0, .45), 0 4px 16px rgba(0, 0, 0, .35);
+  --glow-ring:  0 0 0 3px rgba(139, 92, 246, .35);
+  --glow-soft:  0 0 28px rgba(139, 92, 246, .22);
+
+  --field-line: #6A62A0;
+  --placeholder:#8B85AC;
 
   color-scheme: dark;
 }
 
-[data-theme="dark"] table.list thead th, [data-theme="dark"] table.grid thead th{ background:#1A2532; color:var(--ink-soft) }
-[data-theme="dark"] table.list tbody tr:nth-child(even) td, [data-theme="dark"] table.grid tbody tr:nth-child(even) td{ background:#17212E }
-[data-theme="dark"] table.list tbody tr:hover td, [data-theme="dark"] table.grid tbody tr:hover td{ background:#1C2836 }
-[data-theme="dark"] table.list tbody tr:nth-child(even):hover td{ background:#1C2836 }
-[data-theme="dark"] td.total{ background:#1B2635 }
-[data-theme="dark"] table.grid tbody tr:hover td.total{ background:#22303F }
-[data-theme="dark"] td.sess{ background:#1A2532 }
-[data-theme="dark"] tr.band.solo td{ background:#1A2532; color:var(--ink-soft) }
-[data-theme="dark"] tr.band td{ color:#BFD2F2 }
+[data-theme="dark"] table.list thead th, [data-theme="dark"] table.grid thead th{ background:#1C2144; color:var(--ink-soft) }
+[data-theme="dark"] table.list tbody tr:nth-child(even) td, [data-theme="dark"] table.grid tbody tr:nth-child(even) td{ background:#171B38 }
+[data-theme="dark"] table.list tbody tr:hover td, [data-theme="dark"] table.grid tbody tr:hover td{ background:#1D2347 }
+[data-theme="dark"] table.list tbody tr:nth-child(even):hover td{ background:#1D2347 }
+[data-theme="dark"] td.total{ background:#1B2044 }
+[data-theme="dark"] table.grid tbody tr:hover td.total{ background:#232A55 }
+[data-theme="dark"] td.sess{ background:#1C2144 }
+[data-theme="dark"] tr.band.solo td{ background:#1C2144; color:var(--ink-soft) }
+[data-theme="dark"] tr.band td{ color:#D6D2F4 }
 [data-theme="dark"] input[type="text"], [data-theme="dark"] input[type="password"], [data-theme="dark"] input[type="number"], [data-theme="dark"] input[type="date"],
-[data-theme="dark"] input[type="email"], [data-theme="dark"] select, [data-theme="dark"] textarea, [data-theme="dark"] input:not([type]){ background:#0F1823; color:var(--ink) }
-[data-theme="dark"] input.mark:focus{ background:#132033 }
-[data-theme="dark"] input.mark:disabled{ background:#131C27; color:var(--muted) }
-[data-theme="dark"] .btn:disabled{ background:#1E2835; border-color:#2A3746; color:#6F7D8D }
-[data-theme="dark"] .btn.ghost{ background:var(--surface) }
-[data-theme="dark"] .chip{ background:#1A2532 }
+[data-theme="dark"] input[type="email"], [data-theme="dark"] select, [data-theme="dark"] textarea, [data-theme="dark"] input:not([type]){ background:#0F1226; color:var(--ink) }
+[data-theme="dark"] input.mark:focus{ background:#171B3E }
+[data-theme="dark"] input.mark:disabled{ background:#141833; color:var(--muted) }
+[data-theme="dark"] .btn:disabled{ background:#1D2244; border-color:#2C3158; color:#8A84AD }
+[data-theme="dark"] .btn{ color:var(--accent-contrast) }
+[data-theme="dark"] .btn.ghost{ background:var(--surface); color:var(--accent) }
+[data-theme="dark"] .chip{ background:#1C2144 }
 [data-theme="dark"] .steps span, [data-theme="dark"] .journey span, [data-theme="dark"] .page-context .cycle-chip{ background:var(--surface) }
-[data-theme="dark"] .role-check{ background:#0F1823 }
-[data-theme="dark"] .mark-cell{ background:#101A26 }
+[data-theme="dark"] .role-check{ background:#0F1226 }
+[data-theme="dark"] .mark-cell{ background:#0F1226 }
 [data-theme="dark"] .auth-brand{
   background:
-    radial-gradient(rgba(124,162,234,.10) 1px, transparent 1.6px) 0 0/24px 24px,
-    radial-gradient(1000px 480px at -15% -20%, rgba(91,67,191,.20), transparent 62%),
-    radial-gradient(700px 400px at 115% 108%, rgba(14,116,128,.18), transparent 60%),
-    linear-gradient(180deg, #080E16 0%, #10202F 100%)
+    var(--q-dot-grid-dark),
+    radial-gradient(900px 420px at -15% -20%, rgba(139,92,246,.20), transparent 62%),
+    radial-gradient(700px 400px at 115% 108%, rgba(34,211,238,.14), transparent 60%),
+    linear-gradient(180deg, #07091A 0%, #10142B 100%);
 }
-[data-theme="dark"] .toast{ background:#1D2836 }
-[data-theme="dark"] .skeleton i{ background:#1D2734 }
-[data-theme="dark"] .nav-toggle-btn{ background:#16212F }
+[data-theme="dark"] .toast{ background:#1D2347 }
+[data-theme="dark"] .skeleton i{ background:#1F2340 }
+[data-theme="dark"] .nav-toggle-btn{ background:#141833 }
 
 /* ─────────────────────────────────────────────────────────── 9. print */
 
@@ -835,28 +895,28 @@ form[data-dirty="1"] .actionbar .dirty{ display:inline-block }
    ═════════════════════════════════════════════════════════════════════════ */
 
 :root{
-  --section:      #2E5AC8;   /* fallback: the system blue */
+  --section:      var(--accent);   /* fallback: the signature violet */
   --section-tint: color-mix(in srgb, var(--section) 9%,  var(--surface));
   --section-wash: color-mix(in srgb, var(--section) 5%,  var(--canvas));
   --section-line: color-mix(in srgb, var(--section) 38%, var(--rule));
   --section-lift: color-mix(in srgb, var(--section) 52%, #ffffff);  /* legible on the rail */
 }
 
-[data-section="home"]         { --section:#16628C }   /* supervisees, my dashboard */
-[data-section="topics"]       { --section:#5B43BF }   /* the topic pool */
-[data-section="book"]         { --section:#0E7480 }   /* slots and availability */
-[data-section="consultations"]{ --section:#1F7A5A }   /* the register */
-[data-section="grading"]      { --section:#2E5AC8 }   /* marking */
-[data-section="publish"]      { --section:#9B3D76 }   /* moderation and release */
-[data-section="reports"]      { --section:#2C4A6B }   /* the archive */
+[data-section="home"]          { --section:var(--sec-home) }          /* supervisees, my dashboard */
+[data-section="topics"]        { --section:var(--sec-topics) }        /* the topic pool */
+[data-section="book"]          { --section:var(--sec-book) }          /* slots and availability */
+[data-section="consultations"] { --section:var(--sec-consultations) } /* the register */
+[data-section="grading"]       { --section:var(--sec-grading) }       /* marking */
+[data-section="publish"]       { --section:var(--sec-publish) }       /* moderation and release */
+[data-section="reports"]       { --section:var(--sec-reports) }       /* the archive */
 
-[data-theme="dark"] [data-section="home"]         { --section:#63B3E0 }
-[data-theme="dark"] [data-section="topics"]       { --section:#A996F0 }
-[data-theme="dark"] [data-section="book"]         { --section:#5CC5CE }
-[data-theme="dark"] [data-section="consultations"]{ --section:#6FCB9F }
-[data-theme="dark"] [data-section="grading"]      { --section:#7CA2EA }
-[data-theme="dark"] [data-section="publish"]      { --section:#E28BBF }
-[data-theme="dark"] [data-section="reports"]      { --section:#9DB6D4 }
+[data-theme="dark"] [data-section="home"]          { --section:var(--sec-home) }
+[data-theme="dark"] [data-section="topics"]        { --section:var(--sec-topics) }
+[data-theme="dark"] [data-section="book"]          { --section:var(--sec-book) }
+[data-theme="dark"] [data-section="consultations"] { --section:var(--sec-consultations) }
+[data-theme="dark"] [data-section="grading"]       { --section:var(--sec-grading) }
+[data-theme="dark"] [data-section="publish"]       { --section:var(--sec-publish) }
+[data-theme="dark"] [data-section="reports"]       { --section:var(--sec-reports) }
 
 /* The page sits on a faint wash of its own hue. Enough to tell two screens
    apart at a glance from across a desk; not enough to tint a mark. */
@@ -906,13 +966,13 @@ table.list tbody tr:nth-child(even):hover td, table.grid tbody tr:nth-child(even
    section hue in order, with the current one lit. It is the only purely
    expressive mark in the interface. */
 .rail{
-  background:linear-gradient(180deg, #0C1624 0%, #101E30 55%, #0B1523 100%);
+  background:linear-gradient(180deg, #120E26 0%, #1A1432 55%, #0E0A1F 100%);
   position:sticky;
 }
 .rail::after{
   content:""; position:absolute; top:0; right:0; bottom:0; width:3px;
-  background:linear-gradient(180deg, #16628C, #5B43BF 22%, #0E7480 42%,
-             #1F7A5A 60%, #2E5AC8 78%, #9B3D76 100%);
+  background:linear-gradient(180deg, var(--sec-home), var(--sec-topics) 22%, var(--sec-book) 42%,
+             var(--sec-consultations) 60%, var(--sec-grading) 78%, var(--sec-publish) 100%);
   opacity:.9;
 }
 .rail nav a.on{
@@ -923,8 +983,8 @@ table.list tbody tr:nth-child(even):hover td, table.grid tbody tr:nth-child(even
 }
 .rail nav a.on svg{ color:var(--section-lift); opacity:1 }
 .rail .brand .logo{
-  background:linear-gradient(140deg, #2E5AC8, #5B43BF);
-  box-shadow:0 2px 8px rgba(46,90,200,.45);
+  background:linear-gradient(140deg, var(--glow), var(--accent));
+  box-shadow:0 2px 8px rgba(124,77,255,.45);
 }
 .avatar{
   background:linear-gradient(140deg,
@@ -935,10 +995,10 @@ table.list tbody tr:nth-child(even):hover td, table.grid tbody tr:nth-child(even
 
 /* The student's four marks read as four different things, so they look like
    four different things rather than four grey boxes. */
-.marks-grid .mark-cell:nth-child(1){ --cell:#16628C }
-.marks-grid .mark-cell:nth-child(2){ --cell:#1F7A5A }
-.marks-grid .mark-cell:nth-child(3){ --cell:#5B43BF }
-.marks-grid .mark-cell:nth-child(4){ --cell:#9B3D76 }
+.marks-grid .mark-cell:nth-child(1){ --cell:var(--sec-home) }
+.marks-grid .mark-cell:nth-child(2){ --cell:var(--sec-consultations) }
+.marks-grid .mark-cell:nth-child(3){ --cell:var(--sec-topics) }
+.marks-grid .mark-cell:nth-child(4){ --cell:var(--sec-publish) }
 .marks-grid .mark-cell{
   background:color-mix(in srgb, var(--cell, var(--section)) 7%, var(--surface));
   border-color:color-mix(in srgb, var(--cell, var(--section)) 24%, var(--rule));
@@ -954,7 +1014,7 @@ table.list tbody tr:nth-child(even):hover td, table.grid tbody tr:nth-child(even
   background:var(--accent); color:#fff; border-color:var(--accent);
 }
 
-.progress-fill{ background:linear-gradient(90deg, #1F7A5A, #0E7480) }
+.progress-fill{ background:linear-gradient(90deg, var(--sec-consultations), var(--sec-book)) }
 .verdict .figure{ color:var(--section) }
 .verdict .grade{
   border-color:var(--section-line);
@@ -969,10 +1029,10 @@ tr.band td{
 
 /* ───────────────────────────────────────────── smaller furniture */
 
-.btn{ background:linear-gradient(180deg, #3866D6, #2E5AC8) }
-.btn:hover{ background:linear-gradient(180deg, #2F58C0, #2450B0) }
+.btn{ background:linear-gradient(180deg, var(--glow), var(--accent)) }
+.btn:hover{ background:linear-gradient(180deg, var(--glow), var(--accent-hover)) }
 .btn.ghost{ background:var(--surface); border-color:var(--accent) }
-.btn:disabled{ background:#E4E8ED }
+.btn:disabled{ background:#E7E4F2 }
 
 .steps b, .journey span.done{ color:var(--section) }
 .journey span.done{
@@ -998,21 +1058,21 @@ tr.band td{
 
 .auth-brand{
   background:
-    radial-gradient(rgba(110,147,214,.12) 1px, transparent 1.6px) 0 0/24px 24px,
-    radial-gradient(900px 420px at -15% -20%, rgba(91,67,191,.16), transparent 62%),
-    radial-gradient(700px 400px at 115% 108%, rgba(14,116,128,.16), transparent 60%),
-    linear-gradient(165deg, #F4F7FB 0%, #ECF1F8 62%, #E5ECF4 100%);
+    var(--q-dot-grid),
+    radial-gradient(900px 420px at -15% -20%, var(--q-halo-a), transparent 62%),
+    radial-gradient(700px 400px at 115% 108%, var(--q-halo-b), transparent 60%),
+    linear-gradient(165deg, #F6F5FC 0%, #F0EEF9 62%, #EBE9F6 100%);
   position:relative;
 }
 .auth-brand::after{
   content:""; position:absolute; top:0; right:0; bottom:0; width:3px;
-  background:linear-gradient(180deg, #16628C, #5B43BF 30%, #0E7480 55%, #9B3D76 100%);
+  background:var(--q-spectrum);
 }
-.brand-points li:nth-child(1)::before{ background:#63B3E0 }
-.brand-points li:nth-child(2)::before{ background:#A996F0 }
-.brand-points li:nth-child(3)::before{ background:#5CC5CE }
-.brand-points li:nth-child(4)::before{ background:#E28BBF }
-.brand-logo{ background:linear-gradient(140deg, #2E5AC8, #5B43BF) }
+.brand-points li:nth-child(1)::before{ background:var(--sec-topics) }
+.brand-points li:nth-child(2)::before{ background:var(--sec-consultations) }
+.brand-points li:nth-child(3)::before{ background:var(--sec-grading) }
+.brand-points li:nth-child(4)::before{ background:var(--sec-publish) }
+.brand-logo{ background:linear-gradient(140deg, var(--glow), var(--accent)) }
 
 /* ───────────────────────────────────────────── print and reduced colour */
 
@@ -1146,7 +1206,7 @@ tr.band td{
   width:min(400px, calc(100vw - 24px)); max-height:min(72vh, 620px); overflow-y:auto;
   background:var(--surface); color:var(--ink);
   border:1px solid var(--rule); border-radius:14px;
-  box-shadow:0 18px 48px -12px rgba(15,27,45,.35), 0 2px 6px rgba(15,27,45,.08);
+  box-shadow:0 18px 48px -12px rgba(22,18,45,.35), 0 2px 6px rgba(22,18,45,.08);
   padding:6px 0 0;
 }
 .bell-panel::before{
@@ -1268,10 +1328,10 @@ main{ padding-right:max(32px, 76px) }
   .bell-wrap{ position:static; order:2 }
   .rail .brand .nav-toggle-btn{ order:3 }
   .bell > summary{
-    width:44px; height:44px; background:#18273A; color:#E8EDF4;
+    width:44px; height:44px; background:#241E4E; color:#EAE7F6;
     border-color:var(--rail-line); box-shadow:none;
   }
-  .bell-count{ border-color:#0C1624 }
+  .bell-count{ border-color:#120E26 }
   .bell-panel{ position:fixed; top:66px; left:10px; right:10px; width:auto }
   .bell-panel::before{ display:none }
   .balloons{ top:auto; bottom:16px; left:12px; right:12px; width:auto }
@@ -1289,8 +1349,8 @@ main{ padding-right:max(32px, 76px) }
 .rail nav a{ position:relative; border-radius:8px; margin:1px 8px 1px 0 }
 .rail nav a.on{
   background:linear-gradient(90deg,
-    color-mix(in srgb, var(--section) 55%, #0F1B2D) 0%,
-    color-mix(in srgb, var(--section) 30%, #0F1B2D) 100%) !important;
+    color-mix(in srgb, var(--section) 55%, var(--rail)) 0%,
+    color-mix(in srgb, var(--section) 30%, var(--rail)) 100%) !important;
   color:#fff !important; font-weight:700;
   border-left-color:transparent !important;
   box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--section) 60%, transparent);
@@ -1337,7 +1397,7 @@ input.mark.saved-flash{ animation:mark-saved 1.4s ease-out }
   display:flex; align-items:center; gap:10px; width:100%;
   padding:11px 10px 11px 12px; border-radius:12px;
   font:600 13.5px/1.4 var(--sans);
-  box-shadow:0 12px 30px -10px rgba(15,27,45,.45);
+  box-shadow:0 12px 30px -10px rgba(22,18,45,.45);
   animation:balloon-in .3s cubic-bezier(.2,1.4,.4,1) both;
 }
 .save-toast.ok  { background:linear-gradient(100deg, #3DDC84, #1FC16B); color:#04291A }
@@ -1371,10 +1431,10 @@ input.mark.saved-flash{ animation:mark-saved 1.4s ease-out }
 .ui-btn:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
 
 .ui-btn-primary{
-  background:var(--accent); color:#fff; box-shadow:0 1px 2px rgba(15,27,45,.18);
+  background:var(--accent); color:#fff; box-shadow:0 1px 2px rgba(22,18,45,.18);
 }
 .ui-btn-primary:hover:not(:disabled){
-  background:#2450B0; box-shadow:0 6px 16px -6px rgba(46,90,200,.55);
+  background:var(--accent-hover); box-shadow:0 6px 16px -6px rgba(102,51,230,.55);
 }
 .ui-btn-outline{
   background:var(--surface); color:var(--accent); border-color:var(--rule);
@@ -1433,7 +1493,7 @@ input.mark.saved-flash{ animation:mark-saved 1.4s ease-out }
 .ui-toast{
   display:flex; align-items:flex-start; gap:10px; padding:12px 14px;
   border-radius:10px; background:var(--ink); color:#fff; font-size:13.5px;
-  box-shadow:0 10px 30px -10px rgba(15,27,45,.5);
+  box-shadow:0 10px 30px -10px rgba(22,18,45,.5);
   animation:ui-slide-up .28s cubic-bezier(.22,1,.36,1) both;
 }
 .ui-toast-success{ background:var(--moss) }
@@ -1450,10 +1510,10 @@ input.mark.saved-flash{ animation:mark-saved 1.4s ease-out }
 .box:hover{ box-shadow:var(--shadow) }
 
 .btn{
-  box-shadow:0 1px 2px rgba(15,27,45,.15);
+  box-shadow:0 1px 2px rgba(22,18,45,.15);
   transition:background .16s ease, border-color .16s ease, box-shadow .16s ease, transform .08s ease;
 }
-.btn:hover:not(:disabled){ box-shadow:0 6px 16px -6px rgba(46,90,200,.5) }
+.btn:hover:not(:disabled){ box-shadow:0 6px 16px -6px rgba(102,51,230,.5) }
 
 .notice{ animation:ui-slide-up .25s ease both }
 
