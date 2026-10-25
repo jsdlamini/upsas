@@ -25,7 +25,7 @@ export default async function MarkSheet({ params }: { params: Promise<{ studentI
 
   const doc = await docMarkOf(student.id);
   const input = {
-    studentId: student.id, cycleId: '2025/2026',
+    studentId: student.id, cycleId: principal.cycleId,
     consultations: await toConsultationRecords(student.id),
     presentations: [
       { componentKey: 'p1', entries: await toAssessorEntries(student.id, 'p1') },

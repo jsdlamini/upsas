@@ -47,7 +47,7 @@ export async function GET(
     students,
     programme,
     courseCode,
-    cycleLabel: '2025/2026',
+    cycleLabel: principal.cycleId,
     signers,
   });
 

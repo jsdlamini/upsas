@@ -21,6 +21,9 @@ async function signupAction(formData: FormData) {
     adminEmail: String(formData.get('adminEmail') ?? ''),
     adminUsername: String(formData.get('adminUsername') ?? ''),
     adminPassword: password,
+    cycleLabel: String(formData.get('cycleLabel') ?? ''),
+    cycleStartsOn: String(formData.get('cycleStartsOn') ?? ''),
+    cycleEndsOn: String(formData.get('cycleEndsOn') ?? ''),
   });
   if (!r.ok) redirect('/signup?e=' + encodeURIComponent(r.error));
   redirect('/login?created=' + encodeURIComponent(r.tenantId));
@@ -73,6 +76,28 @@ export default async function SignupPage({
                 Lowercase letters, numbers and hyphens.
               </span>
             </label>
+
+            <hr style={{ margin: '4px 0 16px', border: 0, borderTop: '1px solid var(--rule)' }} />
+            <h2 style={{ fontSize: 16, margin: '0 0 12px' }}>Academic cycle</h2>
+
+            <label className="field">
+              <span className="field-label">Cycle label</span>
+              <Input name="cycleLabel" type="text" autoComplete="off" required defaultValue="2025/2026"
+                     placeholder="e.g. 2025/2026" />
+              <span className="muted mono" style={{ display: 'block', marginTop: 6, fontSize: 12 }}>
+                Shown as “Cycle …” and used to scope roles. Leave as is for this academic year.
+              </span>
+            </label>
+            <div className="form-grid">
+              <label className="field">
+                <span className="field-label">Starts (optional)</span>
+                <Input name="cycleStartsOn" type="date" />
+              </label>
+              <label className="field">
+                <span className="field-label">Ends (optional)</span>
+                <Input name="cycleEndsOn" type="date" />
+              </label>
+            </div>
 
             <hr style={{ margin: '4px 0 16px', border: 0, borderTop: '1px solid var(--rule)' }} />
             <h2 style={{ fontSize: 16, margin: '0 0 12px' }}>Administrator</h2>

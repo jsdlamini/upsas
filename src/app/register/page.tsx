@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
-import { registerStudent, requestStaffAccount, PROGRAMMES, COURSES, CYCLE } from '@/lib/data/store';
+import { registerStudent, requestStaffAccount, PROGRAMMES, COURSES } from '@/lib/data/store';
 import { getInstitution, monogramText, logoUrl } from '@/lib/institution';
+import { currentCycleLabel } from '@/lib/cycles';
 import { FeatureCarousel } from '@/components/feature-carousel';
 import { Button } from '@/components/ui/button';
 
@@ -58,6 +59,7 @@ export default async function RegisterPage({
   const mono = await monogramText();
   const logo = await logoUrl();
   const isStaff = kind === 'staff';
+  const cycleLabel = await currentCycleLabel('default');
 
   return (
     <div className="auth-split">
@@ -76,7 +78,7 @@ export default async function RegisterPage({
             { title: 'Staff roles assigned on approval', image: '/screenshots/04-people.png' },
             { title: 'Offline-first, local sign-in only', image: '/screenshots/05-settings.png' },
           ]} />
-          <div className="brand-foot">Cycle {CYCLE} · Accounts held locally</div>
+          <div className="brand-foot">Cycle {cycleLabel} · Accounts held locally</div>
         </div>
       </aside>
       <div className="auth-main">

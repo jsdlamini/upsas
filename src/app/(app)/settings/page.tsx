@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { currentPrincipal } from '@/lib/auth/current';
 import { can } from '@/lib/rbac/policy';
 import { getInstitution, saveInstitution, type InstitutionProfile } from '@/lib/institution';
@@ -10,8 +11,62 @@ import { getEmailSettings, saveEmailSettings, type EmailProvider } from '@/lib/e
 import { TestEmail } from '@/components/test-email';
 import { EmailSettingsFields } from '@/components/email-settings-fields';
 import { findPerson } from '@/lib/data/store';
+import {
+  listCycles, createCycle, updateCycle, setCurrentCycle, canManageCycles,
+} from '@/lib/cycles';
 
 export const dynamic = 'force-dynamic';
+
+function parseDate(value: string): Date | null {
+  if (!value) return null;
+  const d = new Date(`${value}T00:00:00Z`);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+async function cycleGate() {
+  const p = await currentPrincipal();
+  if (!p) redirect('/login');
+  if (!canManageCycles(p)) redirect('/settings?e=Not+permitted');
+  return p;
+}
+
+async function createCycleAction(formData: FormData) {
+  'use server';
+  const p = await cycleGate();
+  const startsOn = parseDate(String(formData.get('startsOn') ?? ''));
+  const endsOn = parseDate(String(formData.get('endsOn') ?? ''));
+  if (!startsOn || !endsOn) redirect('/settings?e=' + encodeURIComponent('Give the cycle a start and end date.'));
+  const r = await createCycle(p.tenantId, p.tenantId, {
+    label: String(formData.get('label') ?? '').trim(),
+    startsOn, endsOn,
+    isCurrent: formData.get('isCurrent') === 'on',
+  });
+  if (!r.ok) redirect(`/settings?e=${encodeURIComponent(r.error)}`);
+  revalidatePath('/settings');
+  redirect('/settings?saved=1');
+}
+
+async function updateCycleAction(formData: FormData) {
+  'use server';
+  const p = await cycleGate();
+  const id = String(formData.get('id') ?? '');
+  const startsOn = parseDate(String(formData.get('startsOn') ?? ''));
+  const endsOn = parseDate(String(formData.get('endsOn') ?? ''));
+  if (!startsOn || !endsOn) redirect('/settings?e=' + encodeURIComponent('Give the cycle a start and end date.'));
+  const r = await updateCycle(p.tenantId, id, { startsOn, endsOn });
+  if (!r.ok) redirect(`/settings?e=${encodeURIComponent(r.error)}`);
+  revalidatePath('/settings');
+  redirect('/settings?saved=1');
+}
+
+async function setCurrentCycleAction(formData: FormData) {
+  'use server';
+  const p = await cycleGate();
+  const r = await setCurrentCycle(p.tenantId, String(formData.get('id') ?? ''));
+  if (!r.ok) redirect(`/settings?e=${encodeURIComponent(r.error)}`);
+  revalidatePath('/settings');
+  redirect('/settings?saved=1');
+}
 
 async function save(formData: FormData) {
   'use server';
@@ -76,6 +131,7 @@ export default async function Settings({
   const { e, ok, saved } = await searchParams;
   const inst = await getInstitution();
   const email = await getEmailSettings();
+  const cycles = await listCycles(principal.tenantId);
 
   return (
     <>
@@ -132,6 +188,70 @@ export default async function Settings({
         </form>
 
         <TestEmail defaultTo={findPerson(principal.userId)?.email ?? ''} />
+      </div>
+
+      <div className="box" style={{ maxWidth: 560, marginTop: 24 }}>
+        <h2 style={{ fontSize: 16, margin: '0 0 4px' }}>Academic cycles</h2>
+        <p className="muted" style={{ fontSize: 12.5, margin: '0 0 14px' }}>
+          The current cycle scopes roles and deadlines. Labels are fixed once created.
+        </p>
+
+        {cycles.length === 0 && <p className="muted">No cycles yet.</p>}
+        <ul style={{ listStyle: 'none', margin: '0 0 18px', padding: 0 }}>
+          {cycles.map((c) => (
+            <li key={c.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--rule)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <strong className="mono">{c.label}</strong>
+                {c.isCurrent && <Badge>Current</Badge>}
+                <span className="muted" style={{ fontSize: 12.5 }}>
+                  {new Date(c.startsOn).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}
+                  {' → '}
+                  {new Date(c.endsOn).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}
+                </span>
+              </div>
+              <form action={updateCycleAction} style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap', alignItems: 'end' }}>
+                <input type="hidden" name="id" value={c.id} />
+                <label className="field" style={{ margin: 0 }}>
+                  <span className="field-label">Starts</span>
+                  <Input name="startsOn" type="date" defaultValue={c.startsOn.slice(0, 10)} />
+                </label>
+                <label className="field" style={{ margin: 0 }}>
+                  <span className="field-label">Ends</span>
+                  <Input name="endsOn" type="date" defaultValue={c.endsOn.slice(0, 10)} />
+                </label>
+                <Button type="submit" variant="ghost">Save dates</Button>
+              </form>
+              {!c.isCurrent && (
+                <form action={setCurrentCycleAction} style={{ marginTop: 8 }}>
+                  <input type="hidden" name="id" value={c.id} />
+                  <Button type="submit" variant="ghost">Make current</Button>
+                </form>
+              )}
+            </li>
+          ))}
+        </ul>
+
+        <form action={createCycleAction} className="form-grid" style={{ borderTop: '1px solid var(--rule)', paddingTop: 16 }}>
+          <label className="field">
+            <span className="field-label">New cycle label</span>
+            <Input name="label" type="text" required placeholder="e.g. 2026/2027" />
+          </label>
+          <label className="field">
+            <span className="field-label">Starts</span>
+            <Input name="startsOn" type="date" required />
+          </label>
+          <label className="field">
+            <span className="field-label">Ends</span>
+            <Input name="endsOn" type="date" required />
+          </label>
+          <label className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <input name="isCurrent" type="checkbox" style={{ width: 16 }} />
+            <span className="field-label">Make this the current cycle</span>
+          </label>
+          <div>
+            <Button type="submit">Add cycle</Button>
+          </div>
+        </form>
       </div>
     </>
   );

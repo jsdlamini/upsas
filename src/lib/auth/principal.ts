@@ -1,9 +1,10 @@
 import { principalFromSession, type SessionRecord } from './session';
 import type { AuthenticatedPrincipal } from './login';
 import type { RoleGrant } from './roles';
-import { CYCLE, findPerson } from '../data/store';
+import { findPerson } from '../data/store';
 import { prisma } from '../prisma';
 import { findUserPrismaById } from './prisma-auth';
+import { currentCycleId } from '../cycles';
 
 /**
  * Resolve a session record back into a principal, reading live grants from the
@@ -27,7 +28,8 @@ export async function principalForSessionRecord(
   if (!user) return null;
   const tenant = await prisma.tenant.findUnique({ where: { id: user.tenantId }, select: { suspendedAt: true } });
   if (tenant?.suspendedAt) return null; // a suspended tenant signs no one in
-  return principalFromSession(record, grants, CYCLE, now, user.tenantId);
+  const cycleId = await currentCycleId(user.tenantId);
+  return principalFromSession(record, grants, cycleId, now, user.tenantId);
 }
 
 /** Display identity for the signed-in user, falling back to Postgres. */

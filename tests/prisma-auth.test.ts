@@ -13,6 +13,7 @@ const EMAIL = 'admin@testcollege.example';
 async function cleanup() {
   const user = await prisma.user.findUnique({ where: { email: EMAIL } });
   if (user) await prisma.user.delete({ where: { id: user.id } }).catch(() => {});
+  await prisma.academicCycle.deleteMany({ where: { tenantId: SLUG } }).catch(() => {});
   await prisma.institution.deleteMany({ where: { id: SLUG } }).catch(() => {});
   await prisma.emailSettings.deleteMany({ where: { id: SLUG } }).catch(() => {});
   await prisma.tenant.deleteMany({ where: { id: SLUG } }).catch(() => {});

@@ -29,10 +29,10 @@ async function declineStaff(formData: FormData) {
   redirect('/?declined=1');
 }
 
-async function snapshotFor(studentId: string) {
+async function snapshotFor(studentId: string, cycleId: string) {
   const doc = await docMarkOf(studentId);
   return computeFinalMark({
-    studentId, cycleId: '2025/2026',
+    studentId, cycleId,
     consultations: await toConsultationRecords(studentId),
     presentations: [
       { componentKey: 'p1', entries: await toAssessorEntries(studentId, 'p1') },
@@ -69,7 +69,7 @@ export default async function Dashboard({
   const rows = (await Promise.all([...byProject.entries()].map(async ([, members]) => {
     const project = await projectOf(members[0]!.id);
     return Promise.all(members.map(async (s, i) => ({
-      s, i, members, project, snap: await snapshotFor(s.id),
+      s, i, members, project, snap: await snapshotFor(s.id, principal.cycleId),
       consultations: await consultationsOf(s.id),
       enrolment: await enrolmentOf(s.id),
     })));

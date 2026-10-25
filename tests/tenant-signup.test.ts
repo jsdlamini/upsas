@@ -12,6 +12,7 @@ test('createTenant provisions an isolated, fully-formed tenant', async () => {
     adminEmail: 'ada@testcoast.example',
     adminUsername: 'ada',
     adminPassword: 'password123',
+    cycleLabel: '2025/2026',
   });
   assert.equal(r.ok, true);
 
@@ -22,15 +23,23 @@ test('createTenant provisions an isolated, fully-formed tenant', async () => {
   const email = await prisma.emailSettings.findUnique({ where: { id: 'testcoast' } });
   assert.equal(email?.tenantId, 'testcoast');
 
+  const cycle = await prisma.academicCycle.findFirst({ where: { tenantId: 'testcoast', label: '2025/2026' } });
+  assert.ok(cycle);
+  assert.equal(cycle.tenantId, 'testcoast');
+  assert.equal(cycle.institutionId, 'testcoast');
+  assert.equal(cycle.label, '2025/2026');
+  assert.equal(cycle.isCurrent, true);
+
   const user = await prisma.user.findUnique({ where: { email: 'ada@testcoast.example' } });
   assert.ok(user);
   assert.equal(user.tenantId, 'testcoast');
   const roles = await prisma.roleAssignment.findMany({ where: { userId: user.id } });
-  assert.ok(roles.some((x) => x.role === 'COORDINATOR'));
+  assert.ok(roles.some((x) => x.role === 'COORDINATOR' && x.cycleId === '2025/2026'));
   assert.ok(roles.some((x) => x.role === 'ADMINISTRATOR'));
 
   // cleanup (user cascade removes credential + roles)
   await prisma.user.delete({ where: { id: user.id } });
+  await prisma.academicCycle.deleteMany({ where: { tenantId: 'testcoast' } });
   await prisma.emailSettings.delete({ where: { id: 'testcoast' } });
   await prisma.institution.delete({ where: { id: 'testcoast' } });
   await prisma.tenant.delete({ where: { id: 'testcoast' } });

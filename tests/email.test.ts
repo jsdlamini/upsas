@@ -5,7 +5,7 @@ import { getEmailSettings, saveEmailSettings } from '../src/lib/email-config';
 import { resetEmailForTests } from '../src/lib/data/store';
 
 beforeEach(async () => {
-  resetEmailForTests();
+  await resetEmailForTests();
   delete process.env.RESEND_API_KEY;
 });
 

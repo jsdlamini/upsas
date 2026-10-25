@@ -11,7 +11,7 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-async function snapshotFor(studentId: string, computedBy: string) {
+async function snapshotFor(studentId: string, computedBy: string, cycleId: string) {
   const doc = await docMarkOf(studentId);
   const mod = async (c: 'p1' | 'p2') => {
     const m = await moderationOf(studentId, c);
@@ -19,7 +19,7 @@ async function snapshotFor(studentId: string, computedBy: string) {
                                agreedPercentage: m.agreedPercentage, moderatedAt: m.moderatedAt } } : {};
   };
   return computeFinalMark({
-    studentId, cycleId: '2025/2026',
+    studentId, cycleId,
     consultations: await toConsultationRecords(studentId),
     presentations: [
       { componentKey: 'p1', entries: await toAssessorEntries(studentId, 'p1'), ...(await mod('p1')) },
@@ -61,7 +61,7 @@ async function release(formData: FormData) {
     doc ? { originatingMarkerId: doc.markedBy } : {});
   if (!decision.allow) redirect(`/publish?e=${encodeURIComponent(decision.reason)}`);
 
-  const snap = (await snapshotFor(studentId, principal.userId));
+  const snap = (await snapshotFor(studentId, principal.userId, principal.cycleId));
   if (snap.blocked) redirect('/publish?e=A+blocked+mark+cannot+be+released.');
   await publish(studentId, snap.finalMark, snap.grade, principal.userId, null);
   redirect('/publish?saved=1');
@@ -79,7 +79,7 @@ export default async function Publish({
   const { saved, e } = await searchParams;
 
   const rows = await Promise.all((await allocatedStudents()).map(async (s) => ({
-    student: s, snap: await snapshotFor(s.id, principal.userId), published: await publicationOf(s.id),
+    student: s, snap: await snapshotFor(s.id, principal.userId, principal.cycleId), published: await publicationOf(s.id),
     doc: await docMarkOf(s.id),
   })));
   const needsModeration = (await Promise.all(rows.flatMap(async ({ student }) =>
