@@ -4,6 +4,8 @@ import { currentPrincipal } from '@/lib/auth/current';
 import { can } from '@/lib/rbac/policy';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { FlashToast } from '@/components/flash-toast';
+import { resolveFlashes } from '@/lib/flash';
 import { evaluateConsultations, computeFinalMark, PROFILE_A, normalisePercentage } from '@/lib/assessment';
 import {
   publishedDeadlines, deadlineStatusFor,
@@ -42,7 +44,7 @@ async function updateCourse(formData: FormData) {
   if (!student) redirect('/me');
   const courseCode = String(formData.get('courseCode') ?? '');
   const result = updateStudentCourseCode(student.id, courseCode);
-  redirect(`/me?toast=${encodeURIComponent(result.ok ? 'Course code updated.' : result.error)}`);
+  redirect(`/me?${result.ok ? 'done=1' : `e=${encodeURIComponent(result.error)}`}`);
 }
 
 async function snapshotFor(studentId: string, cycleId: string) {
@@ -64,10 +66,15 @@ async function snapshotFor(studentId: string, cycleId: string) {
 
 export default async function MyProject({
   searchParams,
-}: { searchParams: Promise<{ saved?: string; e?: string }> }) {
+}: { searchParams: Promise<{ saved?: string; e?: string; done?: string }> }) {
   const principal = await currentPrincipal();
   if (!principal) redirect('/login');
-  const { saved, e } = await searchParams;
+  const { saved, e, done } = await searchParams;
+  const { flashes, keys } = resolveFlashes({ saved, e, done }, {
+    saved: { resolve: () => ({ message: 'Confirmed.', variant: 'success' }) },
+    done: { resolve: () => ({ message: 'Course code updated.', variant: 'success' }) },
+    e: { resolve: (p) => ({ message: p.e!, variant: 'error' }) },
+  });
 
   const person = findPerson(principal.userId);
   const student = person?.studentId
@@ -105,8 +112,7 @@ export default async function MyProject({
           .filter((m) => m !== student.id).map((m) => findStudent(m)?.surname).join(', ')}`}
       </p>
 
-      {saved && <div className="notice">Confirmed.</div>}
-      {e && <div className="notice bad">{e}</div>}
+      <FlashToast flashes={flashes} keys={keys} />
 
       <div className="box" style={{ borderLeftColor: 'var(--accent)' }}>
         <strong>Course code</strong>

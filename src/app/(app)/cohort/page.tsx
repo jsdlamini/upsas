@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { FlashToast } from '@/components/flash-toast';
+import { resolveFlashes, parseErrorList } from '@/lib/flash';
 import { revalidatePath } from 'next/cache';
 import { currentPrincipal } from '@/lib/auth/current';
 import { can } from '@/lib/rbac/policy';
@@ -181,8 +183,15 @@ export default async function Cohort({
   const { t, e, done, issued } = await searchParams;
   const tab = t === 'deadlines' || t === 'extensions' || t === 'recovery' ? t : 'enrolment';
 
-  let errors: string[] = [];
-  if (e) { try { const parsed: unknown = JSON.parse(e); if (Array.isArray(parsed)) errors = parsed.map(String); } catch { errors = [e]; } }
+  const errors = parseErrorList(e);
+  const { flashes, keys } = resolveFlashes({ e, done }, {
+    done: { resolve: (p) => ({ message: `${p.done}.`, variant: 'success' }) },
+    e: {
+      resolve: () => (errors.length > 0
+        ? { message: `Not saved. ${errors.join(' ')}`, variant: 'error' }
+        : null),
+    },
+  });
 
   const deadlines = await deadlinesFor(await currentCycleId(principal.tenantId));
   const code = issued ? takeIssuedCode(principal.userId) : null;
@@ -216,13 +225,7 @@ export default async function Cohort({
         <a href="/cohort?t=recovery" className={tab === 'recovery' ? 'on' : undefined}>Account access</a>
       </div>
 
-      {done && <div className="notice" role="status">{done}.</div>}
-      {errors.length > 0 && (
-        <div className="notice bad" role="alert">
-          <strong>Not saved.</strong>
-          <ul className="errorlist">{errors.map((msg) => <li key={msg}>{msg}</li>)}</ul>
-        </div>
-      )}
+      <FlashToast flashes={flashes} keys={keys} />
 
       {/* ------------------------------------------------------ enrolment */}
       {tab === 'enrolment' && (
