@@ -414,6 +414,16 @@ a{ transition:color .12s ease }
   border-radius:12px; background:var(--accent); color:#fff; font:700 15px var(--sans);
   letter-spacing:.04em; margin-bottom:20px
 }
+.brand-lockup{ display:flex; flex-direction:column; align-items:center; text-align:center }
+.brand-logo-quantum{
+  display:inline-flex; align-items:center; justify-content:center; width:64px; height:64px;
+  border-radius:16px; color:#fff; margin-bottom:16px;
+  box-shadow:0 10px 26px rgba(46,90,200,.25);
+  background:
+    radial-gradient(120% 120% at 25% 0%, rgba(255,255,255,.22), transparent 48%),
+    linear-gradient(140deg, #2E5AC8, #5B43BF)
+}
+.brand-logo-quantum svg{ width:100%; height:100%; display:block }
 .brand-logo-img{ width:46px; height:46px; object-fit:cover; border-radius:12px; margin-bottom:20px; display:block }
 .rail .brand .rail-logo{ width:30px; height:30px; object-fit:cover; border-radius:8px; vertical-align:middle }
 .auth-gallery{ overflow:hidden; margin-top:18px;
@@ -747,7 +757,13 @@ form[data-dirty="1"] .actionbar .dirty{ display:inline-block }
 [data-theme="dark"] .steps span, [data-theme="dark"] .journey span, [data-theme="dark"] .page-context .cycle-chip{ background:var(--surface) }
 [data-theme="dark"] .role-check{ background:#0F1823 }
 [data-theme="dark"] .mark-cell{ background:#101A26 }
-[data-theme="dark"] .auth-brand{ background:linear-gradient(180deg, #080E16 0%, #10202F 100%) }
+[data-theme="dark"] .auth-brand{
+  background:
+    radial-gradient(rgba(124,162,234,.10) 1px, transparent 1.6px) 0 0/24px 24px,
+    radial-gradient(1000px 480px at -15% -20%, rgba(91,67,191,.20), transparent 62%),
+    radial-gradient(700px 400px at 115% 108%, rgba(14,116,128,.18), transparent 60%),
+    linear-gradient(180deg, #080E16 0%, #10202F 100%)
+}
 [data-theme="dark"] .toast{ background:#1D2836 }
 [data-theme="dark"] .skeleton i{ background:#1D2734 }
 [data-theme="dark"] .nav-toggle-btn{ background:#16212F }
@@ -975,8 +991,9 @@ tr.band td{
 
 .auth-brand{
   background:
-    radial-gradient(900px 420px at -15% -20%, rgba(91,67,191,.14), transparent 62%),
-    radial-gradient(700px 400px at 115% 108%, rgba(14,116,128,.14), transparent 60%),
+    radial-gradient(rgba(110,147,214,.12) 1px, transparent 1.6px) 0 0/24px 24px,
+    radial-gradient(900px 420px at -15% -20%, rgba(91,67,191,.16), transparent 62%),
+    radial-gradient(700px 400px at 115% 108%, rgba(14,116,128,.16), transparent 60%),
     linear-gradient(165deg, #F4F7FB 0%, #ECF1F8 62%, #E5ECF4 100%);
   position:relative;
 }
