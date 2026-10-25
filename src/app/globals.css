@@ -467,6 +467,13 @@ a{ transition:color .12s ease }
 /* ─────────────────────────────────────────────────────── rail + brand */
 
 .rail .brand .mark{ display:flex; align-items:center; gap:10px }
+.rail .brand a.brand-link{
+  color:#fff; text-decoration:none;
+  padding:5px 9px; margin:-5px -9px; border-radius:var(--radius-sm);
+  transition:background .12s ease, color .12s ease;
+}
+.rail .brand a.brand-link:hover{ background:#18273A; color:#fff; text-decoration:none }
+.rail .brand a.brand-link:focus-visible{ outline:2px solid #8FAEDD; outline-offset:2px }
 .rail .brand .logo{
   width:30px; height:30px; border-radius:8px; background:var(--accent); color:#fff;
   display:inline-flex; align-items:center; justify-content:center;

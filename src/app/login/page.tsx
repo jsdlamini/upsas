@@ -195,7 +195,7 @@ async function signIn(formData: FormData) {
   jar.set(COOKIE, `${issued.record.id}.${issued.token}`, {
     httpOnly: true, sameSite: 'lax', path: '/', expires: new Date(issued.record.expiresAt),
   });
-  redirect(next ?? '/');
+  redirect(next ?? '/welcome');
 }
 
 export default async function LoginPage({
@@ -203,7 +203,7 @@ export default async function LoginPage({
 }: { searchParams: Promise<{ e?: string; u?: string; challenge?: string; registered?: string; next?: string }> }) {
   const { e, u, challenge, registered, next: rawNext } = await searchParams;
   const next = safeNext(rawNext);
-  if (await currentPrincipal()) redirect(next ?? '/');
+  if (await currentPrincipal()) redirect(next ?? '/welcome');
   const needsCode = e === 'MFA_REQUIRED' && Boolean(challenge);
 
   return (
