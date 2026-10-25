@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
-export type ButtonVariant = 'primary' | 'outline' | 'ghost' | 'destructive';
+export type ButtonVariant = 'primary' | 'outline' | 'ghost' | 'destructive' | 'destructive-outline';
 export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon';
 
 const variantClasses: Record<ButtonVariant, string> = {
@@ -9,6 +9,9 @@ const variantClasses: Record<ButtonVariant, string> = {
   outline: 'ui-btn ui-btn-outline',
   ghost: 'ui-btn ui-btn-ghost',
   destructive: 'ui-btn ui-btn-destructive',
+  // The quiet first step of a two-step destructive flow: clearly a button,
+  // clearly dangerous, clearly less final than the filled confirm step.
+  'destructive-outline': 'ui-btn ui-btn-danger-outline',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {

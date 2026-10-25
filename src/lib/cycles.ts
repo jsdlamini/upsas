@@ -18,6 +18,12 @@ import type { AuthenticatedPrincipal } from './auth/login';
 // than imported so this module never creates an import cycle with the store.
 const FALLBACK_CYCLE = '2025/2026';
 
+/* No-database mode backs cycles in memory, in step with the in-memory working
+   store in src/lib/data/store.ts. Rows survive hot reload via globalThis. */
+interface MemoryCycle extends CycleRow { tenantId: string; institutionId: string }
+const globalForCycles = globalThis as unknown as { __upsasCycles?: MemoryCycle[] };
+const memoryCycles: MemoryCycle[] = (globalForCycles.__upsasCycles ??= []);
+
 export interface CycleRow {
   id: string;
   label: string;
@@ -61,7 +67,9 @@ function dbReady(): boolean {
 
 /** The current cycle's label, which is the value the app uses as `cycleId`. */
 export async function currentCycleId(tenantId: string): Promise<string> {
-  if (!dbReady()) return FALLBACK_CYCLE;
+  if (!dbReady()) {
+    return memoryCycles.find((c) => c.tenantId === tenantId && c.isCurrent)?.label ?? FALLBACK_CYCLE;
+  }
   try {
     const row = await prisma.academicCycle.findFirst({
       where: { tenantId, isCurrent: true },
@@ -80,7 +88,12 @@ export async function currentCycleLabel(tenantId: string): Promise<string> {
 }
 
 export async function listCycles(tenantId: string): Promise<CycleRow[]> {
-  if (!dbReady()) return [];
+  if (!dbReady()) {
+    return memoryCycles
+      .filter((c) => c.tenantId === tenantId)
+      .sort((a, b) => b.startsOn.localeCompare(a.startsOn))
+      .map(({ tenantId: _t, institutionId: _i, ...row }) => row);
+  }
   const rows = await prisma.academicCycle.findMany({
     where: { tenantId },
     orderBy: { startsOn: 'desc' },
@@ -110,9 +123,25 @@ export async function createCycle(
   institutionId: string,
   input: { label: string; startsOn: Date; endsOn: Date; isCurrent: boolean },
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
-  if (!dbReady()) return { ok: false, error: 'No database.' };
   const check = validate(input.label, { startsOn: input.startsOn, endsOn: input.endsOn });
   if (!check.ok) return check;
+  if (!dbReady()) {
+    const label = input.label.trim();
+    if (memoryCycles.some((c) => c.tenantId === tenantId && c.label === label)) {
+      return { ok: false, error: 'A cycle with that label already exists.' };
+    }
+    if (input.isCurrent) {
+      for (const c of memoryCycles) { if (c.tenantId === tenantId) c.isCurrent = false; }
+    }
+    const row: MemoryCycle = {
+      id: `cyc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+      tenantId, institutionId, label,
+      startsOn: input.startsOn.toISOString(), endsOn: input.endsOn.toISOString(),
+      isCurrent: input.isCurrent,
+    };
+    memoryCycles.push(row);
+    return { ok: true, id: row.id };
+  }
 
   const label = input.label.trim();
   const existing = await prisma.academicCycle.findFirst({
@@ -148,13 +177,15 @@ export async function updateCycle(
   id: string,
   input: { startsOn: Date; endsOn: Date },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (!dbReady()) return { ok: false, error: 'No database.' };
-  if (!(input.startsOn instanceof Date) || !(input.endsOn instanceof Date) ||
-      Number.isNaN(input.startsOn.getTime()) || Number.isNaN(input.endsOn.getTime())) {
-    return { ok: false, error: 'Give the cycle a start and end date.' };
-  }
   if (input.startsOn >= input.endsOn) {
     return { ok: false, error: 'The cycle must start before it ends.' };
+  }
+  if (!dbReady()) {
+    const row = memoryCycles.find((c) => c.id === id && c.tenantId === tenantId);
+    if (!row) return { ok: false, error: 'No such cycle.' };
+    row.startsOn = input.startsOn.toISOString();
+    row.endsOn = input.endsOn.toISOString();
+    return { ok: true };
   }
   const row = await prisma.academicCycle.findFirst({ where: { id, tenantId } });
   if (!row) return { ok: false, error: 'No such cycle.' };
@@ -169,7 +200,12 @@ export async function setCurrentCycle(
   tenantId: string,
   id: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (!dbReady()) return { ok: false, error: 'No database.' };
+  if (!dbReady()) {
+    const row = memoryCycles.find((c) => c.id === id && c.tenantId === tenantId);
+    if (!row) return { ok: false, error: 'No such cycle.' };
+    for (const c of memoryCycles) { if (c.tenantId === tenantId) c.isCurrent = c.id === id; }
+    return { ok: true };
+  }
   const row = await prisma.academicCycle.findFirst({ where: { id, tenantId } });
   if (!row) return { ok: false, error: 'No such cycle.' };
   await prisma.$transaction([
@@ -193,7 +229,30 @@ export async function deleteCycle(
   tenantId: string,
   id: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (!dbReady()) return { ok: false, error: 'No database.' };
+  if (!dbReady()) {
+    const row = memoryCycles.find((c) => c.id === id && c.tenantId === tenantId);
+    if (!row) return { ok: false, error: 'No such cycle.' };
+    if (row.isCurrent) {
+      return { ok: false, error: 'This is the current cycle. Make another cycle current before deleting it.' };
+    }
+    // Lazy import: the store sits above this module in the graph.
+    const { allPeople } = await import('./data/store');
+    const grants = allPeople().filter((p) => p.grants.some((g) => g.cycleId === row.label && g.revokedAt === null)).length;
+    const periods = (globalThis as unknown as { __upsasData?: { deadlines?: Array<{ cycleId: string }> } }).__upsasData
+      ?.deadlines?.filter((d) => d.cycleId === row.label).length ?? 0;
+    const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+    const dependents: string[] = [];
+    if (grants > 0) dependents.push(plural(grants, 'role assignment'));
+    if (periods > 0) dependents.push(plural(periods, 'assessment period / deadline'));
+    if (dependents.length > 0) {
+      return {
+        ok: false,
+        error: `Cannot delete this cycle: it is still referenced by ${dependents.join(', ')}. Move or remove that data first.`,
+      };
+    }
+    memoryCycles.splice(memoryCycles.indexOf(row), 1);
+    return { ok: true };
+  }
   const row = await prisma.academicCycle.findFirst({ where: { id, tenantId } });
   if (!row) return { ok: false, error: 'No such cycle.' };
 

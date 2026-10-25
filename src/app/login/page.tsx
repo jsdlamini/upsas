@@ -195,7 +195,7 @@ async function signIn(formData: FormData) {
   jar.set(COOKIE, `${issued.record.id}.${issued.token}`, {
     httpOnly: true, sameSite: 'lax', path: '/', expires: new Date(issued.record.expiresAt),
   });
-  redirect(next ?? '/welcome');
+  redirect(next ?? '/');
 }
 
 export default async function LoginPage({
@@ -203,19 +203,27 @@ export default async function LoginPage({
 }: { searchParams: Promise<{ e?: string; u?: string; challenge?: string; registered?: string; next?: string }> }) {
   const { e, u, challenge, registered, next: rawNext } = await searchParams;
   const next = safeNext(rawNext);
-  if (await currentPrincipal()) redirect(next ?? '/welcome');
+  if (await currentPrincipal()) redirect(next ?? '/');
   const needsCode = e === 'MFA_REQUIRED' && Boolean(challenge);
 
   return (
     <div className="auth-split">
       <aside className="auth-brand">
         <div className="auth-brand-inner ui-enter">
-          <div className="brand-lockup">
-            <div className="brand-logo-quantum"><QuantumMark /></div>
-            <p className="inst">{PRODUCT_NAME}</p>
+          <div className="brand-lockup" style={{ alignItems: 'flex-start', textAlign: 'left', display: 'flex', flexDirection: 'row', gap: 14 }}>
+            <div className="brand-logo-quantum" style={{ width: 48, height: 48, margin: 0, flex: '0 0 auto' }}><QuantumMark /></div>
+            <div>
+              <p className="inst" style={{ margin: 0 }}>{PRODUCT_NAME}</p>
+              <p className="unit" style={{ margin: '2px 0 0' }}>Research project supervision &amp; assessment</p>
+            </div>
           </div>
-          <h2>Research project supervision &amp; assessment</h2>
-          <p className="tagline">One system of record for topics, consultations, presentations and final marks — from allocation to release.</p>
+          <h2>Research projects, supervised and assessed in one place.</h2>
+          <p className="tagline">
+            Research Chain is the department&apos;s system of record: topic selection, supervision
+            consultations, panel marking and released results — one chain of custody from first
+            allocation to final grade.
+          </p>
+          <p className="feature-kicker" style={{ margin: '26px 0 0' }}>Inside the workspace</p>
           <FeatureCarousel features={[
             { title: 'Topic selection & agreements', image: '/screenshots/03-topics.png' },
             { title: 'Supervision consultations & register', image: '/screenshots/06-book.png' },
@@ -224,7 +232,7 @@ export default async function LoginPage({
             { title: 'Grading criteria & forms', image: '/screenshots/08-rubrics.png' },
             { title: 'Released results & reports', image: '/screenshots/04-people.png' },
           ]} />
-          <div className="brand-foot">Accounts held locally — no external sign-in</div>
+          <div className="brand-foot">Runs on your own server. Accounts stay local — no external sign-in, no tracking.</div>
         </div>
       </aside>
       <div className="auth-main">
@@ -243,7 +251,7 @@ export default async function LoginPage({
       <p className="lede">
         {needsCode
           ? 'Your password was accepted. This role needs a second factor.'
-          : 'Accounts are held locally — there is no external sign-in.'}
+          : 'Accounts are held on this server — there is no external sign-in.'}
       </p>
 
       {!needsCode && (
@@ -259,15 +267,15 @@ export default async function LoginPage({
 
       {e && <div className={`notice bad`}>{MESSAGES[e] ?? 'Sign-in failed.'}</div>}
 
-      <form action={signIn} className="box">
+      <form action={signIn} className="box" style={{ padding: 20 }}>
         {!needsCode && (
           <>
-            <p style={{ margin: '0 0 10px' }}>
-              <label>Email
-                <input name="username" type="email" defaultValue={u ?? ''} autoComplete="email" autoFocus required />
+            <p style={{ margin: '0 0 12px' }}>
+              <label>Email or student number
+                <input name="username" type="text" defaultValue={u ?? ''} autoComplete="username" autoFocus required />
               </label>
             </p>
-            <p style={{ margin: '0 0 10px' }}>
+            <p style={{ margin: '0 0 16px' }}>
               <label>Password
                 <input name="password" type="password" autoComplete="current-password" required />
               </label>
@@ -277,38 +285,40 @@ export default async function LoginPage({
         {needsCode && <input type="hidden" name="challenge" value={challenge} />}
         {next && <input type="hidden" name="next" value={next} />}
         {needsCode && (
-          <p style={{ margin: '0 0 10px' }}>
-            <label>Authenticator code
+          <p style={{ margin: '0 0 16px' }}>
+            <label>Six-digit code from your authenticator
               <input name="code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="one-time-code" autoFocus
-                     className="mono" style={{ width: 150, letterSpacing: 5, fontSize: 16, display: 'block', marginTop: 8 }} />
+                     className="mono" style={{ width: 160, letterSpacing: 6, fontSize: 16, display: 'block', marginTop: 8 }} />
             </label>
           </p>
         )}
-        <Button type="submit">{needsCode ? 'Verify code' : 'Sign in'}</Button>
-        {!needsCode && (
-          <a href="/recover" style={{ marginLeft: 14, fontSize: 13.5 }}>Forgotten your password?</a>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          <Button type="submit">{needsCode ? 'Verify code' : 'Sign in'}</Button>
+          {!needsCode && (
+            <a href="/recover" style={{ fontSize: 13.5 }}>Forgotten your password?</a>
+          )}
+        </div>
       </form>
 
       {!needsCode && (
         <div className="register-entry">
           <h2 style={{ margin: '0 0 8px' }}>New here?</h2>
           <p className="muted" style={{ margin: '0 0 12px' }}>
-            Students self-register and can sign in straight away. Staff accounts are
-            held until a coordinator approves them.
+            Students register themselves and can sign in straight away. Staff accounts wait until a
+            coordinator approves them.
           </p>
           <div className="register-options">
             <a className="register-card" href="/signup">
               <strong>I run an institution</strong>
-              <span>Create a new private workspace for your institution in a few steps.</span>
+              <span>Set up a private workspace for your institution — you become its first coordinator.</span>
             </a>
             <a className="register-card" href="/register?kind=student">
               <strong>I am a student</strong>
-              <span>Register with your student number and start choosing topics.</span>
+              <span>Register with your student number and start ranking topics today.</span>
             </a>
             <a className="register-card" href="/register?kind=staff">
               <strong>I am staff</strong>
-              <span>Request supervisor, assessor or coordinator access for approval.</span>
+              <span>Request supervisor, assessor or coordinator access — a coordinator will approve you.</span>
             </a>
           </div>
         </div>

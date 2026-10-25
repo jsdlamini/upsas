@@ -52,7 +52,7 @@ export async function loadJoinInstitution(slug: string): Promise<JoinInstitution
     name: inst?.name?.trim() || tenant.name,
     productName: inst?.productName?.trim() || 'Research Chain',
     monogram: inst?.monogram ?? '',
-    accentColor: inst?.accentColor ?? '#2E5AC8',
+    accentColor: inst?.accentColor ?? '#6633E6',
     logo: (inst?.logo as InstitutionProfile['logo'] | undefined) ?? null,
     suspended: Boolean(tenant.suspendedAt),
   };

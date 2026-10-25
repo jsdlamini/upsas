@@ -162,7 +162,7 @@ export default async function Publish({
                   <td>
                     {snap.flags.length === 0 && <span className="flag ok">No flags.</span>}
                     {snap.flags.map((f) => (
-                      <span className={f.blocking ? 'flag red' : 'flag amber'} key={f.code}>{f.message}</span>
+                      <span className={f.blocking ? 'flag red' : 'flag amber'} key={`${f.code}-${f.message}`}>{f.message}</span>
                     ))}
                   </td>
                   <td>

@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { cookies, headers } from 'next/headers';
 import { NavLinks } from '@/components/nav-links';
@@ -12,17 +11,95 @@ import { getInstitution, monogramText, logoUrl } from '@/lib/institution';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Rail icons: one consistent 16×16 set, 1.8px rounded strokes, drawn from the
+ * same visual grammar (Lucide-style) so the rail reads as one instrument
+ * panel. Each destination has its own glyph — the old set reused the same
+ * grid tile for Supervisees, My dashboard and Institution, which made the
+ * rail impossible to scan.
+ */
+function railIcon(children: ReactNode): ReactNode {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      {children}
+    </svg>
+  );
+}
+
 const ICONS: Record<string, ReactNode> = {
-  '/me': <svg width="15" height="15" viewBox="0 0 24 24" {...{ fill: 'none', stroke: 'currentColor', strokeWidth: 2 }}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>,
-  '/': <svg width="15" height="15" viewBox="0 0 24 24" {...{ fill: 'none', stroke: 'currentColor', strokeWidth: 2 }}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>,
-  '/topics': <svg width="15" height="15" viewBox="0 0 24 24" {...{ fill: 'none', stroke: 'currentColor', strokeWidth: 2 }}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>,
-  '/book': <svg width="15" height="15" viewBox="0 0 24 24" {...{ fill: 'none', stroke: 'currentColor', strokeWidth: 2 }}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
-  '/consultations': <svg width="15" height="15" viewBox="0 0 24 24" {...{ fill: 'none', stroke: 'currentColor', strokeWidth: 2 }}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
-  '/grading/p2': <svg width="15" height="15" viewBox="0 0 24 24" {...{ fill: 'none', stroke: 'currentColor', strokeWidth: 2 }}><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>,
-  '/publish': <svg width="15" height="15" viewBox="0 0 24 24" {...{ fill: 'none', stroke: 'currentColor', strokeWidth: 2 }}><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
-  '/cohort': <svg width="15" height="15" viewBox="0 0 24 24" {...{ fill: 'none', stroke: 'currentColor', strokeWidth: 2 }}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>,
-  '/rubrics': <svg width="15" height="15" viewBox="0 0 24 24" {...{ fill: 'none', stroke: 'currentColor', strokeWidth: 2 }}><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="10" x2="9" y2="20"/><line x1="15" y1="10" x2="15" y2="20"/></svg>,
-  '/reports': <svg width="15" height="15" viewBox="0 0 24 24" {...{ fill: 'none', stroke: 'currentColor', strokeWidth: 2 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
+  // Supervisees (staff home) — the people you supervise
+  '/': railIcon(<>
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </>),
+  // My dashboard (student home) — a house, unmistakably
+  '/me': railIcon(<>
+    <path d="M3 10.8 12 3l9 7.8" />
+    <path d="M5.2 9.5V21h13.6V9.5" />
+    <path d="M9.8 21v-5.4h4.4V21" />
+  </>),
+  // Topics — an open book
+  '/topics': railIcon(<>
+    <path d="M2 4.5h6.5A3.5 3.5 0 0 1 12 8v13a3 3 0 0 0-3-3H2z" />
+    <path d="M22 4.5h-6.5A3.5 3.5 0 0 0 12 8v13a3 3 0 0 1 3-3h7z" />
+  </>),
+  // Availability / booking — a calendar
+  '/book': railIcon(<>
+    <rect x="3" y="4.5" width="18" height="17" rx="2" />
+    <path d="M8 2.5v4M16 2.5v4M3 10h18" />
+  </>),
+  // Consultations — a conversation
+  '/consultations': railIcon(<>
+    <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </>),
+  // Grading — a clipboard with rows
+  '/grading/p2': railIcon(<>
+    <rect x="8" y="2.5" width="8" height="3.5" rx="1" />
+    <path d="M16 4.5h2a2 2 0 0 1 2 2V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2h2" />
+    <path d="M12 11h4M12 16h4M8 11h.01M8 16h.01" />
+  </>),
+  // Release results — send
+  '/publish': railIcon(<>
+    <path d="M22 2 11 13" />
+    <path d="M22 2 15 22l-4-9-9-4z" />
+  </>),
+  // Cohort register — graduation cap
+  '/cohort': railIcon(<>
+    <path d="M22 9.5 12 4.5l-10 5 10 5 10-5z" />
+    <path d="M6 12v4.6c0 1.6 2.7 2.9 6 2.9s6-1.3 6-2.9V12" />
+  </>),
+  // Assessment forms — list with checks
+  '/rubrics': railIcon(<>
+    <path d="m3 8 2 2 4-4" />
+    <path d="m3 17 2 2 4-4" />
+    <path d="M13 7h8M13 17h8" />
+  </>),
+  // Institution settings — sliders
+  '/settings': railIcon(<>
+    <path d="M21 5h-7M10 5H3M21 12h-9M8 12H3M21 19h-5M12 19H3" />
+    <path d="M14 3v4M8 10v4M16 17v4" />
+  </>),
+  // People (approvals) — user with a check
+  '/people': railIcon(<>
+    <path d="M15 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+    <circle cx="8.5" cy="7" r="4" />
+    <path d="m16.5 11.5 2 2 4-4" />
+  </>),
+  // Institutions (host console) — a building
+  '/admin': railIcon(<>
+    <rect x="4.5" y="3" width="15" height="18" rx="1.5" />
+    <path d="M9.5 21v-3.5h5V21" />
+    <path d="M8.5 7h.01M12 7h.01M15.5 7h.01M8.5 11h.01M12 11h.01M15.5 11h.01M8.5 14.5h.01M12 14.5h.01M15.5 14.5h.01" />
+  </>),
+  // Reports — a filed document
+  '/reports': railIcon(<>
+    <path d="M14 2.5H6a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8.5z" />
+    <path d="M14 2.5v6h6" />
+    <path d="M16 13.5H8M16 17.5H8" />
+  </>),
 };
 
 function navIcon(href: string): ReactNode {
@@ -108,9 +185,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             shell opens on the same connections the rest of the app is built for. */}
         <input className="nav-toggle" type="checkbox" id="nav-toggle" aria-label="Show navigation" />
         <div className="brand">
-          <Link href="/welcome" className="mark brand-link" aria-label={`${inst.name || 'Institution'} — welcome page`}>
-            {logo ? <img src={logo} alt="" className="rail-logo" /> : <span className="logo">{mono}</span>} {inst.name}
-          </Link>
+          <span className="mark">{logo ? <img src={logo} alt="" className="rail-logo" /> : <span className="logo">{mono}</span>} {inst.name}</span>
           <span className="sub">{inst.department}<br />Research project supervision</span>
           <NotificationBell userId={principal.userId} />
           <label className="nav-toggle-btn" htmlFor="nav-toggle">Menu</label>

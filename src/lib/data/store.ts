@@ -217,6 +217,7 @@ const DEMO_STAFF: Person[] = [
   { id: 'u-shongwe', username: 'pshongwe', fullName: 'Ms P. Shongwe', surname: 'Shongwe',
     grants: [grant('ASSESSOR')], totpConfirmed: false },
   { id: 'u-coord', username: 'coordinator', fullName: 'J. Dlamini', surname: 'Dlamini',
+    email: 'coordinator@localhost',
     grants: [grant('COORDINATOR'), grant('ASSESSOR')], totpConfirmed: true,
     totpSecret: 'IOTL7XO7EZ2BFO5ZD5V7X427T7I4LIJH' },
 ];
@@ -478,7 +479,7 @@ const meetingNotices = tables.meetingNotices;
 
 /** Institution profile accessors (back `src/lib/institution.ts`). */
 export async function getStoredInstitution(tenantId: string): Promise<InstitutionProfile | null> {
-  if (!process.env.DATABASE_URL) return null; // build-time prerender has no DB
+  if (!process.env.DATABASE_URL) return tables.institution; // in-memory store
   const row = await prisma.institution.findUnique({ where: { id: tenantId } });
   if (!row) return null;
   return {
@@ -489,7 +490,7 @@ export async function getStoredInstitution(tenantId: string): Promise<Institutio
   };
 }
 export async function setStoredInstitution(tenantId: string, v: InstitutionProfile): Promise<void> {
-  if (!process.env.DATABASE_URL) return;
+  if (!process.env.DATABASE_URL) { tables.institution = v; return; } // in-memory store
   const data = {
     name: v.name, location: v.location, department: v.department,
     productName: v.productName, monogram: v.monogram, accentColor: v.accentColor,
@@ -499,6 +500,7 @@ export async function setStoredInstitution(tenantId: string, v: InstitutionProfi
   await prisma.institution.upsert({ where: { id: tenantId }, create: { id: tenantId, tenantId, ...data }, update: data });
 }
 export async function resetInstitutionForTests(): Promise<void> {
+  if (!process.env.DATABASE_URL) { tables.institution = null; return; } // in-memory store
   await prisma.institution.deleteMany({ where: { id: 'default' } });
 }
 export async function institutionProduct(tenantId: string): Promise<string> {
@@ -506,7 +508,7 @@ export async function institutionProduct(tenantId: string): Promise<string> {
   return inst?.productName || 'Research Chain';
 }
 export async function getStoredEmailSettings(tenantId: string): Promise<EmailSettings | null> {
-  if (!process.env.DATABASE_URL) return null;
+  if (!process.env.DATABASE_URL) return tables.email; // in-memory store
   const row = await prisma.emailSettings.findUnique({ where: { id: tenantId } });
   if (!row) return null;
   return {
@@ -516,10 +518,11 @@ export async function getStoredEmailSettings(tenantId: string): Promise<EmailSet
   };
 }
 export async function setStoredEmailSettings(tenantId: string, v: EmailSettings): Promise<void> {
-  if (!process.env.DATABASE_URL) return;
+  if (!process.env.DATABASE_URL) { tables.email = v; return; } // in-memory store
   await prisma.emailSettings.upsert({ where: { id: tenantId }, create: { id: tenantId, tenantId, ...v }, update: { ...v } });
 }
 export async function resetEmailForTests(): Promise<void> {
+  if (!process.env.DATABASE_URL) { tables.email = null; return; } // in-memory store
   await prisma.emailSettings.deleteMany({ where: { id: 'default' } });
 }
 
@@ -763,7 +766,9 @@ export const findPerson = (id: string) => allPeople().find((p) => p.id === id) ?
 export const findPersonByUsername = (u: string) => allPeople().find((p) => p.username === u) ?? null;
 export const findPersonByIdentifier = (identifier: string) => {
   const value = identifier.trim().toLowerCase();
-  return allPeople().find((p) => (p.email ? p.email.toLowerCase() === value : false)) ?? null;
+  return allPeople().find((p) =>
+    p.username.toLowerCase() === value ||
+    (p.email ? p.email.toLowerCase() === value : false)) ?? null;
 };
 export const findStudent = (id: string) => STUDENTS.find((s) => s.id === id) ?? null;
 export const findStudentByNumber = (n: string) => STUDENTS.find((s) => s.studentNumber === n) ?? null;
@@ -776,7 +781,7 @@ function toProject(row: { id: string; title: string; supervisorId: string | null
   };
 }
 export async function findProject(id: string): Promise<Project | null> {
-  if (!process.env.DATABASE_URL) return null;
+  if (!process.env.DATABASE_URL) return PROJECTS.find((p) => p.id === id) ?? null; // in-memory seed
   const tenantId = await requestTenantId();
   const row = await prisma.project.findUnique({ where: { id, tenantId } });
   return row ? toProject(row) : null;

@@ -1,0 +1,546 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESEARCH CHAIN · QK FRAMEWORK
+   A reusable design system for dense, data-first academic software.
+
+   Design language: "Entangled Violet — instrument panel".
+   Flat, hairline-structured, violet-accented. Surfaces are separated by
+   1px rules and tint fills, never by deep shadows: elevation comes from
+   borders and lightness steps, so the interface reads as an instrument,
+   not as floating cards. The only soft shadow in the system is the one
+   reserved for true overlays (popovers, toasts) — --overlay-shadow.
+
+   Layers (cascade order matters):
+     1. tokens        — colour, type, space, radius, elevation
+     2. base          — reset, typography, links, selection, focus
+     3. buttons       — .btn (form-era) and .ui-btn (component-era)
+     4. forms         — inputs, selects, textareas, marks, checks, fields
+     5. status        — chips, badges, flags, notices
+     6. surfaces      — box, card, empty state, stat pill
+     7. tables        — list/grid primitives
+     8. navigation    — tabs, steps, journey, page context
+     9. overlays      — toast, popover treatment, skeletons
+    10. utilities     — mono, num, muted, sr-only, entrance motion
+
+   Hard constraints honoured here:
+     · No external fonts. The stacks below are installed on every OS.
+     · Status colour (moss/ochre/rust) means pass/watch/problem and
+       nothing else; decoration uses the section spectrum instead.
+     · Every text/background pair clears WCAG 2.1 AA at its rendered size.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ───────────────────────────────────────────────────────────── 1. tokens */
+
+:root{
+  /* — light theme: "Preprint" — daylight, paper, precision — */
+
+  /* structure */
+  --ink:        #17142E;          /* primary text · 15.9:1 on canvas */
+  --ink-soft:   #403C60;          /* secondary text · 8.7:1 on surface */
+  --muted:      #5E5B7E;          /* quiet text · 5.6:1 on canvas, 6.0:1 on surface */
+  --canvas:     #F7F6FC;          /* app background: paper with a violet breath */
+  --surface:    #FFFFFF;          /* raised surface */
+  --sunken:     #F1EFFA;          /* wells, table headers, code chips */
+  --rule:       #E4E1F2;          /* hairline border */
+  --rule-soft:  #EEECF8;          /* divider inside a surface */
+
+  /* rail (always dark — it is the frame around the lit page) */
+  --rail:       #14102C;
+  --rail-2:     #1B163B;
+  --rail-line:  #272152;
+  --rail-text:  #B7B2D6;
+  --rail-text-dim:#7E78A6;
+
+  /* meaning */
+  /* Institutional identity: the tenant-configurable brand hue. Everything
+     below derives from it, so both themes stay coherent when an institution
+     changes its accent in Settings. */
+  --brand-accent:#6633E6;         /* Entangled Violet (default identity) */
+  --accent:     var(--brand-accent);          /* 5.9:1 on surface */
+  --accent-hover:color-mix(in srgb, var(--brand-accent) 86%, #000);
+  --accent-dim: color-mix(in srgb, var(--brand-accent) 8%, var(--surface));
+  --accent-line:color-mix(in srgb, var(--brand-accent) 36%, var(--rule));
+  --accent-contrast:#FFFFFF;      /* text on an accent fill */
+  --moss:       #22704F;  --moss-dim:   #E4F3EA;  --moss-line:  #B9DCC7;
+  --ochre:      #85580F;  --ochre-dim:  #FAF1DE;  --ochre-line: #E7D3A8;
+  --rust:       #B23434;  --rust-dim:   #FBEAEA;  --rust-line:  #EDC1C1;
+  --caution:    #8A5A12;
+  --seal:       #17142E;
+
+  /* polish */
+  --radius:     10px;
+  --radius-sm:  8px;
+  --radius-xs:  6px;
+  /* Flat by default. The one ambient shadow is for overlays only. */
+  --shadow-none: 0 0 0 rgba(0,0,0,0);
+  --overlay-shadow: 0 18px 44px -22px rgba(24, 16, 62, .5), 0 2px 6px -2px rgba(24, 16, 62, .12);
+  --ring:       0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+
+  /* type — system stacks only; the app must run with no network */
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --serif: ui-serif, Georgia, "Times New Roman", serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+
+  --field-line: #A9A3CE;          /* 3:1 against surface and canvas (WCAG 1.4.11) */
+  --placeholder:#7B77A0;
+
+  --rail-w: 250px;
+}
+
+[data-theme="dark"]{
+  /* — dark theme: "Deep Space Lab" — the instrument after hours — */
+
+  --ink:        #EAE8F8;
+  --ink-soft:   #C3BFDE;
+  --muted:      #9B98BC;          /* 5.5:1 on surface */
+  --canvas:     #0C0A1C;
+  --surface:    #151230;
+  --sunken:     #1B1839;
+  --rule:       #2A2650;
+  --rule-soft:  #211E42;
+
+  --rail:       #0F0C24;
+  --rail-2:     #161233;
+  --rail-line:  #262049;
+  --rail-text:  #B7B2D6;
+  --rail-text-dim:#736D9E;
+
+  --accent:     color-mix(in srgb, var(--brand-accent) 58%, #fff);   /* brightened for dark */
+  --accent-hover:color-mix(in srgb, var(--brand-accent) 72%, #fff);
+  --accent-dim: color-mix(in srgb, var(--brand-accent) 22%, var(--surface));
+  --accent-line:color-mix(in srgb, var(--brand-accent) 44%, var(--rule));
+  --accent-contrast:#191043;      /* dark ink on the bright violet fill */
+  --moss:       #5FC896;  --moss-dim:   #14301F;  --moss-line:  #2A5237;
+  --ochre:      #DDB15C;  --ochre-dim:  #2E2412;  --ochre-line: #5A4A24;
+  --rust:       #F08D85;  --rust-dim:   #371A19;  --rust-line:  #6A3230;
+  --caution:    #DDB15C;
+  --seal:       #EAE8F8;
+
+  --field-line: #4C4678;
+  --placeholder:#8B87AE;
+
+  --overlay-shadow: 0 20px 48px -20px rgba(0, 0, 0, .75), 0 0 0 1px var(--rule);
+
+  color-scheme: dark;
+}
+
+/* Section spectrum: colour as wayfinding. Each area carries one hue; it
+   appears in exactly four places — the active rail item, the bar under the
+   page title, the table-header underline, and a wash at the top of the page.
+   Re-tuned to sit beside Entangled Violet without competing with it. */
+:root{
+  --section:      var(--accent);
+  --section-tint: color-mix(in srgb, var(--section) 8%,  var(--surface));
+  --section-wash: color-mix(in srgb, var(--section) 4%,  var(--canvas));
+  --section-line: color-mix(in srgb, var(--section) 34%, var(--rule));
+  --section-lift: color-mix(in srgb, var(--section) 58%, #ffffff);
+}
+[data-section="home"]         { --section:#0E7490 }
+[data-section="topics"]       { --section:var(--brand-accent) }
+[data-section="book"]         { --section:#0B7E8C }
+[data-section="consultations"]{ --section:#1F7A5A }
+[data-section="grading"]      { --section:#4F46E5 }
+[data-section="publish"]      { --section:#A21C6B }
+[data-section="reports"]      { --section:#54607A }
+[data-section="admin"]        { --section:#6D28D9 }
+
+[data-theme="dark"] [data-section="home"]         { --section:#5BC0D8 }
+[data-theme="dark"] [data-section="topics"]       { --section:color-mix(in srgb, var(--brand-accent) 58%, #fff) }
+[data-theme="dark"] [data-section="book"]         { --section:#5EC6D4 }
+[data-theme="dark"] [data-section="consultations"]{ --section:#5FC896 }
+[data-theme="dark"] [data-section="grading"]      { --section:#9BA3F5 }
+[data-theme="dark"] [data-section="publish"]      { --section:#E385C0 }
+[data-theme="dark"] [data-section="reports"]      { --section:#A3B1CC }
+[data-theme="dark"] [data-section="admin"]        { --section:#BCA5FB }
+
+/* ─────────────────────────────────────────────────────────────── 2. base */
+
+*, *::before, *::after{ box-sizing:border-box }
+html{ color-scheme:light; -webkit-text-size-adjust:100% }
+html,body{ height:100% }
+body{
+  margin:0; background:var(--canvas); color:var(--ink);
+  font:14px/1.55 var(--sans);
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+
+a{ color:var(--accent); text-underline-offset:2px }
+a:hover{ text-decoration:underline }
+::selection{ background:color-mix(in srgb, var(--accent) 24%, transparent) }
+
+h1,h2,h3,h4{ margin:0; font-weight:650; letter-spacing:-.014em; color:var(--ink) }
+
+/* Every figure in this system is tabular. Columns of marks that do not line
+   up are harder to scan, and scanning is the whole job here. */
+.num, .mono, td.total, input[type="number"]{ font-variant-numeric:tabular-nums }
+.mono{ font-family:var(--mono); font-size:.86em; letter-spacing:-.01em }
+.muted{ color:var(--muted) }
+
+.sr-only{
+  position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;
+}
+
+:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; border-radius:2px }
+
+/* Scrollbars — quiet, in-world. */
+*{ scrollbar-width:thin; scrollbar-color:color-mix(in srgb, var(--ink) 22%, transparent) transparent }
+*::-webkit-scrollbar{ width:10px; height:10px }
+*::-webkit-scrollbar-thumb{ background:color-mix(in srgb, var(--ink) 18%, transparent); border-radius:999px;
+  border:3px solid transparent; background-clip:content-box }
+*::-webkit-scrollbar-thumb:hover{ background:color-mix(in srgb, var(--ink) 30%, transparent); background-clip:content-box;
+  border:3px solid transparent }
+*::-webkit-scrollbar-track{ background:transparent }
+
+/* ───────────────────────────────────────────────────────────── 3. buttons
+
+   Two families, one contract:
+     .btn    — the original form buttons (server-rendered forms).
+     .ui-btn — the component library (src/components/ui/button.tsx).
+   Both are flat fills with hairline borders. Nothing floats; press is a
+   1px settle. A destructive action always looks like one, at every size. */
+
+.btn, .ui-btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:7px;
+  border:1px solid transparent; border-radius:var(--radius-sm); cursor:pointer;
+  font:600 13.5px/1.3 var(--sans); padding:9px 16px; white-space:nowrap;
+  text-decoration:none;
+  transition:background .15s ease, border-color .15s ease, color .15s ease, transform .08s ease;
+}
+.btn:active:not(:disabled), .ui-btn:active:not(:disabled){ transform:translateY(1px) }
+.btn:disabled, .ui-btn:disabled{
+  background:var(--sunken); border-color:var(--rule); color:var(--muted);
+  cursor:not-allowed; transform:none;
+}
+.btn:focus-visible, .ui-btn:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
+
+/* primary — the one filled accent anywhere in the system */
+.btn:not(.ghost):not(.danger):not(.danger-outline):not(.outline), .ui-btn-primary{
+  background:var(--accent); color:var(--accent-contrast); border-color:var(--accent);
+}
+.btn:not(.ghost):not(.danger):not(.danger-outline):not(.outline):hover:not(:disabled),
+.ui-btn-primary:hover:not(:disabled){ background:var(--accent-hover); border-color:var(--accent-hover) }
+
+/* outline — a quiet action that is still unmistakably a button */
+.btn.ghost, .btn.outline, .ui-btn-outline{
+  background:var(--surface); color:var(--ink-soft); border-color:var(--rule);
+}
+.btn.ghost:hover:not(:disabled), .btn.outline:hover:not(:disabled),
+.ui-btn-outline:hover:not(:disabled){
+  border-color:var(--accent-line); color:var(--accent); background:var(--accent-dim);
+}
+
+/* destructive — filled: delete-style actions must be noticeable */
+.btn.danger, .ui-btn-destructive{
+  background:var(--rust); color:#fff; border-color:var(--rust);
+}
+.btn.danger:hover:not(:disabled), .ui-btn-destructive:hover:not(:disabled){
+  background:color-mix(in srgb, var(--rust) 86%, #000); border-color:color-mix(in srgb, var(--rust) 86%, #000);
+}
+[data-theme="dark"] .btn.danger, [data-theme="dark"] .ui-btn-destructive{
+  color:#2B0B09;
+}
+[data-theme="dark"] .btn.danger:hover:not(:disabled),
+[data-theme="dark"] .ui-btn-destructive:hover:not(:disabled){
+  background:color-mix(in srgb, var(--rust) 88%, #fff); border-color:color-mix(in srgb, var(--rust) 88%, #fff);
+}
+
+/* destructive outline — for the quiet first step of a two-step delete */
+.btn.danger-outline, .ui-btn-danger-outline{
+  background:var(--surface); color:var(--rust); border-color:var(--rust-line);
+}
+.btn.danger-outline:hover:not(:disabled), .ui-btn-danger-outline:hover:not(:disabled){
+  background:var(--rust-dim); border-color:var(--rust); color:var(--rust);
+}
+
+/* ghost — text-weight affordance inside toolbars and action rows */
+.ui-btn-ghost{ background:transparent; color:var(--ink-soft); border-color:transparent }
+.ui-btn-ghost:hover:not(:disabled){ background:var(--sunken); color:var(--ink); border-color:transparent }
+
+.btn.sm, .ui-btn-sm{ padding:6px 13px; font-size:12px; border-radius:var(--radius-xs) }
+.ui-btn-lg{ padding:12px 22px; font-size:15px; border-radius:var(--radius) }
+.ui-btn-icon{ padding:8px; width:36px; height:36px }
+
+/* ───────────────────────────────────────────────────────────────── 4. forms */
+
+input[type="text"], input[type="password"], input[type="number"], input[type="date"],
+input[type="email"], input[type="url"], select, textarea, input:not([type]){
+  font:13.5px var(--sans); color:var(--ink); background:var(--surface);
+  border:1px solid var(--field-line); border-radius:var(--radius-xs); padding:8px 10px;
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+input:focus, select:focus, textarea:focus{
+  outline:none; border-color:var(--accent); box-shadow:var(--ring);
+}
+input::placeholder, textarea::placeholder{ color:var(--placeholder) }
+
+input.mark{
+  width:52px; text-align:center; font:14px var(--mono);
+  padding:6px 4px; border-color:var(--field-line);
+}
+input.mark:focus{ background:var(--accent-dim) }
+input.mark:disabled{ background:var(--sunken); color:var(--muted) }
+/* Spinners steal width in a nine-column grid and nobody clicks them. */
+input.mark::-webkit-outer-spin-button, input.mark::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0 }
+input.mark{ -moz-appearance:textfield; appearance:textfield }
+
+input[aria-invalid="true"], select[aria-invalid="true"]{
+  border-color:var(--rust); background:var(--rust-dim);
+}
+input[aria-invalid="true"]:focus{ box-shadow:0 0 0 3px color-mix(in srgb, var(--rust) 18%, transparent) }
+
+/* component-library inputs */
+.ui-input, .ui-textarea, .ui-select{
+  width:100%; box-sizing:border-box; font:14px/1.4 var(--sans); color:var(--ink);
+  background:var(--surface); border:1px solid var(--field-line); border-radius:var(--radius-xs);
+  padding:9px 11px; transition:border-color .15s ease, box-shadow .15s ease;
+}
+.ui-input:focus, .ui-textarea:focus, .ui-select:focus{
+  outline:none; border-color:var(--accent); box-shadow:var(--ring);
+}
+.ui-textarea{ min-height:96px; resize:vertical }
+.ui-select{
+  appearance:none; padding-right:32px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--ink-soft) 50%),
+                   linear-gradient(135deg,var(--ink-soft) 50%,transparent 50%);
+  background-position:calc(100% - 18px) 55%,calc(100% - 13px) 55%;
+  background-size:5px 5px; background-repeat:no-repeat;
+}
+
+.field-label{ display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:6px }
+.field{ display:block; margin-bottom:14px }
+.field input, .field select, .field textarea{ width:100% }
+.form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px 18px }
+.form-grid p{ margin:0 }
+.form-grid label{ display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:5px }
+.form-grid input, .form-grid select, .form-grid textarea{ width:100% }
+
+.role-checks{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px }
+.role-check{ display:flex; align-items:center; gap:6px; font-size:13px; font-weight:500;
+  color:var(--ink); background:var(--surface); border:1px solid var(--rule);
+  border-radius:var(--radius-xs); padding:8px 12px; cursor:pointer;
+  transition:border-color .15s ease, background .15s ease }
+.role-check:hover{ border-color:var(--accent-line) }
+.role-check input{ accent-color:var(--accent); width:16px; height:16px }
+
+/* ─────────────────────────────────────────────────────────── 5. status */
+
+.chip{
+  display:inline-block; padding:2px 9px; margin:0 4px 3px 0;
+  border:1px solid var(--rule); background:var(--sunken); color:var(--ink-soft);
+  border-radius:999px; font-size:11px; font-weight:550; line-height:1.6;
+}
+.chip.ok{ border-color:var(--moss-line); background:var(--moss-dim); color:var(--moss) }
+.chip.warn{ border-color:var(--ochre-line); background:var(--ochre-dim); color:var(--ochre) }
+.chip.bad{ border-color:var(--rust-line); background:var(--rust-dim); color:var(--rust) }
+
+.flag{ display:block; font-size:12px; line-height:1.5; margin-top:3px; padding-left:12px; position:relative }
+.flag::before{ content:""; position:absolute; left:0; top:7px; width:5px; height:5px; border-radius:50% }
+.flag.ok{ color:var(--moss) }      .flag.ok::before{ background:var(--moss) }
+.flag.amber{ color:var(--ochre) }  .flag.amber::before{ background:var(--ochre) }
+.flag.red{ color:var(--rust) }     .flag.red::before{ background:var(--rust) }
+
+.notice{
+  border:1px solid var(--moss-line); border-left:3px solid var(--moss);
+  background:var(--moss-dim); color:var(--moss);
+  padding:11px 15px; margin-bottom:16px; border-radius:var(--radius-sm); font-size:13px;
+}
+.notice.bad{ border-color:var(--rust-line); border-left-color:var(--rust); background:var(--rust-dim); color:var(--rust) }
+
+/* component-library badges, and the .badge used on the host console */
+.ui-badge, .badge{
+  display:inline-flex; align-items:center; gap:4px; padding:2px 9px;
+  border-radius:999px; font-size:11.5px; font-weight:600;
+  background:var(--sunken); color:var(--ink-soft); border:1px solid var(--rule);
+}
+.ui-badge-success{ background:var(--moss-dim); color:var(--moss); border-color:var(--moss-line) }
+.ui-badge-warning{ background:var(--ochre-dim); color:var(--ochre); border-color:var(--ochre-line) }
+.ui-badge-danger{ background:var(--rust-dim); color:var(--rust); border-color:var(--rust-line) }
+.ui-badge-info{ background:var(--accent-dim); color:var(--accent); border-color:var(--accent-line) }
+.badge.warning{ background:var(--ochre-dim); color:var(--ochre); border-color:var(--ochre-line) }
+
+/* ────────────────────────────────────────────────────────── 6. surfaces */
+
+.box, .ui-card{
+  background:var(--surface); border:1px solid var(--rule);
+  border-radius:var(--radius); padding:16px 18px; margin-bottom:16px;
+}
+.ui-card{ padding:0; overflow:hidden }
+.ui-card-header{ padding:16px 18px 0 }
+.ui-card-title{ font-size:15px; font-weight:650; color:var(--ink); margin:0 }
+.ui-card-body{ padding:14px 18px 18px }
+.box strong{ font-weight:600 }
+.box p{ margin:7px 0 0 }
+
+/* The section hue tips the top edge of every surface, so grouped cards
+   read as belonging to their page without a single shadow. */
+.box{ border-top:2px solid color-mix(in srgb, var(--section) 26%, var(--rule)) }
+
+.empty{
+  background:var(--surface); border:1px dashed color-mix(in srgb, var(--section) 34%, var(--rule));
+  border-radius:var(--radius); padding:26px 22px; text-align:center;
+  color:var(--muted); font-size:13.5px;
+}
+.empty strong{ display:block; color:var(--ink); font:650 15px/1.3 var(--sans); margin-bottom:5px }
+
+.stat-pill{ display:inline-flex; align-items:baseline; gap:6px; font-size:12.5px; color:var(--ink-soft) }
+.stat-pill b{ font-size:16px; color:var(--ink); font-variant-numeric:tabular-nums }
+
+.errorlist{ margin:6px 0 0; padding-left:18px }
+.errorlist li{ margin:2px 0 }
+
+/* ─────────────────────────────────────────────────────────── 7. tables */
+
+table.list, table.grid, table.roster{
+  width:100%; border-collapse:separate; border-spacing:0;
+  background:var(--surface); border:1px solid var(--rule); border-radius:var(--radius);
+  overflow:hidden; font-size:13px;
+}
+table.list thead th, table.grid thead th, table.roster thead th{
+  background:var(--sunken); color:var(--ink-soft);
+  font-size:11.5px; font-weight:600; letter-spacing:.015em;
+  text-align:left; padding:9px 12px; vertical-align:bottom;
+  border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:2;
+}
+thead th .max{ display:block; font-weight:400; color:var(--muted); font-size:11px; margin-top:2px }
+table.list td, table.grid td, table.roster td{
+  padding:10px 12px; border-bottom:1px solid var(--rule-soft); vertical-align:top;
+}
+table.list tbody tr:last-child td, table.grid tbody tr:last-child td, table.roster tbody tr:last-child td{
+  border-bottom:0;
+}
+table.list tbody tr:hover td, table.grid tbody tr:hover td, table.roster tbody tr:hover td{
+  background:color-mix(in srgb, var(--section) 5%, var(--surface));
+}
+td.num, th.num{ text-align:right }
+table.grid td.num, table.grid th.num{ text-align:center }
+td.total{
+  text-align:center; font-weight:600; background:var(--sunken);
+  border-left:1px solid var(--rule); font-size:14px;
+}
+
+/* The header keeps its quiet fill and gains the section hue as an underline. */
+table.list thead th, table.grid thead th, table.roster thead th{
+  background:var(--section-tint);
+  border-bottom:2px solid var(--section-line);
+  color:var(--ink);
+}
+
+/* wide tables scroll inside their own box instead of breaking the page */
+.table-wrap{
+  overflow-x:auto; overscroll-behavior-x:contain;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-gutter:stable;
+  border-radius:var(--radius);
+  margin-bottom:16px;
+}
+.table-wrap > table.list, .table-wrap > table.grid, .table-wrap > table.roster{ margin-bottom:0 }
+.table-wrap:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
+.scroll-hint{ display:none; font-size:12px; color:var(--muted); margin:0 0 6px }
+@media (max-width: 900px){ .scroll-hint{ display:block } }
+
+tr.band td{
+  background:color-mix(in srgb, var(--section) 10%, var(--surface));
+  color:color-mix(in srgb, var(--section) 72%, var(--ink));
+  font-size:12.5px; padding:7px 12px; border-bottom:1px solid color-mix(in srgb, var(--section) 24%, var(--rule));
+}
+tr.band.solo td{ background:var(--sunken); color:var(--ink-soft) }
+tr.band td strong{ font-weight:600 }
+td.sess{
+  background:var(--sunken); text-align:center; color:var(--section);
+  font:650 15px/1 var(--serif); border-right:1px solid var(--rule); vertical-align:middle;
+}
+td.sess div{ font:400 10px/1.4 var(--sans); color:var(--muted); margin-top:3px }
+
+/* ───────────────────────────────────────────────────── 8. navigation bits */
+
+.tabs-switch{ display:inline-flex; gap:2px; background:var(--sunken); border-radius:var(--radius-sm);
+  padding:3px; margin-bottom:16px }
+.tabs-switch a{ padding:7px 18px; border-radius:var(--radius-xs); font-size:13.5px; font-weight:600;
+  color:var(--muted); text-decoration:none }
+.tabs-switch a.on{ background:var(--surface); color:var(--section); box-shadow:inset 0 -2px 0 var(--section) }
+.tabs-switch a:hover{ text-decoration:none; color:var(--ink) }
+
+.steps{ display:flex; flex-wrap:wrap; gap:8px; margin:0 0 18px }
+.steps span{ font-size:12.5px; color:var(--ink-soft); background:var(--surface);
+  border:1px solid var(--rule); border-left:3px solid color-mix(in srgb, var(--section) 44%, var(--rule));
+  border-radius:var(--radius-xs); padding:7px 12px }
+.steps b{ color:var(--section); margin-right:5px; font-variant-numeric:tabular-nums }
+
+.journey{ display:flex; flex-wrap:wrap; gap:8px; margin:0 0 18px }
+.journey span{ font-size:12px; color:var(--muted); background:var(--surface);
+  border:1px solid var(--rule); border-radius:999px; padding:5px 12px }
+.journey span.done{ color:var(--section); border-color:color-mix(in srgb, var(--section) 45%, var(--rule));
+  background:var(--section-tint); font-weight:600 }
+
+.page-context{ display:flex; align-items:center; gap:10px; margin:0 0 18px }
+.page-context .cycle-chip{
+  font-size:11.5px; font-weight:600; color:color-mix(in srgb, var(--section) 68%, var(--ink));
+  background:var(--surface); border:1px solid color-mix(in srgb, var(--section) 34%, var(--rule));
+  border-radius:999px; padding:3px 11px; letter-spacing:.02em
+}
+.page-context .rule-spacer{ flex:1; height:1px; background:var(--rule-soft) }
+
+/* ──────────────────────────────────────────────────────── 9. overlays */
+
+.toast{
+  position:fixed; bottom:22px; left:50%; transform:translateX(-50%);
+  background:var(--ink); color:var(--canvas); border:1px solid var(--rule);
+  border-radius:999px; padding:10px 16px 10px 20px;
+  font-size:13.5px; font-weight:500; z-index:1000;
+  display:flex; align-items:center; gap:12px;
+  animation:qk-rise .18s ease;
+  max-width:min(90vw, 520px);
+}
+[data-theme="dark"] .toast{ background:var(--sunken); color:var(--ink) }
+.toast-close{
+  background:none; border:0; color:color-mix(in srgb, var(--ink) 55%, transparent);
+  font-size:16px; line-height:1; cursor:pointer; padding:0 2px;
+}
+.toast-close:hover{ color:var(--ink) }
+
+.ui-toast-wrap{
+  position:fixed; z-index:120; top:16px; right:16px; display:flex;
+  flex-direction:column; gap:8px; max-width:360px;
+}
+.ui-toast{
+  display:flex; align-items:flex-start; gap:10px; padding:12px 14px;
+  border-radius:var(--radius); font-size:13.5px; color:#fff;
+  box-shadow:var(--overlay-shadow);
+  animation:qk-rise .28s cubic-bezier(.22,1,.36,1) both;
+}
+.ui-toast-success{ background:var(--moss) }
+[data-theme="dark"] .ui-toast-success{ color:#0A2416 }
+.ui-toast-error{ background:var(--rust) }
+[data-theme="dark"] .ui-toast-error{ color:#330D0C }
+.ui-toast-info{ background:var(--accent); color:var(--accent-contrast) }
+
+.skeleton{ display:flex; flex-direction:column; gap:10px }
+.skeleton i{
+  display:block; height:13px; border-radius:4px; background:var(--rule-soft);
+  animation:qk-pulse 1.4s ease-in-out infinite;
+}
+.skeleton i.wide{ height:26px; width:44% }
+.skeleton i.box{ height:150px }
+@keyframes qk-pulse{ 0%,100%{ opacity:1 } 50%{ opacity:.45 } }
+
+/* ─────────────────────────────────────────────────────── 10. utilities */
+
+@keyframes qk-rise{ from{ opacity:0; transform:translateY(8px) } to{ opacity:1; transform:none } }
+@keyframes qk-fade{ from{ opacity:0 } to{ opacity:1 } }
+.ui-enter{ animation:qk-rise .28s cubic-bezier(.22,1,.36,1) both }
+
+@media (prefers-reduced-motion: reduce){
+  *, *::before, *::after{
+    animation-duration:.01ms !important; animation-iteration-count:1 !important;
+    transition-duration:.01ms !important; scroll-behavior:auto !important;
+  }
+}
+
+@media (max-width: 720px){
+  .form-grid{ grid-template-columns:1fr }
+}
+@media (max-width: 460px){
+  .btn{ width:100%; text-align:center }
+  .btn.sm{ width:auto }
+  .actionbar .btn{ width:auto }
+}

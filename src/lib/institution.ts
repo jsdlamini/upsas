@@ -17,7 +17,7 @@ export const DEFAULT_INSTITUTION: InstitutionProfile = {
   department: '',
   productName: 'Research Chain',
   monogram: '',
-  accentColor: '#2E5AC8',
+  accentColor: '#6633E6',
   logo: null,
   configuredAt: null,
 };
@@ -43,7 +43,7 @@ export async function saveInstitution(
     return { ok: false, error: 'Name and department are required.' };
   }
   if (!ACCENT_RE.test(next.accentColor)) {
-    return { ok: false, error: 'Accent colour must be a #hex value like #2E5AC8.' };
+    return { ok: false, error: 'Accent colour must be a #hex value like #6633E6.' };
   }
   if (next.logo?.kind === 'url' && !/^https?:\/\//i.test(next.logo.url)) {
     return { ok: false, error: 'Logo URL must start with http:// or https://.' };

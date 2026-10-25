@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" fill="none" role="img" aria-label="Quantum lattice watermark tile">
-<path d="M0 .5H48 M.5 0V48 M0 24.5H48 M24.5 0V48" stroke="#A88BFA" stroke-width="1" opacity="0.12"/>
-<circle cx="0" cy="0" r="1.4" fill="#A88BFA" opacity="0.26"/>
-<circle cx="24" cy="24" r="1.4" fill="#A88BFA" opacity="0.26"/>
-<circle cx="48" cy="24" r="1.4" fill="#A88BFA" opacity="0.26"/>
-<circle cx="24" cy="48" r="1.4" fill="#A88BFA" opacity="0.26"/>
-<circle cx="12" cy="36" r="1" fill="#A88BFA" opacity="0.16"/>
-<circle cx="36" cy="12" r="1" fill="#A88BFA" opacity="0.16"/>
-</svg>

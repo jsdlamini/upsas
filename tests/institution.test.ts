@@ -9,7 +9,7 @@ beforeEach(resetInstitutionForTests);
 test('getInstitution returns neutral defaults when unset', async () => {
   assert.equal((await getInstitution()).name, '');
   assert.equal((await getInstitution()).productName, 'Research Chain');
-  assert.equal((await getInstitution()).accentColor, '#2E5AC8');
+  assert.equal((await getInstitution()).accentColor, '#6633E6');
   assert.equal(await isConfigured(), false);
 });
 
