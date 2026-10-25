@@ -179,6 +179,65 @@ export async function setCurrentCycle(
   return { ok: true };
 }
 
+/**
+ * Deletes a cycle, but only when it is safe to do so.
+ *
+ * Safest behaviour: refuse when the cycle is the current cycle, and refuse when
+ * anything still points at it. The cycle label is stored as a plain `cycleId`
+ * string on role grants and assessment periods (no foreign key), while
+ * presentation sessions, assessment configs and their mark snapshots reference
+ * the cycle row itself — all four are checked before deletion so nothing is
+ * silently orphaned.
+ */
+export async function deleteCycle(
+  tenantId: string,
+  id: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!dbReady()) return { ok: false, error: 'No database.' };
+  const row = await prisma.academicCycle.findFirst({ where: { id, tenantId } });
+  if (!row) return { ok: false, error: 'No such cycle.' };
+
+  if (row.isCurrent) {
+    return {
+      ok: false,
+      error: 'This is the current cycle. Make another cycle current before deleting it.',
+    };
+  }
+
+  const [roleGrants, deadlines, sessions, configs, marks] = await Promise.all([
+    prisma.roleAssignment.count({ where: { cycleId: row.label, user: { tenantId } } }),
+    prisma.assessmentPeriod.count({ where: { tenantId, cycleId: row.label } }),
+    prisma.presentationSession.count({ where: { tenantId, cycleId: id } }),
+    prisma.assessmentConfig.count({ where: { tenantId, cycleId: id } }),
+    prisma.markSnapshot.count({ where: { config: { cycleId: id, tenantId } } }),
+  ]);
+
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  const dependents: string[] = [];
+  if (roleGrants > 0) dependents.push(plural(roleGrants, 'role assignment'));
+  if (deadlines > 0) dependents.push(plural(deadlines, 'assessment period / deadline'));
+  if (sessions > 0) dependents.push(plural(sessions, 'presentation session'));
+  if (configs > 0) dependents.push(plural(configs, 'assessment configuration'));
+  if (marks > 0) dependents.push(plural(marks, 'mark record'));
+
+  if (dependents.length > 0) {
+    return {
+      ok: false,
+      error: `Cannot delete this cycle: it is still referenced by ${dependents.join(', ')}. Move or remove that data first.`,
+    };
+  }
+
+  try {
+    await prisma.academicCycle.delete({ where: { id } });
+  } catch {
+    return {
+      ok: false,
+      error: 'Cannot delete this cycle: it is still referenced by other data.',
+    };
+  }
+  return { ok: true };
+}
+
 export function canManageCycles(principal: AuthenticatedPrincipal | null): boolean {
   return Boolean(principal && (principal.roles.includes('ADMINISTRATOR') || principal.roles.includes('COORDINATOR')));
 }
