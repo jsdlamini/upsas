@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { registerStudent, requestStaffAccount, PROGRAMMES, COURSES } from '@/lib/data/store';
 import { FeatureCarousel } from '@/components/feature-carousel';
 import { Button } from '@/components/ui/button';
+import { QuantumMark } from '@/components/quantum-mark';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +13,6 @@ const STAFF_ROLES = [
 ] as const;
 
 const PRODUCT_NAME = 'Research Chain';
-const PRODUCT_MONO = 'RC';
 
 async function registerStudentAction(formData: FormData) {
   'use server';
@@ -62,8 +62,10 @@ export default async function RegisterPage({
     <div className="auth-split">
       <aside className="auth-brand">
         <div className="auth-brand-inner ui-enter">
-          <div className="brand-logo">{PRODUCT_MONO}</div>
-          <p className="inst">{PRODUCT_NAME}</p>
+          <div className="brand-lockup">
+            <div className="brand-logo-quantum"><QuantumMark /></div>
+            <p className="inst">{PRODUCT_NAME}</p>
+          </div>
           <h2>Create your account</h2>
           <p className="tagline">
             Students self-register and start straight away. Staff accounts are held for a

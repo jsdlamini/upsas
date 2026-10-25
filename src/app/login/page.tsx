@@ -19,6 +19,7 @@ import {
   totpSecretForPrisma,
 } from '@/lib/auth/prisma-auth';
 import { Button } from '@/components/ui/button';
+import { QuantumMark } from '@/components/quantum-mark';
 
 /**
  * Short-lived MFA challenges.
@@ -49,7 +50,6 @@ const MESSAGES: Record<string, string> = {
 };
 
 const PRODUCT_NAME = 'Research Chain';
-const PRODUCT_MONO = 'RC';
 
 /**
  * Where to go after signing in. Only an internal path is ever honoured, so a
@@ -210,8 +210,10 @@ export default async function LoginPage({
     <div className="auth-split">
       <aside className="auth-brand">
         <div className="auth-brand-inner ui-enter">
-          <div className="brand-logo">{PRODUCT_MONO}</div>
-          <p className="inst">{PRODUCT_NAME}</p>
+          <div className="brand-lockup">
+            <div className="brand-logo-quantum"><QuantumMark /></div>
+            <p className="inst">{PRODUCT_NAME}</p>
+          </div>
           <h2>Research project supervision &amp; assessment</h2>
           <p className="tagline">One system of record for topics, consultations, presentations and final marks — from allocation to release.</p>
           <FeatureCarousel features={[
