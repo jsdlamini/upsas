@@ -15,8 +15,9 @@ import { EmailSettingsFields } from '@/components/email-settings-fields';
 import { JoinLink } from '@/components/join-link';
 import { findPerson } from '@/lib/data/store';
 import {
-  listCycles, createCycle, updateCycle, setCurrentCycle, canManageCycles,
+  listCycles, createCycle, updateCycle, setCurrentCycle, deleteCycle, canManageCycles,
 } from '@/lib/cycles';
+import { DeleteCycleButton } from '@/components/delete-cycle-button';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,6 +67,15 @@ async function setCurrentCycleAction(formData: FormData) {
   'use server';
   const p = await cycleGate();
   const r = await setCurrentCycle(p.tenantId, String(formData.get('id') ?? ''));
+  if (!r.ok) redirect(`/settings?e=${encodeURIComponent(r.error)}`);
+  revalidatePath('/settings');
+  redirect('/settings?saved=1');
+}
+
+async function deleteCycleAction(formData: FormData) {
+  'use server';
+  const p = await cycleGate();
+  const r = await deleteCycle(p.tenantId, String(formData.get('id') ?? ''));
   if (!r.ok) redirect(`/settings?e=${encodeURIComponent(r.error)}`);
   revalidatePath('/settings');
   redirect('/settings?saved=1');
@@ -216,7 +226,9 @@ export default async function Settings({
       <div className="box" style={{ maxWidth: 560, marginTop: 24 }}>
         <h2 style={{ fontSize: 16, margin: '0 0 4px' }}>Academic cycles</h2>
         <p className="muted" style={{ fontSize: 12.5, margin: '0 0 14px' }}>
-          The current cycle scopes roles and deadlines. Labels are fixed once created.
+          The current cycle scopes roles and deadlines. Labels are fixed once created. Cycles can
+          only be deleted when nothing references them — role grants, deadlines, presentation
+          sessions and marks must be moved or removed first.
         </p>
 
         {cycles.length === 0 && <p className="muted">No cycles yet.</p>}
@@ -250,6 +262,7 @@ export default async function Settings({
                   <Button type="submit" variant="ghost">Make current</Button>
                 </form>
               )}
+              {!c.isCurrent && <DeleteCycleButton id={c.id} label={c.label} action={deleteCycleAction} />}
             </li>
           ))}
         </ul>

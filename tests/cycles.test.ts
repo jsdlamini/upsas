@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { prisma } from '../src/lib/prisma';
 import {
   currentCycleId, currentCycleLabel, listCycles, createCycle, updateCycle,
-  setCurrentCycle, canManageCycles, deriveCycleDates,
+  setCurrentCycle, deleteCycle, canManageCycles, deriveCycleDates,
 } from '../src/lib/cycles';
 import type { AuthenticatedPrincipal } from '../src/lib/auth/login';
 
@@ -157,4 +157,111 @@ test('canManageCycles is true only for admins and coordinators', () => {
   assert.equal(canManageCycles(admin(['COORDINATOR'])), true);
   assert.equal(canManageCycles(admin(['SUPERVISOR'])), false);
   assert.equal(canManageCycles(admin([])), false);
+});
+
+const d1 = { startsOn: new Date('2025-08-01T00:00:00Z'), endsOn: new Date('2026-07-31T00:00:00Z') };
+const d2 = { startsOn: new Date('2026-08-01T00:00:00Z'), endsOn: new Date('2027-07-31T00:00:00Z') };
+
+async function makeDeletableCycle(): Promise<string> {
+  const current = await createCycle(TENANT, INST, { label: '2025/2026', ...d1, isCurrent: true });
+  assert.equal(current.ok, true);
+  const second = await createCycle(TENANT, INST, { label: '2026/2027', ...d2, isCurrent: false });
+  assert.equal(second.ok, true);
+  if (!second.ok) throw new Error('failed to create deletable cycle');
+  return second.id;
+}
+
+test('deleteCycle refuses to delete the current cycle', async () => {
+  await clean();
+  await ensureInstitution();
+  const created = await createCycle(TENANT, INST, { label: '2025/2026', ...d1, isCurrent: true });
+  assert.equal(created.ok, true);
+  if (!created.ok) return;
+  const r = await deleteCycle(TENANT, created.id);
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.match(r.error, /current/i);
+  assert.ok(await prisma.academicCycle.findUnique({ where: { id: created.id } }));
+  await clean();
+});
+
+test('deleteCycle deletes a cycle with no dependent data', async () => {
+  await clean();
+  await ensureInstitution();
+  const id = await makeDeletableCycle();
+  const r = await deleteCycle(TENANT, id);
+  assert.equal(r.ok, true);
+  assert.equal(await prisma.academicCycle.findUnique({ where: { id } }), null);
+  await clean();
+});
+
+test('deleteCycle refuses when a role grant references the cycle', async () => {
+  await clean();
+  await ensureInstitution();
+  const id = await makeDeletableCycle();
+  const user = await prisma.user.create({
+    data: {
+      tenantId: TENANT, username: 'cycle-user', email: 'cycle-user@example.com',
+      fullName: 'Cycle User', surname: 'User', status: 'ACTIVE',
+    },
+  });
+  await prisma.roleAssignment.create({
+    data: { userId: user.id, role: 'COORDINATOR', cycleId: '2026/2027', grantedBy: 'test', grantedAt: new Date() },
+  });
+  const r = await deleteCycle(TENANT, id);
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.match(r.error, /role assignment/i);
+  await prisma.roleAssignment.deleteMany({ where: { userId: user.id } });
+  await prisma.user.deleteMany({ where: { id: user.id } });
+  await clean();
+});
+
+test('deleteCycle refuses when an assessment period references the cycle', async () => {
+  await clean();
+  await ensureInstitution();
+  const id = await makeDeletableCycle();
+  await prisma.assessmentPeriod.create({
+    data: {
+      tenantId: TENANT, id: 'ap-cycle-delete', cycleId: '2026/2027', key: 'proposal',
+      label: 'Proposal', dueAt: new Date('2026-10-01T00:00:00Z'), graceMinutes: 0,
+    },
+  });
+  const r = await deleteCycle(TENANT, id);
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.match(r.error, /assessment period|deadline/i);
+  await prisma.assessmentPeriod.deleteMany({ where: { tenantId: TENANT } });
+  await clean();
+});
+
+test('deleteCycle refuses when a presentation session references the cycle', async () => {
+  await clean();
+  await ensureInstitution();
+  const id = await makeDeletableCycle();
+  await prisma.presentationSession.create({
+    data: {
+      tenantId: TENANT, cycleId: id, componentKey: 'p1', serialNo: 1,
+      scheduledFor: new Date('2026-11-01T00:00:00Z'),
+    },
+  });
+  const r = await deleteCycle(TENANT, id);
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.match(r.error, /presentation session/i);
+  await prisma.presentationSession.deleteMany({ where: { tenantId: TENANT } });
+  await clean();
+});
+
+test('deleteCycle refuses when an assessment config references the cycle', async () => {
+  await clean();
+  await ensureInstitution();
+  const id = await makeDeletableCycle();
+  await prisma.assessmentConfig.create({
+    data: {
+      tenantId: TENANT, cycleId: id, profileCode: 'std', profileLabel: 'Standard',
+      version: 1, payload: {}, createdById: 'u-admin',
+    },
+  });
+  const r = await deleteCycle(TENANT, id);
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.match(r.error, /assessment configuration|mark/i);
+  await prisma.assessmentConfig.deleteMany({ where: { tenantId: TENANT } });
+  await clean();
 });
