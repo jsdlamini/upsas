@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { FlashToast } from '@/components/flash-toast';
+import { resolveFlashes } from '@/lib/flash';
 import { currentPrincipal } from '@/lib/auth/current';
 import { findPerson, updatePersonProfile, passwordHashFor } from '@/lib/data/store';
 import { syncOneUserToPrisma } from '@/lib/auth/prisma-auth';
@@ -35,6 +37,10 @@ export default async function Account({
   const person = findPerson(principal.userId);
   if (!person) redirect('/login');
   const { e, saved } = await searchParams;
+  const { flashes, keys } = resolveFlashes({ e, saved }, {
+    saved: { resolve: () => ({ message: 'Saved.', variant: 'success' }) },
+    e: { resolve: (p) => ({ message: p.e!, variant: 'error' }) },
+  });
 
   return (
     <>
@@ -44,8 +50,7 @@ export default async function Account({
         {person.studentId ? ` (student ${person.username})` : ''}. These details appear on meeting notices, results and emails.
       </p>
 
-      {saved && <div className="notice">Saved.</div>}
-      {e && <div className="notice bad">{e}</div>}
+      <FlashToast flashes={flashes} keys={keys} />
 
       <div className="box" style={{ maxWidth: 460 }}>
         <form action={save} style={{ display: 'grid', gap: 10 }}>

@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { FlashToast } from '@/components/flash-toast';
+import { resolveFlashes } from '@/lib/flash';
 import { currentPrincipal } from '@/lib/auth/current';
 import { can } from '@/lib/rbac/policy';
 import {
@@ -81,6 +83,24 @@ export default async function Topics({
   const principal = await currentPrincipal();
   if (!principal) redirect('/login');
   const { saved, e, added, skipped, allocated, unmatched } = await searchParams;
+  const { flashes, keys } = resolveFlashes({ saved, e, added, skipped, allocated, unmatched }, {
+    saved: { resolve: () => ({ message: 'Saved.', variant: 'success' }) },
+    e: { resolve: (p) => ({ message: p.e!, variant: 'error' }) },
+    added: {
+      strip: ['skipped'],
+      resolve: (p) => ({
+        message: `${p.added} topics added${p.skipped && p.skipped !== '0' ? `, ${p.skipped} lines skipped` : ''}.`,
+        variant: 'success',
+      }),
+    },
+    allocated: {
+      strip: ['unmatched'],
+      resolve: (p) => ({
+        message: `Allocation run: ${p.allocated} placed, ${p.unmatched ?? 0} unmatched.`,
+        variant: 'success',
+      }),
+    },
+  });
 
   const person = findPerson(principal.userId);
   const isStudent = Boolean(person?.studentId);
@@ -108,10 +128,7 @@ export default async function Topics({
           : 'Publish what you are willing to supervise. Places count students across all your topics, not per topic.'}
       </p>
 
-      {saved && <div className="notice">Saved.</div>}
-      {added && <div className="notice">{added} topics added{skipped && skipped !== '0' ? `, ${skipped} lines skipped` : ''}.</div>}
-      {allocated && <div className="notice">Allocation run: {allocated} placed, {unmatched ?? 0} unmatched.</div>}
-      {e && <div className="notice bad">{e}</div>}
+      <FlashToast flashes={flashes} keys={keys} />
 
       {isCoordinator && (
         <div className="box">

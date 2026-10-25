@@ -3,6 +3,8 @@ import { revalidatePath } from 'next/cache';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { FlashToast } from '@/components/flash-toast';
+import { resolveFlashes } from '@/lib/flash';
 import { currentPrincipal } from '@/lib/auth/current';
 import { can } from '@/lib/rbac/policy';
 import { getInstitution, saveInstitution, type InstitutionProfile } from '@/lib/institution';
@@ -136,6 +138,11 @@ export default async function Settings({
   }
 
   const { e, ok, saved } = await searchParams;
+  const { flashes, keys } = resolveFlashes({ e, ok, saved }, {
+    saved: { resolve: () => ({ message: 'Saved.', variant: 'success' }) },
+    ok: { resolve: (p) => ({ message: p.ok!, variant: 'success' }) },
+    e: { resolve: (p) => ({ message: p.e!, variant: 'error' }) },
+  });
   const inst = await getInstitution();
   const email = await getEmailSettings();
   const cycles = await listCycles(principal.tenantId);
@@ -145,9 +152,7 @@ export default async function Settings({
       <h1 className="page">Institution settings</h1>
       <p className="lede">Branding shown across the app, emails, iCal feeds and PDFs.</p>
 
-      {saved && <div className="notice">Saved.</div>}
-      {ok && <div className="notice">{ok}</div>}
-      {e && <div className="notice bad">{e}</div>}
+      <FlashToast flashes={flashes} keys={keys} />
 
       {principal.tenantId !== 'default' && (
         <section className="box" style={{ maxWidth: 560, marginBottom: 16 }}>

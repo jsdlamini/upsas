@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { FlashToast } from '@/components/flash-toast';
+import { resolveFlashes, parseErrorList } from '@/lib/flash';
 import { revalidatePath } from 'next/cache';
 import { currentPrincipal } from '@/lib/auth/current';
 import { can } from '@/lib/rbac/policy';
@@ -127,8 +129,15 @@ export default async function Rubrics({
   const history = instrumentHistory(component);
   const inUse = instrumentInUse(component);
 
-  let errors: string[] = [];
-  if (e) { try { const parsed: unknown = JSON.parse(e); if (Array.isArray(parsed)) errors = parsed.map(String); } catch { errors = [e]; } }
+  const errors = parseErrorList(e);
+  const { flashes, keys } = resolveFlashes({ e, done }, {
+    done: { resolve: (p) => ({ message: `Form updated — ${p.done}.`, variant: 'success' }) },
+    e: {
+      resolve: () => (errors.length > 0
+        ? { message: `This change was not applied. ${errors.join(' ')}`, variant: 'error' }
+        : null),
+    },
+  });
 
   const pending = readPendingEdit(principal.userId, component);
   const plan = reviewing && pending
@@ -159,13 +168,7 @@ export default async function Rubrics({
         <a href="/rubrics?c=p2" className={component === 'p2' ? 'on' : undefined}>Presentation 2</a>
       </div>
 
-      {done && <div className="notice" role="status">Form updated — {done}.</div>}
-      {errors.length > 0 && (
-        <div className="notice bad" role="alert">
-          <strong>This change was not applied.</strong>
-          <ul className="errorlist">{errors.map((msg) => <li key={msg}>{msg}</li>)}</ul>
-        </div>
-      )}
+      <FlashToast flashes={flashes} keys={keys} />
 
       <div className="page-context">
         <span className="cycle-chip">version {current.version}</span>
