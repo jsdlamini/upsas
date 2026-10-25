@@ -38,11 +38,12 @@ services:
       RESEND_FROM: ${RESEND_FROM:-ResearchChains <invites@idealsoftwaresolutions.com>}
       EMAIL_REDIRECT_TO: ${EMAIL_REDIRECT_TO:-}
       DISABLE_MFA: ${DISABLE_MFA:-}
+      DISABLE_DEMO: ${DISABLE_DEMO:-}
       DEMO_LOGIN_HINT: ${DEMO_LOGIN_HINT:-}
       TZ: Africa/Mbabane
     volumes:
       - uploads:/var/lib/upsas/uploads
-    ports: ["3000:3000"]
+    ports: []
     networks: [internal, docker_webnet]
 
   # Local signature updates only; drop this service for a fully air-gapped site.
