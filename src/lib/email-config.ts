@@ -18,10 +18,19 @@ export const DEFAULT_EMAIL_SETTINGS: EmailSettings = {
 
 export async function getEmailSettings(): Promise<EmailSettings> {
   const stored = await getStoredEmailSettings(await requestTenantId());
-  if (stored) return stored;
-  // Backward-compatible default: an install that already sets RESEND_API_KEY
-  // keeps sending via Resend until the wizard records an explicit choice.
-  return { ...DEFAULT_EMAIL_SETTINGS, provider: process.env.RESEND_API_KEY ? 'resend' : 'none' };
+  if (!stored) {
+    // Backward-compatible default: an install that already sets RESEND_API_KEY
+    // keeps sending via Resend until the wizard records an explicit choice.
+    return { ...DEFAULT_EMAIL_SETTINGS, provider: process.env.RESEND_API_KEY ? 'resend' : 'none' };
+  }
+  // A stored 'none' row (createTenant's default for self-served institutions)
+  // should still pick up the deployment-level Resend key when one is set, so
+  // invites actually send instead of being stubbed. Air-gapped installs (no
+  // key) and explicit SMTP choices are left untouched.
+  if (stored.provider === 'none' && process.env.RESEND_API_KEY) {
+    return { ...stored, provider: 'resend' };
+  }
+  return stored;
 }
 
 export async function saveEmailSettings(

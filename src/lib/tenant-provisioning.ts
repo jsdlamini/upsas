@@ -1,6 +1,7 @@
 import { prisma } from './prisma';
 import { hashPassword } from './auth/password';
 import { deriveCycleDates } from './cycles';
+import { getStoredEmailSettings } from './data/store';
 
 const SLUG_RE = /^[a-z0-9-]{2,40}$/;
 const RESERVED = new Set([
@@ -63,10 +64,24 @@ export async function createTenant(input: {
     return { ok: false, error: 'Give the academic cycle a valid start and end date.' };
   }
 
+  // Inherit the deployment-level sender from the host tenant and default new
+  // institutions to Resend when a key is configured, so their invite emails
+  // actually send instead of defaulting to a stubbed 'none' provider.
+  const hostEmail = await getStoredEmailSettings('default');
+  const defaultProvider = process.env.RESEND_API_KEY ? 'resend' : 'none';
+
   await prisma.$transaction([
     prisma.tenant.create({ data: { id: slug, name, createdAt: now } }),
     prisma.institution.create({ data: { id: slug, tenantId: slug, name, productName: name } }),
-    prisma.emailSettings.create({ data: { id: slug, tenantId: slug, provider: 'none' } }),
+    prisma.emailSettings.create({
+      data: {
+        id: slug,
+        tenantId: slug,
+        provider: defaultProvider,
+        fromName: hostEmail?.fromName ?? '',
+        fromEmail: hostEmail?.fromEmail ?? '',
+      },
+    }),
     prisma.academicCycle.create({
       data: {
         tenantId: slug, institutionId: slug, label: cycleLabel,

@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { prisma } from '../src/lib/prisma';
 import { createTenant, listTenants, setTenantSuspension } from '../src/lib/tenant-provisioning';
+import { DEFAULT_EMAIL_SETTINGS } from '../src/lib/email-config';
+import { resetEmailForTests, setStoredEmailSettings } from '../src/lib/data/store';
 
 test('createTenant provisions an isolated, fully-formed tenant', async () => {
   const r = await createTenant({
@@ -76,4 +78,36 @@ test('setTenantSuspension toggles the suspendedAt timestamp', async () => {
   await setTenantSuspension('suspendme', false);
   assert.equal((await prisma.tenant.findUnique({ where: { id: 'suspendme' } }))?.suspendedAt, null);
   await prisma.tenant.delete({ where: { id: 'suspendme' } });
+});
+
+test('createTenant defaults email provider from RESEND_API_KEY and inherits sender', async () => {
+  process.env.RESEND_API_KEY = 're_test';
+  await setStoredEmailSettings('default', {
+    ...DEFAULT_EMAIL_SETTINGS, provider: 'resend', fromName: 'Host Sender', fromEmail: 'host@example.com',
+  });
+  try {
+    const r = await createTenant({
+      name: 'Resend Coast University',
+      slug: 'resendcoast',
+      adminName: 'Ada',
+      adminSurname: 'Lovelace',
+      adminEmail: 'ada@resendcoast.example',
+      adminUsername: 'ada',
+      adminPassword: 'password123',
+      cycleLabel: '2025/2026',
+    });
+    assert.equal(r.ok, true);
+    const email = await prisma.emailSettings.findUnique({ where: { id: 'resendcoast' } });
+    assert.equal(email?.provider, 'resend');
+    assert.equal(email?.fromName, 'Host Sender');
+    assert.equal(email?.fromEmail, 'host@example.com');
+  } finally {
+    delete process.env.RESEND_API_KEY;
+    await prisma.user.deleteMany({ where: { tenantId: 'resendcoast' } });
+    await prisma.academicCycle.deleteMany({ where: { tenantId: 'resendcoast' } });
+    await prisma.emailSettings.deleteMany({ where: { id: 'resendcoast' } });
+    await prisma.institution.deleteMany({ where: { id: 'resendcoast' } });
+    await prisma.tenant.deleteMany({ where: { id: 'resendcoast' } });
+    await resetEmailForTests();
+  }
 });
