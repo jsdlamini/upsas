@@ -15,8 +15,9 @@ function monogramFor(name: string): string {
   return name.replace(/[^A-Za-z]/g, '').slice(0, 2).toUpperCase() || 'RC';
 }
 
-async function joinStudentAction(slug: string, formData: FormData) {
+async function joinStudentAction(formData: FormData) {
   'use server';
+  const slug = String(formData.get('slug') ?? '');
   const password = String(formData.get('password') ?? '');
   const confirm = String(formData.get('confirm') ?? '');
   if (password !== confirm) {
@@ -36,8 +37,9 @@ async function joinStudentAction(slug: string, formData: FormData) {
   redirect('/login?registered=student');
 }
 
-async function joinStaffAction(slug: string, formData: FormData) {
+async function joinStaffAction(formData: FormData) {
   'use server';
+  const slug = String(formData.get('slug') ?? '');
   const requestedRoles = (formData.getAll('roles') as string[]).filter(
     (r): r is JoinRole => r === 'SUPERVISOR' || r === 'ASSESSOR' || r === 'MODERATOR',
   );
@@ -119,7 +121,8 @@ export default async function JoinPage({
           {e && <div className="notice bad">{e}</div>}
 
           {!isStaff ? (
-            <form action={joinStudentAction.bind(null, slug)} className="box form-grid">
+            <form action={joinStudentAction} className="box form-grid">
+              <input type="hidden" name="slug" value={slug} />
               <p>
                 <label>Student number
                   <input name="studentNumber" inputMode="numeric" pattern="[0-9]{9}" maxLength={9}
@@ -173,7 +176,8 @@ export default async function JoinPage({
               </div>
             </form>
           ) : (
-            <form action={joinStaffAction.bind(null, slug)} className="box form-grid">
+            <form action={joinStaffAction} className="box form-grid">
+              <input type="hidden" name="slug" value={slug} />
               <p>
                 <label>Surname
                   <input name="surname" autoFocus required />
