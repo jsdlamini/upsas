@@ -161,11 +161,11 @@ export default async function WelcomePage() {
       {links.length > 0 && (
         <>
           <h2>Start here</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+          <div className="card-grid">
             {links.map((l) => (
-              <Link key={l.href + l.label} href={l.href} className="register-card">
-                <strong>{l.label}</strong>
-                <span>{l.note}</span>
+              <Link key={l.href + l.label} href={l.href} className="box start-card">
+                <strong>{l.label}<span className="go" aria-hidden="true">→</span></strong>
+                <span className="muted">{l.note}</span>
               </Link>
             ))}
           </div>
@@ -182,21 +182,17 @@ export default async function WelcomePage() {
       </div>
 
       <h2>What each role does</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
+      <div className="card-grid">
         {ROLE_WORKFLOWS.map((w) => {
           const mine = principal.roles.includes(w.key);
           return (
-            <div
-              key={w.key}
-              className="box"
-              style={{ marginBottom: 0, ...(mine ? { borderLeftColor: 'var(--accent)' } : {}) }}
-            >
-              <strong>
+            <div key={w.key} className={`box role-card${mine ? ' mine' : ''}`}>
+              <strong className="role-title">
                 {w.title}
-                {mine && <span className="muted" style={{ fontSize: 11.5, marginLeft: 8 }}>— your role</span>}
+                {mine && <span className="ui-badge ui-badge-info">Your role</span>}
               </strong>
-              <p className="muted" style={{ margin: '6px 0 8px' }}>{w.blurb}</p>
-              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--ink-soft)' }}>
+              <p className="muted role-blurb">{w.blurb}</p>
+              <ul className="role-steps">
                 {w.steps.map((s) => <li key={s}>{s}</li>)}
               </ul>
             </div>
