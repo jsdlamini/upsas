@@ -143,7 +143,7 @@ export default async function Settings({
   return (
     <>
       <h1 className="page">Institution settings</h1>
-      <p className="lede">Branding shown across the app, emails, iCal feeds and PDFs.</p>
+      <p className="lede">Enter your institution's details below to set your branding across the app.</p>
 
       {saved && <div className="notice">Saved.</div>}
       {ok && <div className="notice">{ok}</div>}
