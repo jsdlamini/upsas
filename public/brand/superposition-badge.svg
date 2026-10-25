@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40" width="120" height="40" fill="none" role="img" aria-label="Superposition ket badge">
+<rect x="1" y="1" width="118" height="38" rx="9" fill="#EFEBFD" stroke="#6633E6" stroke-opacity=".35"/>
+<line x1="30" y1="9" x2="30" y2="31" stroke="#6633E6" stroke-width="2.2" stroke-linecap="round"/>
+<g stroke="#6633E6" stroke-width="2.2" stroke-linecap="round" fill="none">
+  <path d="M52 12 C52 19 55 22 60 22"/>
+  <path d="M68 12 C68 19 65 22 60 22"/>
+  <line x1="60" y1="12" x2="60" y2="29"/>
+</g>
+<line x1="90" y1="9" x2="90" y2="31" stroke="#6633E6" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="84" y1="20" x2="96" y2="20" stroke="#6633E6" stroke-width="1.4" opacity=".5"/>
+</svg>
