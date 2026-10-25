@@ -1,7 +1,5 @@
 import { redirect } from 'next/navigation';
 import { registerStudent, requestStaffAccount, PROGRAMMES, COURSES } from '@/lib/data/store';
-import { getInstitution, monogramText, logoUrl } from '@/lib/institution';
-import { currentCycleLabel } from '@/lib/cycles';
 import { FeatureCarousel } from '@/components/feature-carousel';
 import { Button } from '@/components/ui/button';
 
@@ -12,6 +10,9 @@ const STAFF_ROLES = [
   { value: 'ASSESSOR', label: 'Departmental assessor' },
   { value: 'MODERATOR', label: 'Moderator / second assessor' },
 ] as const;
+
+const PRODUCT_NAME = 'Research Chain';
+const PRODUCT_MONO = 'RC';
 
 async function registerStudentAction(formData: FormData) {
   'use server';
@@ -55,19 +56,14 @@ export default async function RegisterPage({
   searchParams,
 }: { searchParams: Promise<{ kind?: string; e?: string }> }) {
   const { kind, e } = await searchParams;
-  const inst = await getInstitution();
-  const mono = await monogramText();
-  const logo = await logoUrl();
   const isStaff = kind === 'staff';
-  const cycleLabel = await currentCycleLabel('default');
 
   return (
     <div className="auth-split">
       <aside className="auth-brand">
         <div className="auth-brand-inner ui-enter">
-          {logo ? <img src={logo} alt="" className="brand-logo-img" /> : <div className="brand-logo">{mono}</div>}
-          <p className="inst">{[inst.name, inst.location].filter(Boolean).join(', ')}</p>
-          <p className="unit">{inst.department}</p>
+          <div className="brand-logo">{PRODUCT_MONO}</div>
+          <p className="inst">{PRODUCT_NAME}</p>
           <h2>Create your account</h2>
           <p className="tagline">
             Students self-register and start straight away. Staff accounts are held for a
@@ -78,14 +74,14 @@ export default async function RegisterPage({
             { title: 'Staff roles assigned on approval', image: '/screenshots/04-people.png' },
             { title: 'Offline-first, local sign-in only', image: '/screenshots/05-settings.png' },
           ]} />
-          <div className="brand-foot">Cycle {cycleLabel} · Accounts held locally</div>
+          <div className="brand-foot">Accounts held locally</div>
         </div>
       </aside>
       <div className="auth-main">
         <div className="auth-main-inner ui-enter">
           <div className="crest">
-            <p className="inst">{[inst.name, inst.location].filter(Boolean).join(', ')}</p>
-            <p className="unit">{inst.department} — Research project supervision</p>
+            <p className="inst">{PRODUCT_NAME}</p>
+            <p className="unit">Research project supervision &amp; assessment</p>
           </div>
 
           <h1 className="page">Create your account</h1>
