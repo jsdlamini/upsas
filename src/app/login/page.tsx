@@ -6,8 +6,7 @@ import { verifyTotp } from '@/lib/auth/totp';
 import { checkLoginRate } from '@/lib/auth/rate-limit';
 import { randomBytes } from 'node:crypto';
 import { passwordHashFor, findPersonByIdentifier, allPeople } from '@/lib/data/store';
-import { currentCycleId, currentCycleLabel } from '@/lib/cycles';
-import { getInstitution, monogramText, logoUrl } from '@/lib/institution';
+import { currentCycleId } from '@/lib/cycles';
 import { FeatureCarousel } from '@/components/feature-carousel';
 import {
   authPrismaAvailable,
@@ -48,6 +47,9 @@ const MESSAGES: Record<string, string> = {
   MFA_ENROLMENT_REQUIRED: 'This role requires a second factor and none is enrolled. See a coordinator to enrol.',
   RATE_LIMITED: 'Too many sign-in attempts. Wait a few minutes, then try again.',
 };
+
+const PRODUCT_NAME = 'Research Chain';
+const PRODUCT_MONO = 'RC';
 
 /**
  * Where to go after signing in. Only an internal path is ever honoured, so a
@@ -203,18 +205,13 @@ export default async function LoginPage({
   const next = safeNext(rawNext);
   if (await currentPrincipal()) redirect(next ?? '/');
   const needsCode = e === 'MFA_REQUIRED' && Boolean(challenge);
-  const inst = await getInstitution();
-  const mono = await monogramText();
-  const logo = await logoUrl();
-  const cycleLabel = await currentCycleLabel('default');
 
   return (
     <div className="auth-split">
       <aside className="auth-brand">
         <div className="auth-brand-inner ui-enter">
-          {logo ? <img src={logo} alt="" className="brand-logo-img" /> : <div className="brand-logo">{mono}</div>}
-          <p className="inst">{[inst.name, inst.location].filter(Boolean).join(', ')}</p>
-          <p className="unit">{inst.department}</p>
+          <div className="brand-logo">{PRODUCT_MONO}</div>
+          <p className="inst">{PRODUCT_NAME}</p>
           <h2>Research project supervision &amp; assessment</h2>
           <p className="tagline">One system of record for topics, consultations, presentations and final marks — from allocation to release.</p>
           <FeatureCarousel features={[
@@ -225,14 +222,14 @@ export default async function LoginPage({
             { title: 'Grading criteria & forms', image: '/screenshots/08-rubrics.png' },
             { title: 'Released results & reports', image: '/screenshots/04-people.png' },
           ]} />
-          <div className="brand-foot">Cycle {cycleLabel} · Accounts held locally — no external sign-in</div>
+          <div className="brand-foot">Accounts held locally — no external sign-in</div>
         </div>
       </aside>
       <div className="auth-main">
         <div className="auth-main-inner ui-enter">
           <div className="crest">
-            <p className="inst">{[inst.name, inst.location].filter(Boolean).join(', ')}</p>
-            <p className="unit">{inst.department} — Research project supervision</p>
+            <p className="inst">{PRODUCT_NAME}</p>
+            <p className="unit">Research project supervision &amp; assessment</p>
           </div>
           <h1 className="page">{needsCode ? 'One more step' : 'Sign in'}</h1>
       {process.env.DEMO_LOGIN_HINT && (
@@ -244,7 +241,7 @@ export default async function LoginPage({
       <p className="lede">
         {needsCode
           ? 'Your password was accepted. This role needs a second factor.'
-          : `Cycle ${cycleLabel}. Accounts are held locally — there is no external sign-in.`}
+          : 'Accounts are held locally — there is no external sign-in.'}
       </p>
 
       {!needsCode && (
