@@ -28,8 +28,9 @@ async function seedTenant() {
 async function cleanup() {
   const users = await prisma.user.findMany({ where: { tenantId: SLUG } });
   for (const u of users) await prisma.user.delete({ where: { id: u.id } }).catch(() => {});
-  await prisma.institution.deleteMany({ where: { id: SLUG } }).catch(() => {});
+  await prisma.academicCycle.deleteMany({ where: { tenantId: SLUG } }).catch(() => {});
   await prisma.emailSettings.deleteMany({ where: { id: SLUG } }).catch(() => {});
+  await prisma.institution.deleteMany({ where: { id: SLUG } }).catch(() => {});
   await prisma.tenant.deleteMany({ where: { id: SLUG } }).catch(() => {});
 }
 
