@@ -7,6 +7,7 @@ const RESERVED = new Set([
   'default', 'admin', 'app', 'www', 'api', 'signup', 'login', 'register',
   'recover', 'setup', 'settings', 'health', 'cohort', 'book', 'topics',
   'people', 'grading', 'marks', 'publish', 'me', 'account', 'deliverables',
+  'join',
 ]);
 
 export type TenantSummary = {

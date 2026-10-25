@@ -10,6 +10,7 @@ import { saveLogoFile } from '@/lib/logo-storage';
 import { getEmailSettings, saveEmailSettings, type EmailProvider } from '@/lib/email-config';
 import { TestEmail } from '@/components/test-email';
 import { EmailSettingsFields } from '@/components/email-settings-fields';
+import { JoinLink } from '@/components/join-link';
 import { findPerson } from '@/lib/data/store';
 import {
   listCycles, createCycle, updateCycle, setCurrentCycle, canManageCycles,
@@ -141,6 +142,17 @@ export default async function Settings({
       {saved && <div className="notice">Saved.</div>}
       {ok && <div className="notice">{ok}</div>}
       {e && <div className="notice bad">{e}</div>}
+
+      {principal.tenantId !== 'default' && (
+        <section className="box" style={{ maxWidth: 560, marginBottom: 16 }}>
+          <h2 style={{ fontSize: 16, margin: '0 0 4px' }}>Share your institution</h2>
+          <p className="muted" style={{ fontSize: 12.5, margin: '0 0 14px' }}>
+            Invite students and staff to join {inst.name || principal.tenantId}. Anyone with this
+            link can register against your institution.
+          </p>
+          <JoinLink slug={principal.tenantId} institutionName={inst.name || principal.tenantId} />
+        </section>
+      )}
 
       <div className="box" style={{ maxWidth: 560 }}>
         <form action={save} className="setup-form">
