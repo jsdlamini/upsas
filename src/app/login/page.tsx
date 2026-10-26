@@ -227,6 +227,17 @@ export default async function LoginPage({
             <li>Panel grading and moderation</li>
             <li>Released results and reports</li>
           </ul>
+          <div className="brand-shots" aria-hidden="true">
+            <div className="brand-shot shot-a">
+              <img src="/screenshots/03-topics.png" alt="" loading="lazy" />
+            </div>
+            <div className="brand-shot shot-b">
+              <img src="/screenshots/07-grading.png" alt="" loading="lazy" />
+            </div>
+            <div className="brand-shot shot-c">
+              <img src="/screenshots/02-dashboard.png" alt="" loading="lazy" />
+            </div>
+          </div>
           <div className="brand-foot">Runs on your own server. Accounts stay local — no external sign-in, no tracking.</div>
         </div>
       </aside>
@@ -296,16 +307,42 @@ export default async function LoginPage({
           </p>
           <div className="register-options">
             <a className="register-card" href="/signup">
-              <strong>I run an institution</strong>
-              <span>Set up a private workspace for your institution — you become its first coordinator.</span>
+              <span className="register-card-title">
+                <svg className="register-card-icon" width="17" height="17" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+                     aria-hidden="true" focusable="false">
+                  <rect x="4.5" y="3" width="15" height="18" rx="1.5" />
+                  <path d="M9.5 21v-3.5h5V21" />
+                  <path d="M8.5 7h.01M12 7h.01M15.5 7h.01M8.5 11h.01M12 11h.01M15.5 11h.01M8.5 14.5h.01M12 14.5h.01M15.5 14.5h.01" />
+                </svg>
+                <strong>I run an institution</strong>
+              </span>
+              <span className="register-card-text">Set up a private workspace for your institution — you become its first coordinator.</span>
             </a>
             <a className="register-card" href="/register?kind=student">
-              <strong>I am a student</strong>
-              <span>Register with your student number and start ranking topics today.</span>
+              <span className="register-card-title">
+                <svg className="register-card-icon" width="17" height="17" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+                     aria-hidden="true" focusable="false">
+                  <path d="M22 9.5 12 4.5l-10 5 10 5 10-5z" />
+                  <path d="M6 12v4.6c0 1.6 2.7 2.9 6 2.9s6-1.3 6-2.9V12" />
+                </svg>
+                <strong>I am a student</strong>
+              </span>
+              <span className="register-card-text">Register with your student number and start ranking topics today.</span>
             </a>
             <a className="register-card" href="/register?kind=staff">
-              <strong>I am staff</strong>
-              <span>Request supervisor, assessor or coordinator access — a coordinator will approve you.</span>
+              <span className="register-card-title">
+                <svg className="register-card-icon" width="17" height="17" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+                     aria-hidden="true" focusable="false">
+                  <path d="M15 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                  <circle cx="8.5" cy="7" r="4" />
+                  <path d="m16.5 11.5 2 2 4-4" />
+                </svg>
+                <strong>I am staff</strong>
+              </span>
+              <span className="register-card-text">Request supervisor, assessor or coordinator access — a coordinator will approve you.</span>
             </a>
           </div>
         </div>
