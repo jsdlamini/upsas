@@ -292,8 +292,8 @@ export function describePlan(plan: ChangePlan): string {
   const parts: string[] = [];
   if (plan.added.length) parts.push(`added ${plan.added.join(', ')}`);
   if (plan.removed.length) parts.push(`removed ${plan.removed.join(', ')}`);
-  if (plan.renamed.length) parts.push(`renamed ${plan.renamed.map((r) => `${r.from} → ${r.to}`).join(', ')}`);
-  if (plan.rescaled.length) parts.push(`rescaled ${plan.rescaled.map((r) => `${r.label} ${r.from}→${r.to}`).join(', ')}`);
-  if (plan.maxBefore !== plan.maxAfter) parts.push(`total ${plan.maxBefore} → ${plan.maxAfter}`);
+  if (plan.renamed.length) parts.push(`renamed ${plan.renamed.map((r) => `${r.from} to ${r.to}`).join(', ')}`);
+  if (plan.rescaled.length) parts.push(`rescaled ${plan.rescaled.map((r) => `${r.label} ${r.from} to ${r.to}`).join(', ')}`);
+  if (plan.maxBefore !== plan.maxAfter) parts.push(`total ${plan.maxBefore} to ${plan.maxAfter}`);
   return parts.length ? parts.join('; ') : 'no structural change';
 }

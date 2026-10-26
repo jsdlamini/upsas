@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 import { registerStudent, requestStaffAccount, PROGRAMMES, COURSES } from '@/lib/data/store';
-import { FeatureCarousel } from '@/components/feature-carousel';
 import { Button } from '@/components/ui/button';
 import { QuantumMark } from '@/components/quantum-mark';
 
@@ -61,7 +60,7 @@ export default async function RegisterPage({
   return (
     <div className="auth-split">
       <aside className="auth-brand">
-        <div className="auth-brand-inner ui-enter">
+        <div className="auth-brand-inner">
           <div className="brand-lockup">
             <div className="brand-logo-quantum"><QuantumMark /></div>
             <p className="inst">{PRODUCT_NAME}</p>
@@ -71,16 +70,11 @@ export default async function RegisterPage({
             Students self-register and start straight away. Staff accounts are held for a
             coordinator to review and activate.
           </p>
-          <FeatureCarousel features={[
-            { title: 'Student number & institutional email', image: '/screenshots/01-login.png' },
-            { title: 'Staff roles assigned on approval', image: '/screenshots/04-people.png' },
-            { title: 'Offline-first, local sign-in only', image: '/screenshots/05-settings.png' },
-          ]} />
           <div className="brand-foot">Accounts held locally</div>
         </div>
       </aside>
       <div className="auth-main">
-        <div className="auth-main-inner ui-enter">
+        <div className="auth-main-inner">
           <div className="crest">
             <p className="inst">{PRODUCT_NAME}</p>
             <p className="unit">Research project supervision &amp; assessment</p>

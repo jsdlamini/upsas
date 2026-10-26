@@ -218,8 +218,8 @@ test('a plan describes itself for the version history', () => {
   assert.ok(result.ok);
   const text = describePlan(result.plan);
   assert.match(text, /added Ethics compliance/);
-  assert.match(text, /renamed Methodology → Research design/);
-  assert.match(text, /total 40 → 50/);
+  assert.match(text, /renamed Methodology to Research design/);
+  assert.match(text, /total 40 to 50/);
 });
 
 test('criterion ids climb past every id ever issued', () => {

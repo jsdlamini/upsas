@@ -141,7 +141,7 @@ export default async function Book({
           Your supervisor is <strong>{supervisor?.fullName}</strong>. You have held <strong>{held}</strong>{' '}
           sessions so far. Slots need {MIN_NOTICE_HOURS} hours&apos; notice and you may hold one booking per day.
           {nextOpen && <> Next open: <span className="mono">{when(nextOpen.startsAt)}</span>.</>}
-          {' '}<a href="/api/ical" style={{ marginLeft: 6 }}>Export calendar (.ics) →</a>
+          {' '}<a href="/api/ical" style={{ marginLeft: 6 }}>Export calendar (.ics)</a>
         </p>
 
         <div className="journey">

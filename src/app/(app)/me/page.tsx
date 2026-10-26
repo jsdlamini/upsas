@@ -176,7 +176,7 @@ export default async function MyProject({
           <strong>You are not allocated to a project yet.</strong>
           <p className="muted" style={{ margin: '6px 0 0' }}>
             Once you are allocated, your supervisor, consultation marks and results will appear here.
-            <a href="/topics" style={{ marginLeft: 6 }}>Browse topics and rank your choices →</a>
+            <a href="/topics" style={{ marginLeft: 6 }}>Browse topics and rank your choices</a>
           </p>
         </div>
       )}

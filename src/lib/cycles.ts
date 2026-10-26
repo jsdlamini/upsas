@@ -39,7 +39,7 @@ export interface CycleDates {
 
 const CYCLE_RE = /^\s*(\d{4})\s*\/\s*(\d{4})\s*$/;
 
-/** 1 Aug of the first year → 31 Jul of the second year, for a "YYYY/YYYY" label. */
+/** 1 Aug of the first year to 31 Jul of the second year, for a "YYYY/YYYY" label. */
 export function deriveCycleDates(label: string): CycleDates {
   const m = CYCLE_RE.exec(label.trim());
   if (m) {
