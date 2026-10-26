@@ -7,7 +7,6 @@ import { checkLoginRate } from '@/lib/auth/rate-limit';
 import { randomBytes } from 'node:crypto';
 import { passwordHashFor, findPersonByIdentifier, allPeople } from '@/lib/data/store';
 import { currentCycleId } from '@/lib/cycles';
-import { FeatureCarousel } from '@/components/feature-carousel';
 import {
   authPrismaAvailable,
   ensureUsersSynced,
@@ -209,7 +208,7 @@ export default async function LoginPage({
   return (
     <div className="auth-split">
       <aside className="auth-brand">
-        <div className="auth-brand-inner ui-enter">
+        <div className="auth-brand-inner">
           <div className="brand-lockup" style={{ alignItems: 'flex-start', textAlign: 'left', display: 'flex', flexDirection: 'row', gap: 14 }}>
             <div className="brand-logo-quantum" style={{ width: 48, height: 48, margin: 0, flex: '0 0 auto' }}><QuantumMark /></div>
             <div>
@@ -217,26 +216,22 @@ export default async function LoginPage({
               <p className="unit" style={{ margin: '2px 0 0' }}>Research project supervision &amp; assessment</p>
             </div>
           </div>
-          <h2>Research projects, supervised and assessed in one place.</h2>
+          <h2>Everything between topic allocation and the final mark.</h2>
           <p className="tagline">
-            Research Chain is the department&apos;s system of record: topic selection, supervision
-            consultations, panel marking and released results — one chain of custody from first
-            allocation to final grade.
+            Research Chain is the department&apos;s system of record — topics, consultations, panel
+            marking and released results, held in one auditable chain.
           </p>
-          <p className="feature-kicker" style={{ margin: '26px 0 0' }}>Inside the workspace</p>
-          <FeatureCarousel features={[
-            { title: 'Topic selection & agreements', image: '/screenshots/03-topics.png' },
-            { title: 'Supervision consultations & register', image: '/screenshots/06-book.png' },
-            { title: 'Panel grading & moderation', image: '/screenshots/02-dashboard.png' },
-            { title: 'Presentation marking grid', image: '/screenshots/07-grading.png' },
-            { title: 'Grading criteria & forms', image: '/screenshots/08-rubrics.png' },
-            { title: 'Released results & reports', image: '/screenshots/04-people.png' },
-          ]} />
+          <ul className="brand-points">
+            <li>Topic selection and agreements</li>
+            <li>Supervision consultations and register</li>
+            <li>Panel grading and moderation</li>
+            <li>Released results and reports</li>
+          </ul>
           <div className="brand-foot">Runs on your own server. Accounts stay local — no external sign-in, no tracking.</div>
         </div>
       </aside>
       <div className="auth-main">
-        <div className="auth-main-inner ui-enter">
+        <div className="auth-main-inner">
           <div className="crest">
             <p className="inst">{PRODUCT_NAME}</p>
             <p className="unit">Research project supervision &amp; assessment</p>
@@ -253,14 +248,6 @@ export default async function LoginPage({
           ? 'Your password was accepted. This role needs a second factor.'
           : 'Accounts are held on this server — there is no external sign-in.'}
       </p>
-
-      {!needsCode && (
-        <div className="steps">
-          <span><b>1</b> Create your account</span>
-          <span><b>2</b> A coordinator activates staff roles</span>
-          <span><b>3</b> Sign in and land on your dashboard</span>
-        </div>
-      )}
 
       {registered === 'student' && <div className="notice">Account created — sign in below to get started.</div>}
       {registered === 'staff' && <div className="notice">Request sent — a coordinator will review it, then you can sign in.</div>}

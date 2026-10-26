@@ -194,7 +194,7 @@ export default async function Rubrics({
             {plan.plan.removed.length > 0 && <li>Removes {plan.plan.removed.join(', ')}.</li>}
             {plan.plan.renamed.map((r) => <li key={r.to}>Renames {r.from} to {r.to}. Marks already entered under it are kept.</li>)}
             {plan.plan.rescaled.map((r) => <li key={r.label}>{r.label} changes from {r.from} marks to {r.to}.</li>)}
-            <li>Sheet total {plan.plan.maxBefore} → <strong>{plan.plan.maxAfter}</strong>.</li>
+            <li>Sheet total changes from {plan.plan.maxBefore} to <strong>{plan.plan.maxAfter}</strong>.</li>
             {plan.plan.sheetsMigrated > 0 && <li>{plan.plan.sheetsMigrated} open sheets move to the new version.</li>}
             {plan.plan.sheetsFrozen > 0 && <li>{plan.plan.sheetsFrozen} signed sheets stay on version {current.version}.</li>}
           </ul>

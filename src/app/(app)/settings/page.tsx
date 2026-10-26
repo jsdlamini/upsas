@@ -251,7 +251,7 @@ export default async function Settings({
                 {c.isCurrent ? <Badge variant="success">Current</Badge> : <Badge>Past</Badge>}
                 <span className="muted" style={{ fontSize: 12.5 }}>
                   {new Date(c.startsOn).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}
-                  {' → '}
+                  {' – '}
                   {new Date(c.endsOn).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}
                 </span>
               </div>

@@ -16,79 +16,13 @@ const ROLE_LABELS: Record<RoleCode, string> = {
   EXTERNAL_EXAMINER: 'External examiner',
 };
 
-interface Workflow {
-  key: RoleCode;
-  title: string;
-  blurb: string;
-  steps: string[];
-}
-
-const ROLE_WORKFLOWS: Workflow[] = [
-  {
-    key: 'STUDENT',
-    title: 'Student',
-    blurb: 'Choose a topic and see your project through to a released result.',
-    steps: [
-      'Browse and rank published topics',
-      'Get allocated to a project and supervisor',
-      'Book consultations and confirm each session',
-      'Attend presentations when nominated',
-      'See your final mark once results are released',
-    ],
-  },
-  {
-    key: 'SUPERVISOR',
-    title: 'Supervisor',
-    blurb: 'Publish topics and carry each supervisee from allocation to a final mark.',
-    steps: [
-      'Publish and manage research topics',
-      'Grade and attest consultation sessions',
-      'Nominate students for presentation',
-      'Mark the written documentation',
-      'Watch live computed marks on your supervisees',
-    ],
-  },
-  {
-    key: 'ASSESSOR',
-    title: 'Assessor',
-    blurb: 'Grade the students on your scheduled session list against the marking grid.',
-    steps: [
-      'Open your grade session list',
-      'Grade each presentation on the grid',
-      'Submit marks for moderation',
-    ],
-  },
-  {
-    key: 'MODERATOR',
-    title: 'Moderator',
-    blurb: 'Review submitted marks for fairness — never your own work.',
-    steps: [
-      'Review presentation and documentation marks',
-      'Agree or adjust against the marking grid',
-      'Leave a moderation trail',
-    ],
-  },
-  {
-    key: 'COORDINATOR',
-    title: 'Coordinator / administrator',
-    blurb: 'Run the cycle: allocation, scheduling, release and the institution behind it.',
-    steps: [
-      'Approve staff accounts',
-      'Allocate topics and schedule presentations',
-      'Edit the cohort register and assessment forms',
-      'Compute and release results',
-      'Configure the institution and read reports',
-    ],
-  },
-  {
-    key: 'EXTERNAL_EXAMINER',
-    title: 'External examiner',
-    blurb: 'Read the audit trail and verify that standards hold.',
-    steps: [
-      'Read the audit trail',
-      'Review released results and reports',
-    ],
-  },
+const ROLE_SUMMARIES: { key: RoleCode; title: string; blurb: string }[] = [
+  { key: 'STUDENT', title: 'Student', blurb: 'Rank published topics, attend consultations, and follow your project to a released mark.' },
+  { key: 'SUPERVISOR', title: 'Supervisor', blurb: 'Publish topics, run graded consultations, and carry each supervisee to a final mark.' },
+  { key: 'ASSESSOR', title: 'Assessor', blurb: 'Grade your scheduled presentations against the marking grid.' },
+  { key: 'MODERATOR', title: 'Moderator', blurb: 'Review submitted marks for fairness — never your own.' },
+  { key: 'COORDINATOR', title: 'Coordinator / administrator', blurb: 'Run the cycle: accounts, allocation, scheduling, release and reports.' },
+  { key: 'EXTERNAL_EXAMINER', title: 'External examiner', blurb: 'Read the audit trail and verify released results.' },
 ];
 
 function startLinks(roles: readonly RoleCode[]): { href: string; label: string; note: string }[] {
@@ -138,7 +72,6 @@ export default async function WelcomePage() {
   const person = await identityFor(principal.userId);
   const inst = await getInstitution();
   const site = inst.name.trim() || inst.productName || 'Research Chain';
-  const department = inst.department.trim();
   const yourRoles = principal.roles.map((r) => ROLE_LABELS[r] ?? r);
   const links = startLinks(principal.roles);
 
@@ -146,11 +79,8 @@ export default async function WelcomePage() {
     <>
       <h1 className="page">Welcome to {site}</h1>
       <p className="lede">
-        This is the single system of record for research-project supervision and assessment
-        {department ? ` at ${department}` : ''}. A project starts as a published topic and ends as
-        a released mark. Allocation, consultations, grading, moderation and results all live here,
-        so everyone works from the same register — nothing is held in separate spreadsheets or
-        email threads.
+        One record runs from published topic to released final mark — allocation,
+        consultations, grading, moderation and results all live here.
       </p>
 
       <div className="notice" role="status">
@@ -161,44 +91,36 @@ export default async function WelcomePage() {
       {links.length > 0 && (
         <>
           <h2>Start here</h2>
-          <div className="card-grid">
+          <nav className="quick-links" aria-label="Quick links">
             {links.map((l) => (
-              <Link key={l.href + l.label} href={l.href} className="box start-card">
-                <strong>{l.label}<span className="go" aria-hidden="true">→</span></strong>
-                <span className="muted">{l.note}</span>
+              <Link key={l.href + l.label} href={l.href}>
+                <strong>{l.label}</strong>
+                <small>{l.note}</small>
               </Link>
             ))}
-          </div>
+          </nav>
         </>
       )}
 
-      <h2>How a project moves through the system</h2>
-      <div className="steps">
-        <span><b>1</b> Topics published &amp; allocated</span>
-        <span><b>2</b> Consultations graded &amp; attested</span>
-        <span><b>3</b> Presentations assessed</span>
-        <span><b>4</b> Marks moderated</span>
-        <span><b>5</b> Results released</span>
-      </div>
+      <h2>How the cycle runs</h2>
+      <p className="muted cycle-note">
+        Topics are published and allocated, consultations are graded and attested,
+        presentations are assessed, marks are moderated, and results are released.
+      </p>
 
-      <h2>What each role does</h2>
-      <div className="card-grid">
-        {ROLE_WORKFLOWS.map((w) => {
-          const mine = principal.roles.includes(w.key);
+      <h2>Roles in this workspace</h2>
+      <ul className="role-list">
+        {ROLE_SUMMARIES.map((r) => {
+          const mine = principal.roles.includes(r.key);
           return (
-            <div key={w.key} className={`box role-card${mine ? ' mine' : ''}`}>
-              <strong className="role-title">
-                {w.title}
-                {mine && <span className="ui-badge ui-badge-info">Your role</span>}
-              </strong>
-              <p className="muted role-blurb">{w.blurb}</p>
-              <ul className="role-steps">
-                {w.steps.map((s) => <li key={s}>{s}</li>)}
-              </ul>
-            </div>
+            <li key={r.key} className={mine ? 'mine' : undefined}>
+              <strong>{r.title}</strong>
+              <span className="muted">{r.blurb}</span>
+              {mine && <span className="ui-badge ui-badge-info">Your role</span>}
+            </li>
           );
         })}
-      </div>
+      </ul>
     </>
   );
 }

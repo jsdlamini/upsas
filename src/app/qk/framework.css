@@ -182,6 +182,11 @@ h1,h2,h3,h4{ margin:0; font-weight:650; letter-spacing:-.014em; color:var(--ink)
 
 :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; border-radius:2px }
 
+/* disclosure triangles come from the browser, not from our design */
+summary{ list-style:none; cursor:pointer }
+summary::-webkit-details-marker{ display:none }
+summary::marker{ content:"" }
+
 /* Scrollbars — quiet, in-world. */
 *{ scrollbar-width:thin; scrollbar-color:color-mix(in srgb, var(--ink) 22%, transparent) transparent }
 *::-webkit-scrollbar{ width:10px; height:10px }
@@ -340,11 +345,11 @@ input[aria-invalid="true"]:focus{ box-shadow:0 0 0 3px color-mix(in srgb, var(--
 .flag.red{ color:var(--rust) }     .flag.red::before{ background:var(--rust) }
 
 .notice{
-  border:1px solid var(--moss-line); border-left:3px solid var(--moss);
+  border:1px solid var(--moss-line);
   background:var(--moss-dim); color:var(--moss);
   padding:11px 15px; margin-bottom:16px; border-radius:var(--radius-sm); font-size:13px;
 }
-.notice.bad{ border-color:var(--rust-line); border-left-color:var(--rust); background:var(--rust-dim); color:var(--rust) }
+.notice.bad{ border-color:var(--rust-line); background:var(--rust-dim); color:var(--rust) }
 
 /* component-library badges, and the .badge used on the host console */
 .ui-badge, .badge{
@@ -371,9 +376,6 @@ input[aria-invalid="true"]:focus{ box-shadow:0 0 0 3px color-mix(in srgb, var(--
 .box strong{ font-weight:600 }
 .box p{ margin:7px 0 0 }
 
-/* The section hue tips the top edge of every surface, so grouped cards
-   read as belonging to their page without a single shadow. */
-.box{ border-top:2px solid color-mix(in srgb, var(--section) 26%, var(--rule)) }
 
 .empty{
   background:var(--surface); border:1px dashed color-mix(in srgb, var(--section) 34%, var(--rule));
@@ -460,11 +462,6 @@ td.sess div{ font:400 10px/1.4 var(--sans); color:var(--muted); margin-top:3px }
 .tabs-switch a.on{ background:var(--surface); color:var(--section); box-shadow:inset 0 -2px 0 var(--section) }
 .tabs-switch a:hover{ text-decoration:none; color:var(--ink) }
 
-.steps{ display:flex; flex-wrap:wrap; gap:8px; margin:0 0 18px }
-.steps span{ font-size:12.5px; color:var(--ink-soft); background:var(--surface);
-  border:1px solid var(--rule); border-left:3px solid color-mix(in srgb, var(--section) 44%, var(--rule));
-  border-radius:var(--radius-xs); padding:7px 12px }
-.steps b{ color:var(--section); margin-right:5px; font-variant-numeric:tabular-nums }
 
 .journey{ display:flex; flex-wrap:wrap; gap:8px; margin:0 0 18px }
 .journey span{ font-size:12px; color:var(--muted); background:var(--surface);

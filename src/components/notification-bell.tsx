@@ -41,7 +41,6 @@ function Item({ notice, unread, now }: { notice: MeetingNotice; unread: boolean;
           <span className="bell-body">{notice.body}</span>
           <time dateTime={notice.createdAt}>{ago(notice.createdAt, now)}</time>
         </span>
-        <span className="bell-go" aria-hidden="true">›</span>
       </a>
     </li>
   );
