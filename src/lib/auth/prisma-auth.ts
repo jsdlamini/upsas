@@ -100,6 +100,27 @@ export async function syncOneUserToPrisma(person: Person, hash: string): Promise
   await upsertUser(person, hash);
 }
 
+/**
+ * Update a user that exists only in Postgres (self-serve admins and join-URL
+ * members have no in-memory Person row). Mirrors updatePersonProfile's result
+ * shape so the account page can share one redirect path.
+ */
+export async function updateUserProfilePrisma(
+  id: string,
+  patch: { fullName?: string; surname?: string; email?: string },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await prisma.user.update({ where: { id }, data: patch });
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2025') return { ok: false, error: 'No such account.' };
+      if (error.code === 'P2002') return { ok: false, error: 'That email is already in use.' };
+    }
+    return { ok: false, error: 'Could not save your details.' };
+  }
+}
+
 const identityInclude = { credential: true, totp: true, roles: true } as const;
 type IdentityUser = Prisma.UserGetPayload<{ include: typeof identityInclude }>;
 

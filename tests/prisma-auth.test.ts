@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { prisma } from '../src/lib/prisma';
 import { createTenant } from '../src/lib/tenant-provisioning';
-import { findUserPrisma, findUserPrismaById } from '../src/lib/auth/prisma-auth';
+import { findUserPrisma, findUserPrismaById, updateUserProfilePrisma } from '../src/lib/auth/prisma-auth';
 import { principalForSessionRecord, identityFor } from '../src/lib/auth/principal';
 import { issueSession } from '../src/lib/auth/session';
 
@@ -11,8 +11,10 @@ const SLUG = 'testcollege';
 const EMAIL = 'admin@testcollege.example';
 
 async function cleanup() {
-  const user = await prisma.user.findUnique({ where: { email: EMAIL } });
+  const user = await prisma.user.findUnique({ where: { id: `u-${SLUG}-admin` } });
   if (user) await prisma.user.delete({ where: { id: user.id } }).catch(() => {});
+  const byEmail = await prisma.user.findUnique({ where: { email: EMAIL } });
+  if (byEmail) await prisma.user.delete({ where: { id: byEmail.id } }).catch(() => {});
   await prisma.academicCycle.deleteMany({ where: { tenantId: SLUG } }).catch(() => {});
   await prisma.institution.deleteMany({ where: { id: SLUG } }).catch(() => {});
   await prisma.emailSettings.deleteMany({ where: { id: SLUG } }).catch(() => {});
@@ -63,4 +65,64 @@ test('a self-serve admin that exists only in Postgres resolves to a principal', 
 test('an unknown session user resolves to nothing rather than crashing', async () => {
   const session = issueSession('u-does-not-exist', NOW, true, 'sess-missing');
   assert.equal(await principalForSessionRecord(session.record, NOW), null);
+});
+
+test('identityFor carries the login username for in-memory and Prisma-only users', async () => {
+  const mem = await identityFor('u-mahlalela');
+  assert.ok(mem, 'in-memory person must resolve');
+  assert.equal(mem.username, 'tmahlalela');
+
+  await cleanup();
+  try {
+    const created = await createTenant({
+      name: 'Test College',
+      slug: SLUG,
+      adminName: 'Test',
+      adminSurname: 'Admin',
+      adminEmail: EMAIL,
+      adminUsername: 'testadmin',
+      adminPassword: 'Purple#Tree88',
+    });
+    assert.equal(created.ok, true);
+
+    const user = await findUserPrisma(EMAIL);
+    assert.ok(user, 'admin must be found by email in Prisma');
+    const identity = await identityFor(user.id);
+    assert.ok(identity, 'Prisma-only identity must resolve');
+    assert.equal(identity.username, 'testadmin');
+  } finally {
+    await cleanup();
+  }
+});
+
+test('updateUserProfilePrisma writes name and email to the User row', async () => {
+  await cleanup();
+  try {
+    const created = await createTenant({
+      name: 'Test College',
+      slug: SLUG,
+      adminName: 'Test',
+      adminSurname: 'Admin',
+      adminEmail: EMAIL,
+      adminUsername: 'testadmin',
+      adminPassword: 'Purple#Tree88',
+    });
+    assert.equal(created.ok, true);
+
+    const user = await findUserPrisma(EMAIL);
+    assert.ok(user);
+    const res = await updateUserProfilePrisma(user.id, {
+      fullName: 'Renamed Admin',
+      surname: 'Renamed',
+      email: 'renamed@testcollege.example',
+    });
+    assert.equal(res.ok, true);
+
+    const fresh = await prisma.user.findUnique({ where: { id: user.id } });
+    assert.equal(fresh?.fullName, 'Renamed Admin');
+    assert.equal(fresh?.surname, 'Renamed');
+    assert.equal(fresh?.email, 'renamed@testcollege.example');
+  } finally {
+    await cleanup();
+  }
 });

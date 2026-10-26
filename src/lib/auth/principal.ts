@@ -44,20 +44,21 @@ export async function principalForSessionRecord(
 /** Display identity for the signed-in user, falling back to Postgres. */
 export async function identityFor(
   userId: string,
-): Promise<{ fullName: string; surname: string; email: string | null; studentId: string | null } | null> {
+): Promise<{ fullName: string; surname: string; email: string | null; username: string; studentId: string | null } | null> {
   const person = findPerson(userId);
   if (person) {
     return {
       fullName: person.fullName,
       surname: person.surname,
       email: person.email ?? null,
+      username: person.username,
       studentId: person.studentId ?? null,
     };
   }
   try {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return null;
-    return { fullName: user.fullName, surname: user.surname, email: user.email, studentId: null };
+    return { fullName: user.fullName, surname: user.surname, email: user.email, username: user.username, studentId: null };
   } catch {
     return null;
   }
